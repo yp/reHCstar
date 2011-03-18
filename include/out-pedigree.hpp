@@ -187,7 +187,7 @@ protected:
         }
         out << ind.gender() << _sep;
         out << ind.phenotype() << _sep;
-        _gw.encode(out, ind.g(), _sep);
+        _gw.encode(out, ind.obs_g(), _sep);
         out << std::endl;
     }
 

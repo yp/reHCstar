@@ -42,7 +42,7 @@
 #include <boost/foreach.hpp>
 
 void
-SAT_solver_iface_t::add_clause(const std::set<int>& clause) {
+SAT_solver_iface_t::add_clause(const std::set<lit_t>& clause) {
   L_TRACE("Adding a clause to the solver...");
   if (_solved) {
 	 L_ERROR("Impossible to add a clause to an already solved instance! Abort.");
@@ -50,8 +50,8 @@ SAT_solver_iface_t::add_clause(const std::set<int>& clause) {
 	 return;
   }
   vec<Lit> sc;
-  BOOST_FOREACH( int lit, clause ) {
-	 unsigned int var= std::abs(lit)-1;
+  BOOST_FOREACH( lit_t lit, clause ) {
+	 var_t var= std::abs(lit)-1;
 	 while (var >= _solver->nVars()) _solver->newVar();
 	 sc.push( Lit( var, lit<0 ) );
   }
@@ -59,7 +59,7 @@ SAT_solver_iface_t::add_clause(const std::set<int>& clause) {
 };
 
 void
-SAT_solver_iface_t::add_xor_clause(const std::set<int>& clause) {
+SAT_solver_iface_t::add_xor_clause(const std::set<lit_t>& clause) {
   L_TRACE("Adding a xor-clause to the solver...");
   if (_solved) {
 	 L_ERROR("Impossible to add a xor-clause to an already solved instance! Abort.");
@@ -68,8 +68,8 @@ SAT_solver_iface_t::add_xor_clause(const std::set<int>& clause) {
   }
   vec<Lit> sc;
   bool sign= false;
-  BOOST_FOREACH( int lit, clause ) {
-	 unsigned int var= std::abs(lit)-1;
+  BOOST_FOREACH( lit_t lit, clause ) {
+	 var_t var= std::abs(lit)-1;
 	 while (var >= _solver->nVars()) _solver->newVar();
 	 sc.push( Lit( var, false ) );
 	 sign ^= (lit<0) ;
@@ -106,7 +106,7 @@ SAT_solver_iface_t::solve() {
 
 
 bool
-SAT_solver_iface_t::model(const unsigned int var) const {
+SAT_solver_iface_t::model(const var_t& var) const {
   if (!_solved || !_sat) {
 	 L_ERROR("The instance has not yet solved or it is not satisfiable!");
 	 MY_FAIL;

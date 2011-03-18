@@ -37,13 +37,13 @@
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string/trim.hpp>
 
-const ped_var_kind ped_var_kind::H(0);
-const ped_var_kind ped_var_kind::W(1);
-const ped_var_kind ped_var_kind::S(2);
-const ped_var_kind ped_var_kind::DUMMY(3);
+const ped_var_kind ped_var_kind::S(0);
+const ped_var_kind ped_var_kind::P(1);
+const ped_var_kind ped_var_kind::M(2);
+const ped_var_kind ped_var_kind::E(3);
 const int ped_var_kind::int_values[]={0, 1, 2, 3};
-const std::string ped_var_kind::str_values[]={"h", "w", "s", "dummy"};
-const ped_var_kind ped_var_kind::enum_values[]={H, W, S, DUMMY};
+const std::string ped_var_kind::str_values[]={"s", "p", "m", "e"};
+const ped_var_kind ped_var_kind::enum_values[]={S, P, M, E};
 
 std::ostream&
 operator<<(std::ostream& out, const pedcnf_t::pedvar_t& var) {
@@ -52,7 +52,7 @@ operator<<(std::ostream& out, const pedcnf_t::pedvar_t& var) {
 }
 
 
-inline int
+inline lit_t
 pedcnf_t::get_var(varmap_t& map,
 						const ped_var_kind& var_kind,
 						const size_t i1, const size_t i2) {
@@ -67,7 +67,7 @@ pedcnf_t::get_var(varmap_t& map,
   return it->second;
 };
 
-inline int
+inline lit_t
 pedcnf_t::get_var(const varmap_t& map,
 						const size_t i1, const size_t i2) const {
   varmap_t::const_iterator it= map.find(boost::make_tuple(i1, i2));
@@ -81,49 +81,49 @@ pedcnf_t::get_var(const varmap_t& map,
 bool
 pedcnf_t::get_val(const varmap_t& map,
 						const size_t i1, const size_t i2) const {
-  int var= get_var(map, i1, i2);
+  lit_t var= get_var(map, i1, i2);
   MY_ASSERT_DBG( (0 < var) && ((size_t)var <= _vals.size()) );
   return _vals[var-1];
 };
 
-int
-pedcnf_t::get_h(const size_t i, const size_t l) {
-  return get_var(_h, ped_var_kind::H, i, l);
-};
-
-int
-pedcnf_t::get_w(const size_t i, const size_t l) {
-  return get_var(_w, ped_var_kind::W, i, l);
-};
-
-int
+lit_t
 pedcnf_t::get_s(const size_t p, const size_t i) {
   return get_var(_s, ped_var_kind::S, p, i);
 };
 
-int
-pedcnf_t::get_dummy(const int v1, const int v2) {
-  return get_var(_dummy, ped_var_kind::DUMMY, v1, v2);
+lit_t
+pedcnf_t::get_p(const size_t i, const size_t l) {
+  return get_var(_p, ped_var_kind::P, i, l);
 };
 
-int
-pedcnf_t::get_h(const size_t i, const size_t l) const {
-  return get_var(_h, i, l);
+lit_t
+pedcnf_t::get_m(const size_t i, const size_t l) {
+  return get_var(_m, ped_var_kind::M, i, l);
 };
 
-int
-pedcnf_t::get_w(const size_t i, const size_t l) const {
-  return get_var(_w, i, l);
+lit_t
+pedcnf_t::get_e(const size_t i, const size_t l) {
+  return get_var(_e, ped_var_kind::E, i, l);
 };
 
-int
+lit_t
 pedcnf_t::get_s(const size_t p, const size_t i) const {
   return get_var(_s, p, i);
 };
 
-int
-pedcnf_t::get_dummy(const int v1, const int v2) const {
-  return get_var(_dummy, v1, v2);
+lit_t
+pedcnf_t::get_p(const size_t i, const size_t l) const {
+  return get_var(_p, i, l);
+};
+
+lit_t
+pedcnf_t::get_m(const size_t i, const size_t l) const {
+  return get_var(_m, i, l);
+};
+
+lit_t
+pedcnf_t::get_e(const size_t i, const size_t l) const {
+  return get_var(_e, i, l);
 };
 
 
@@ -131,13 +131,13 @@ pedcnf_t::get_dummy(const int v1, const int v2) const {
 
 bool
 pedcnf_t::is_satisfying_assignment() const {
-  L_DEBUG("Checking if value assignment satisfies the clauses...");
+  L_DEBUG("Checking if value assignment satisfies the or-clauses...");
   MY_ASSERT_DBG( _vars.size() == _vals.size() );
   bool ris= true;
   BOOST_FOREACH(const clause_t& clause, _clauses) {
 	 if (ris) {
 		bool intris= false;
-		BOOST_FOREACH(const int& var, clause) {
+		BOOST_FOREACH(const lit_t& var, clause) {
 		  MY_ASSERT( var != 0 );
 		  MY_ASSERT( (size_t)abs(var) <= _vars.size() );
 		  if (var>0) {
@@ -152,10 +152,32 @@ pedcnf_t::is_satisfying_assignment() const {
 		ris= ris && intris;
 	 }
   }
-  if (ris) {
-	 L_DEBUG("The assignment satisfies all the clauses.");
+  if (!ris) {
+	 L_DEBUG("The assignment does not satisfy all the or-clauses.");
   } else {
-	 L_DEBUG("The assignment does not satisfy all the clauses.");
+	 L_DEBUG("The assignment satisfies all the or-clauses.");
+	 L_DEBUG("Checking if value assignment satisfies the xor-clauses...");
+	 BOOST_FOREACH(const xor_clause_t& clause, _xor_clauses) {
+		if (ris) {
+		  bool intris= false;
+		  BOOST_FOREACH(const lit_t& var, clause) {
+			 MY_ASSERT( var != 0 );
+			 MY_ASSERT( (size_t)abs(var) <= vars().size() );
+			 bool val_var= vals()[abs(var)-1];
+			 if (var<0) val_var= !val_var;
+			 intris= (intris && !val_var) || (!intris && val_var);
+		  }
+		  if (!intris) {
+			 L_DEBUG("Clause " << tostr(clause) << " is not satisfied.");
+		  }
+		  ris= ris && intris;
+		}
+	 }
+	 if (ris) {
+		L_DEBUG("The assignment satisfies all the or- and xor-clauses.");
+	 } else {
+		L_DEBUG("The assignment does not satisfy the xor-clauses.");
+	 }
   }
   return ris;
 };
@@ -178,6 +200,8 @@ pedcnf_t::clauses_to_dimacs_format(std::ostream& out,
   BOOST_FOREACH(const std::string& s, notes) {
 	 out << "c " << s << std::endl;
   }
+  if (_no_of_xor_clauses > 0)
+	 out << "c extended syntax: or- and xor-clauses" << std::endl;
   out << "c" << std::endl;
   size_t i= 1;
   for (pedcnf_t::varvec_t::const_iterator it= _vars.begin();
@@ -191,6 +215,11 @@ pedcnf_t::clauses_to_dimacs_format(std::ostream& out,
 		 it != _clauses.end();
 		 ++it) {
 	 out << *it << std::endl;
+  }
+  for (xor_clauses_t::const_iterator it= _xor_clauses.begin();
+		 it != _xor_clauses.end();
+		 ++it) {
+	 out << "x" << *it << std::endl;
   }
   return out;
 };
@@ -215,7 +244,7 @@ pedcnf_t::assignment_from_minisat_format(std::istream& in) {
 	 std::getline(in, line);
 	 boost::trim(line);
 	 std::istringstream is(line);
-	 int value;
+	 lit_t value;
 	 while ((is >> value) && (value != 0)) {
 		MY_ASSERT( (size_t)abs(value) <= _vals.size() );
 		_vals[(size_t)abs(value)-1]= (value>0);
@@ -252,4 +281,15 @@ pedcnf_t::add_clause(const clause_t& clause) {
   _solver.add_clause(clause);
 #endif
   ++_no_of_clauses;
+};
+
+void
+pedcnf_t::add_xor_clause(const xor_clause_t& clause) {
+#ifndef ONLY_INTERNAL_SAT_SOLVER
+  _xor_clauses.insert(clause);
+#endif
+#ifdef INTERNAL_SAT_SOLVER
+  _solver.add_xor_clause(clause);
+#endif
+  ++_no_of_xor_clauses;
 };

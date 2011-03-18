@@ -38,10 +38,8 @@
 
 #include "data.hpp"
 #include "log.hpp"
-#include "expr_tree.hpp"
 #include "utility.hpp"
 #include "pedcnf.hpp"
-#include "anf_constraints.hpp"
 
 #include <vector>
 #include <algorithm>
@@ -62,16 +60,10 @@ template <
   typename T_GENOTYPE,
   typename T_HAPLOTYPE,
   typename T_PHENOTYPE,
-  typename T_ID,
-  typename T_PEDCNF
+  typename T_ID
   >
 class ped2cnf_conv_t:
-  public log_able_t< T_PEDCNF >,
-  public std::unary_function< basic_pedigree_t<T_GENOTYPE,
-															  T_HAPLOTYPE,
-															  T_PHENOTYPE,
-															  T_ID>,
-										void >
+  public log_able_t< pedcnf_t >
 {
 // Types
 private:
@@ -95,112 +87,102 @@ public:
 // Methods
 private:
 
-  int homozygous_genotype_to_code(const g& gen) const {
-	 MY_ASSERT_DBG(is_homozigous(gen));
-	 if (gen == g::HOMO1) {
-		return 0;
-	 } else {
-		MY_ASSERT(gen == g::HOMO2);
-		return 1;
+  void add_individual_constraint(pedcnf_t& cnf,
+											const g& gen,
+											const size_t l,
+											const size_t i) {
+/************
+ * Clauses for errors variables
+ ************/
+	 if (gen != g::MISS) {
+		lit_t e= cnf.get_e(i, l);
+		lit_t p= cnf.get_p(i, l);
+		lit_t m= cnf.get_m(i, l);
+		if (gen == g::HOMO1) {
+// -e p m,  e -p,  e -m
+		  cnf.add_clause<3>((lit_t[]){-e,  p,  m});
+		  cnf.add_clause<2>((lit_t[]){ e, -p});
+		  cnf.add_clause<2>((lit_t[]){ e,     -m});
+		} else if (gen == g::HOMO2) {
+// -e -p -m,  e p,  e m
+		  cnf.add_clause<3>((lit_t[]){-e, -p, -m});
+		  cnf.add_clause<2>((lit_t[]){ e,  p});
+		  cnf.add_clause<2>((lit_t[]){ e,      m});
+		} else if (gen == g::HETER) {
+		  cnf.add_xor_clause<3>((lit_t[]){e, p, m});
+		  // cnf.add_clause<3>((lit_t[]){ e,  p,  m});
+		  // cnf.add_clause<3>((lit_t[]){ e, -p, -m});
+		  // cnf.add_clause<3>((lit_t[]){-e,  p, -m});
+		  // cnf.add_clause<3>((lit_t[]){-e, -p,  m});
+		} else if (gen == g::MISS) {
+// Do nothing
+		} else {
+		  MY_FAIL;
+		}
+		cnf.add_clause<1>((lit_t[]){-e});
 	 }
-  }
+/************
+ * End clauses for errors variables
+ ************/
+  };
 
-  void add_constraint(T_PEDCNF& cnf,
-							 const g& parent_g,
-							 const g& individual_g,
-							 const size_t locus,
-							 const size_t progr_id_parent,
-							 const size_t progr_id_ind,
-							 const bool is_mother) {
-	 expr_operator_t constraint(EXPR_OP_XOR);
-	 int constant= 0;
-// First side of the equation
-	 if (is_homozigous(parent_g)) {
-		constant+= homozygous_genotype_to_code(parent_g);
-	 } else {
-		expr_variable_t* hpl= new expr_variable_t(cnf.get_h(progr_id_parent, locus));
-// + hpl
-		constraint.children.push_back(hpl);
-		expr_variable_t* spi= new expr_variable_t(cnf.get_s(progr_id_parent, progr_id_ind));
-		if (is_heterozygous(parent_g)) {
-// + spi
-		  constraint.children.push_back(spi);
-		} else {
-		  MY_ASSERT_DBG(!is_genotyped(parent_g));
-// + (spi * wpl)
-		  expr_variable_t* wpl= new expr_variable_t(cnf.get_w(progr_id_parent, locus));
-		  expr_operator_t* int_constraint= new expr_operator_t(EXPR_OP_AND);
-		  int_constraint->children.push_back(spi);
-		  int_constraint->children.push_back(wpl);
-		  constraint.children.push_back(int_constraint);
-		}
-	 }
-// Second side of the equation
-	 if (is_homozigous(individual_g)) {
-		constant+= homozygous_genotype_to_code(individual_g);
-	 } else {
-		expr_variable_t* hil= new expr_variable_t(cnf.get_h(progr_id_ind, locus));
-// + hil
-		constraint.children.push_back(hil);
-		if (is_heterozygous(individual_g)) {
-		  if (is_mother) {
-			 constant+= 1;
-		  } else {
-// do nothing
-		  }
-		} else {
-		  MY_ASSERT_DBG(!is_genotyped(individual_g));
-		  if (is_mother) {
-			 expr_variable_t* wil= new expr_variable_t(cnf.get_w(progr_id_ind, locus));
-// + wil
-			 constraint.children.push_back(wil);
-		  }
-		}
-	 }
-	 constant = constant % 2;
-	 if (constraint.children.empty()) {
-		MY_ASSERT_DBG(constant == 0);
-		L_TRACE("     ANF: empty");
-	 } else {
-		if (constraint.children.size() == 1) {
-		  if (constant == 0) {
-			 constraint.kind= EXPR_OP_NOT;
-			 add_anf_constraint<T_PEDCNF>(constraint, cnf);
-		  } else {
-			 add_anf_constraint<T_PEDCNF>(constraint.children.front(), cnf);
-		  }
-		} else {
-		  if (constant == 0) {
-			 expr_operator_t new_constraint(EXPR_OP_NOT);
-			 new_constraint.children.push_back(new expr_operator_t(constraint));
-			 add_anf_constraint<T_PEDCNF>(new_constraint, cnf);
-		  } else {
-			 add_anf_constraint<T_PEDCNF>(constraint, cnf);
-		  }
-		}
-	 }
+  void add_parental_constraint(pedcnf_t& cnf,
+										 const g& parent_g,
+										 const g& individual_g,
+										 const size_t locus,
+										 const size_t progr_id_parent,
+										 const size_t progr_id_ind,
+										 const bool is_mother) {
+/************
+ * Clauses for Mendelian consistency (s-variables)
+ ************/
+	 lit_t s= cnf.get_s(progr_id_parent, progr_id_ind);
+	 lit_t p= cnf.get_p(progr_id_parent, locus);
+	 lit_t m= cnf.get_m(progr_id_parent, locus);
+	 lit_t c= (!is_mother) ?
+		cnf.get_p(progr_id_ind, locus) : cnf.get_m(progr_id_ind, locus);
+	 cnf.add_clause<3>((lit_t[]){ s,  p, -c});
+	 cnf.add_clause<3>((lit_t[]){ s, -p,  c});
+	 cnf.add_clause<3>((lit_t[]){-s,  m, -c});
+	 cnf.add_clause<3>((lit_t[]){-s, -m,  c});
+	 cnf.add_clause<3>((lit_t[]){-p, -m,  c});
+	 cnf.add_clause<3>((lit_t[]){ p,  m, -c});
+/************
+ * End clauses for Mendelian consistency (s-variables)
+ ************/
   };
 
 public:
 
-  T_PEDCNF* convert(const pedigree_t& ped) {
-	 T_PEDCNF* pcnf= new T_PEDCNF;
-	 T_PEDCNF& cnf= *pcnf;
+  pedcnf_t* convert(const pedigree_t& ped) {
+	 pedcnf_t* pcnf= new pedcnf_t;
+	 pedcnf_t& cnf= *pcnf;
 	 BOOST_FOREACH( const individual_t& ind,
 						 ped.individuals() ) {
 		L_TRACE("Considering individual " << ind.progr_id());
+		for (size_t l= 0; l < ped.genotype_length(); ++l) {
+		  cnf.get_p(ind.progr_id(), l);
+		}
+		for (size_t l= 0; l < ped.genotype_length(); ++l) {
+		  cnf.get_m(ind.progr_id(), l);
+		}
+		for (size_t l= 0; l < ped.genotype_length(); ++l) {
+		  L_TRACE("  locus = " << l <<
+					 ", g_i = " << ind.obs_g(l));
+		  add_individual_constraint(cnf, ind.obs_g(l), l, ind.progr_id());
+		}
 		if (ind.has_father()) {
 		  L_TRACE(" --> father " << ind.father().progr_id());
 		  const individual_t& parent= ind.father();
 		  for (size_t l= 0; l < ped.genotype_length(); ++l) {
 			 L_TRACE("  locus = " << l <<
-						", g_f = " << parent.g(l) <<
-						", g_i = " << ind.g(l));
-			 add_constraint(cnf,
-								 parent.g(l), ind.g(l),
-								 l,
-								 parent.progr_id(), ind.progr_id(),
-								 false);
+						", g_f = " << parent.obs_g(l) <<
+						", g_i = " << ind.obs_g(l));
+			 add_parental_constraint(cnf,
+											 parent.obs_g(l), ind.obs_g(l),
+											 l,
+											 parent.progr_id(), ind.progr_id(),
+											 false);
 		  }
 		}
 		if (ind.has_mother()) {
@@ -208,13 +190,13 @@ public:
 		  const individual_t& parent= ind.mother();
 		  for (size_t l= 0; l < ped.genotype_length(); ++l) {
 			 L_TRACE("  locus = " << l <<
-						", g_f = " << parent.g(l) <<
-						", g_i = " << ind.g(l));
-			 add_constraint(cnf,
-								 parent.g(l), ind.g(l),
-								 l,
-								 parent.progr_id(), ind.progr_id(),
-								 true);
+						", g_f = " << parent.obs_g(l) <<
+						", g_i = " << ind.obs_g(l));
+			 add_parental_constraint(cnf,
+											 parent.obs_g(l), ind.obs_g(l),
+											 l,
+											 parent.progr_id(), ind.progr_id(),
+											 true);
 		  }
 		}
 	 }
@@ -236,22 +218,7 @@ ped2cnf(const basic_pedigree_t<T_GENOTYPE,
 						T_HAPLOTYPE,
 						T_PHENOTYPE,
 						T_ID>& ped) {
-  ped2cnf_conv_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE, T_ID, pedcnf_t> conv;
-  return conv.convert(ped);
-}
-
-template <
-  typename T_GENOTYPE,
-  typename T_HAPLOTYPE,
-  typename T_PHENOTYPE,
-  typename T_ID
->
-pedcnf_ext_t*
-ped2cnf_ext(const basic_pedigree_t<T_GENOTYPE,
-											  T_HAPLOTYPE,
-											  T_PHENOTYPE,
-											  T_ID>& ped) {
-  ped2cnf_conv_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE, T_ID, pedcnf_ext_t> conv;
+  ped2cnf_conv_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE, T_ID> conv;
   return conv.convert(ped);
 }
 

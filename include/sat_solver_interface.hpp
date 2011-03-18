@@ -36,6 +36,12 @@
 #ifndef __SAT_SOLVER_INTERFACE_HPP__
 #define __SAT_SOLVER_INTERFACE_HPP__
 
+#include <boost/cstdint.hpp>
+
+typedef boost::int_fast32_t lit_t;
+typedef boost::uint_fast32_t var_t;
+
+
 // Check that the 'right' preprocessor symbols have been defined:
 // NO_INTERNAL_SAT_SOLVER
 // INTERNAL_SAT_SOLVER
@@ -99,13 +105,13 @@ public:
 	 return _solved;
   };
 
-  void add_clause(const std::set<int>& clause);
+  void add_clause(const std::set<lit_t>& clause);
 
-  void add_xor_clause(const std::set<int>& clause);
+  void add_xor_clause(const std::set<lit_t>& clause);
 
   bool solve();
 
-  bool model(const unsigned int var) const;
+  bool model(const var_t& var) const;
 
   size_t no_of_vars() const {
 	 return _solver->nVars();

@@ -52,7 +52,6 @@ public:
 
 private:
 
-  const bool _extended;
 
 public:
 
@@ -76,11 +75,7 @@ public:
 
 // Prepare the SAT instance
 	 L_INFO("Preparing SAT instance from pedigree...");
-	 if (!_extended) {
-		cnf= ped2cnf(mped.families().front());
-	 } else {
-		cnf= ped2cnf_ext(mped.families().front());
-	 }
+	 cnf= ped2cnf(mped.families().front());
 	 L_INFO("SAT instance successfully prepared.");
   }
 
@@ -88,9 +83,8 @@ public:
 
 public:
 
-  explicit zrhcstar_t(const bool extended=false)
-		:_extended(extended)
-  {};
+  explicit zrhcstar_t() {
+  };
 
   void save_ZRHC(pedigree_t& ped,
 					  std::ostream& hap_os) const {
@@ -173,7 +167,7 @@ public:
 // Check the haplotype configuration
 	 const bool ok=
 		family.is_completely_haplotyped() &&
-		family.is_consistent() &&
+		family.is_consistent(false) &&
 		family.is_zero_recombinant();
 	 if (ok) {
 		L_INFO("The computed haplotype configuration is valid.");

@@ -235,7 +235,7 @@ protected:
           }
           ind.phenotype()= pheno;
           // Genotype
-          std::copy(g.begin(), g.end(), ind.g().begin());
+          std::copy(g.begin(), g.end(), ind.obs_g().begin());
         } catch (invalid_line_t& e) {
           L_WARN("!! Discarded invalid line starting with >" <<
                  buff.substr(0, 20) << "<. Reason: " << e.msg);
