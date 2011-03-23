@@ -54,6 +54,11 @@ def parse_command_line():
                       type="float", default=0.1,
                       help="the probability that a single-locus genotype has not been called",
                       metavar="PROBABILITY [0,1]")
+    parser.add_option("-e", "--error_probability",
+                      action="store", dest="error",
+                      type="float", default=0.1,
+                      help="the probability that a single-locus genotype has been mis-called",
+                      metavar="PROBABILITY [0,1]")
     parser.add_option("-s", "--seed",
                       action="store", dest="seed",
                       type="int", default=122295,
@@ -70,6 +75,7 @@ options = parse_command_line()
 
 length= options.length
 missing_genotype_prob= options.missing
+error_prob= options.error
 seed= options.seed
 log_level= logging.DEBUG if options.verbose else logging.INFO
 allele1= "1"
@@ -104,6 +110,11 @@ mapping[(allele1, allele1)]= homo1
 mapping[(allele1, allele2)]= heter
 mapping[(allele2, allele1)]= heter
 mapping[(allele2, allele2)]= homo2
+
+others={}
+others[homo1]= (heter, homo2)
+others[homo2]= (heter, homo1)
+others[heter]= (homo1, homo2)
 
 
 pedigree= set()
@@ -159,6 +170,11 @@ logging.info("Computing the corresponding genotypes...")
 genotypes={}
 for ind in pedigree:
     genotypes[ind]= [mapping[(a,b)] for a,b in zip(hp[ind],hm[ind])]
+    # Errors
+    genotypes[ind]= [g if (random.random() >= error_prob)
+                     else random.choice(others[g])
+                     for g in genotypes[ind] ]
+    # Missing
     genotypes[ind]= [g if (random.random() >= missing_genotype_prob) else missing
                      for g in genotypes[ind] ]
 

@@ -100,6 +100,13 @@ int initialize_logger(void);
 #define N_ERROR( name, msg ) _NAMED_LOG( ERROR, name, msg)
 #define N_FATAL( name, msg ) _NAMED_LOG( FATAL, name, msg)
 
+
+typedef log4cxx::LoggerPtr my_logger;
+
+inline my_logger get_my_logger(const std::string& name) {
+  return log4cxx::Logger::getLogger(name);
+};
+
 template <typename T>
 inline const char* logger_name(void) {
   return typeid(T).name();
@@ -109,8 +116,8 @@ template <class T>
 class log_able_t {
 protected:
 
-  static log4cxx::LoggerPtr& logger(void) {
-	 static log4cxx::LoggerPtr logger(log4cxx::Logger::getLogger(logger_name<T>()));
+  static my_logger& logger(void) {
+	 static my_logger logger(get_my_logger(logger_name<T>()));
 	 return logger;
   }
 

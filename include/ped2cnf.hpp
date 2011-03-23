@@ -87,6 +87,39 @@ public:
 // Methods
 private:
 
+  void prepare_individual(pedcnf_t& cnf, const pedigree_t& ped,
+								  const individual_t& ind,
+								  const double error_rate) {
+// Create the variables for the individual
+//   -> p-variables
+	 for (size_t l= 0; l < ped.genotype_length(); ++l) {
+		cnf.get_p(ind.progr_id(), l);
+	 }
+//   -> m-variables
+	 for (size_t l= 0; l < ped.genotype_length(); ++l) {
+		cnf.get_m(ind.progr_id(), l);
+	 }
+//   -> e-variables
+	 std::vector<var_t> evars;
+	 for (size_t l= 0; l < ped.genotype_length(); ++l) {
+//    errors only for genotyped loci
+		if (is_genotyped(ind.obs_g(l))) {
+		  const var_t& e= cnf.get_e(ind.progr_id(), l);
+		  evars.push_back(e);
+		}
+	 }
+/************
+ * Clauses for limiting the number of errors
+ ************/
+	 const size_t k= std::ceil(error_rate*evars.size());
+	 L_DEBUG("Generating cardinality constraints for " << evars.size() <<
+				" error variables (<= " << k << ")...");
+	 add_card_constraint_less_or_equal_than(cnf, evars, k);
+/************
+ * End clauses for limiting the number of errors
+ ************/
+  }
+
   void add_individual_constraint(pedcnf_t& cnf,
 											const g& gen,
 											const size_t l,
@@ -119,7 +152,6 @@ private:
 		} else {
 		  MY_FAIL;
 		}
-		cnf.add_clause<1>((lit_t[]){-e});
 	 }
 /************
  * End clauses for errors variables
@@ -154,18 +186,13 @@ private:
 
 public:
 
-  pedcnf_t* convert(const pedigree_t& ped) {
+  pedcnf_t* convert(const pedigree_t& ped, const double error_rate) {
 	 pedcnf_t* pcnf= new pedcnf_t;
 	 pedcnf_t& cnf= *pcnf;
 	 BOOST_FOREACH( const individual_t& ind,
 						 ped.individuals() ) {
 		L_TRACE("Considering individual " << ind.progr_id());
-		for (size_t l= 0; l < ped.genotype_length(); ++l) {
-		  cnf.get_p(ind.progr_id(), l);
-		}
-		for (size_t l= 0; l < ped.genotype_length(); ++l) {
-		  cnf.get_m(ind.progr_id(), l);
-		}
+		prepare_individual(cnf, ped, ind, error_rate);
 		for (size_t l= 0; l < ped.genotype_length(); ++l) {
 		  L_TRACE("  locus = " << l <<
 					 ", g_i = " << ind.obs_g(l));
@@ -215,11 +242,12 @@ template <
 >
 pedcnf_t*
 ped2cnf(const basic_pedigree_t<T_GENOTYPE,
-						T_HAPLOTYPE,
-						T_PHENOTYPE,
-						T_ID>& ped) {
+										 T_HAPLOTYPE,
+										 T_PHENOTYPE,
+										 T_ID>& ped,
+		  const double error_rate) {
   ped2cnf_conv_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE, T_ID> conv;
-  return conv.convert(ped);
+  return conv.convert(ped, error_rate);
 }
 
 

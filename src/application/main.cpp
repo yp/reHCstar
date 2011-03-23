@@ -106,6 +106,8 @@ protected:
 		("keep,k", po::bool_switch()->default_value(false),
 		 "Keep temporary files (such as 'cnf-instance-*' and 'res-cnf-instance-*' "
 		 "files for '--create-read'/'-3' mode) after the execution.")
+		("error-rate,e", po::value< double >()->default_value(0.05),
+		 "Maximum error rate.")
 		;
 	 return desc;
   };
@@ -158,6 +160,9 @@ protected:
 		vm["compress"].as<bool>() ||
 		vm["compress-output"].as<bool>();
 
+	 const double error_rate=
+		vm["error-rate"].as<double>();
+
 	 zrhcstar_t zrhcstar;
 
 // Dispatch the work depending on the program parameters
@@ -182,7 +187,8 @@ protected:
 		zrhcstar.create_SAT_instance_from_pedigree(*ped_is,
 																 *sat_os,
 																 vector<string>(headers,
-																					 headers+4));
+																					 headers+4),
+																 error_rate);
 
 		INFO("SAT instance successfully created and saved.");
 
@@ -205,7 +211,7 @@ protected:
 		  file_utility::get_file_utility().
 		  get_ofstream(vm["haplotypes"].as<string>(), out_compress);
 		bool is_zrhc=
-		  zrhcstar.compute_HC_from_SAT_results(*ped_is, *res_is, *hap_os);
+		  zrhcstar.compute_HC_from_SAT_results(*ped_is, *res_is, *hap_os, error_rate);
 
 		if (is_zrhc) {
 		  INFO("Zero-Recombinant Haplotype Configuration successfully "
@@ -243,7 +249,7 @@ protected:
 		  zrhcstar.create_SAT_instance_from_pedigree(*ped_is, *sat_os,
 																	vector<string>(headers,
 																						headers+4),
-																	ped, cnf);
+																	ped, cnf, error_rate);
 		}
 
 // Execute the SAT solver
@@ -317,7 +323,7 @@ protected:
 			 file_utility::get_file_utility().
 			 get_ifstream(vm["pedigree"].as<string>(), in_compress);
 		  zrhcstar.prepare_pedigree_and_sat(*ped_is,
-														ped, cnf);
+														ped, cnf, error_rate);
 		}
 
 // Execute the SAT solver

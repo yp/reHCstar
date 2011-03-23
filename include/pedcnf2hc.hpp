@@ -55,6 +55,8 @@ void compute_ZRHC_from_SAT(basic_pedigree_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE
   log4cxx::LoggerPtr logger(log4cxx::Logger::getLogger("pedcnf2hc"));
   typedef basic_pedigree_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE, T_ID> family_t;
   INFO("Computing the zero-recombinant haplotype configuration...");
+  size_t no_of_errors= 0;
+  size_t no_of_imputation= 0;
 // For each locus in each individual:
 //   (1) the locus is genotyped and it is homozygous (thus the haplotype
 //       is 'fixed'), or
@@ -84,6 +86,7 @@ void compute_ZRHC_from_SAT(basic_pedigree_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE
 					 " at locus " << locus << " is imputed as heterozygous.");
 			 ind.real_g(locus)= family_t::g::HETER;
 		  }
+		  ++no_of_imputation;
 		} else {
 		  ind.real_g(locus)= ind.obs_g(locus);
 		}
@@ -111,10 +114,13 @@ void compute_ZRHC_from_SAT(basic_pedigree_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE
 					 ind.obs_g(locus) << " into " << real_g << ".");
 			 MY_ASSERT( cnf.e(ind.progr_id(), locus) );
 			 ind.real_g(locus)= real_g;
+			 ++no_of_errors;
 		  }
 		}
 	 }
   }
+  INFO("Number of imputed genotypes: " << no_of_imputation);
+  INFO("Number of corrected errors:  " << no_of_errors);
   INFO("Zero-recombinant haplotype configuration successfully computed.");
 };
 

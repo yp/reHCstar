@@ -57,7 +57,8 @@ public:
 
   void prepare_pedigree_and_sat(std::istream& ped_is,
 										  pedigree_t& mped,
-										  pedcnf_t*& cnf) const {
+										  pedcnf_t*& cnf,
+										  const double error_rate) const {
 	 L_INFO("Reading pedigree...");
 	 biallelic_genotype_reader_t<> gr;
 	 plink_reader_t<> reader(gr);
@@ -75,7 +76,7 @@ public:
 
 // Prepare the SAT instance
 	 L_INFO("Preparing SAT instance from pedigree...");
-	 cnf= ped2cnf(mped.families().front());
+	 cnf= ped2cnf(mped.families().front(), error_rate);
 	 L_INFO("SAT instance successfully prepared.");
   }
 
@@ -108,11 +109,12 @@ public:
 #ifndef ONLY_INTERNAL_SAT_SOLVER
   void create_SAT_instance_from_pedigree(std::istream& ped_is,
 													  std::ostream& sat_os,
-													  const std::vector<std::string>& headers) const {
+													  const std::vector<std::string>& headers,
+													  const double error_rate) const {
 	 pedigree_t ped;
 	 pedcnf_t* cnf;
 	 create_SAT_instance_from_pedigree(ped_is, sat_os, headers,
-												  ped, cnf);
+												  ped, cnf, error_rate);
 	 delete cnf;
   }
 
@@ -120,8 +122,9 @@ public:
 													  std::ostream& sat_os,
 													  const std::vector<std::string>& headers,
 													  pedigree_t& ped,
-													  pedcnf_t*& cnf) const {
-	 prepare_pedigree_and_sat(ped_is, ped, cnf);
+													  pedcnf_t*& cnf,
+													  const double error_rate) const {
+	 prepare_pedigree_and_sat(ped_is, ped, cnf, error_rate);
 // Output the instance
 	 L_INFO("Saving SAT instance...");
 	 cnf->clauses_to_dimacs_format(sat_os, headers);
@@ -133,8 +136,9 @@ public:
   bool compute_HC_from_SAT_results(std::istream& ped_is,
 											  std::istream& res_is,
 											  pedigree_t& ped,
-											  pedcnf_t*& cnf) const {
-	 prepare_pedigree_and_sat(ped_is, ped, cnf);
+											  pedcnf_t*& cnf,
+											  const double error_rate) const {
+	 prepare_pedigree_and_sat(ped_is, ped, cnf, error_rate);
 	 return compute_HC_from_SAT_results(res_is, ped, cnf);
   };
 
@@ -193,12 +197,13 @@ public:
 
   bool compute_HC_from_SAT_results(std::istream& ped_is,
 											  std::istream& res_is,
-											  std::ostream& hap_os) const {
+											  std::ostream& hap_os,
+											  const double error_rate) const {
 	 pedigree_t ped;
 	 pedcnf_t* cnf;
 	 const bool is_sat=
 		compute_HC_from_SAT_results(ped_is, res_is,
-											 ped, cnf);
+											 ped, cnf, error_rate);
 	 delete cnf;
 	 if (is_sat) {
 // Output the haplotype configuration

@@ -41,9 +41,18 @@ const ped_var_kind ped_var_kind::S(0);
 const ped_var_kind ped_var_kind::P(1);
 const ped_var_kind ped_var_kind::M(2);
 const ped_var_kind ped_var_kind::E(3);
-const int ped_var_kind::int_values[]={0, 1, 2, 3};
-const std::string ped_var_kind::str_values[]={"s", "p", "m", "e"};
-const ped_var_kind ped_var_kind::enum_values[]={S, P, M, E};
+const ped_var_kind ped_var_kind::HA_S(4);
+const ped_var_kind ped_var_kind::HA_C(5);
+const ped_var_kind ped_var_kind::FA_S(6);
+const ped_var_kind ped_var_kind::FA_C(7);
+const int ped_var_kind::int_values[]={0, 1, 2, 3,
+												  4, 5, 6, 7};
+const std::string ped_var_kind::str_values[]={"s", "p", "m", "e",
+															 "ha_s", "ha_c",
+															 "fa_s", "fa_c"};
+const ped_var_kind ped_var_kind::enum_values[]={S, P, M, E,
+																HA_S, HA_C,
+																FA_S, FA_C};
 
 std::ostream&
 operator<<(std::ostream& out, const pedcnf_t::pedvar_t& var) {
@@ -51,6 +60,21 @@ operator<<(std::ostream& out, const pedcnf_t::pedvar_t& var) {
   return out;
 }
 
+
+lit_t
+pedcnf_t::get_dummy(const ped_var_kind& var_kind,
+						  const var_t i1, const var_t i2) {
+  dummy_varmap_t::iterator it= _dummy.find(boost::make_tuple(var_kind, i1, i2));
+  if (it == _dummy.end()) {
+	 _vars.push_back(boost::make_tuple(var_kind, i1, i2));
+	 _vals.push_back(false);
+	 std::pair< dummy_varmap_t::iterator, bool> ret=
+		_dummy.insert(std::make_pair(boost::make_tuple(var_kind, i1, i2), _vars.size()));
+	 MY_ASSERT_DBG(ret.second);
+	 it= ret.first;
+  }
+  return it->second;
+};
 
 inline lit_t
 pedcnf_t::get_var(varmap_t& map,
@@ -292,4 +316,138 @@ pedcnf_t::add_xor_clause(const xor_clause_t& clause) {
   _solver.add_xor_clause(clause);
 #endif
   ++_no_of_xor_clauses;
+};
+
+
+inline static void
+add_half_adder(pedcnf_t& cnf,
+					const var_t x, const var_t y,
+					var_t& s, var_t& cout) {
+  s= cnf.get_dummy(ped_var_kind::HA_S, x, y);
+  cout= cnf.get_dummy(ped_var_kind::HA_C, x, y);
+  cnf.add_clause<3>((lit_t[]){ x, -y,  s});
+  cnf.add_clause<3>((lit_t[]){-x,  y,  s});
+  cnf.add_clause<3>((lit_t[]){-x, -y,  cout});
+};
+
+inline static void
+add_full_adder(pedcnf_t& cnf,
+					const var_t x, const var_t y, const var_t cin,
+					var_t& s, var_t& cout) {
+  s= cnf.get_dummy(ped_var_kind::FA_S, x, y);
+  cout= cnf.get_dummy(ped_var_kind::FA_C, x, y);
+  cnf.add_clause<4>((lit_t[]){ x,  y, -cin,  s});
+  cnf.add_clause<4>((lit_t[]){ x, -y,  cin,  s});
+  cnf.add_clause<4>((lit_t[]){-x,  y,  cin,  s});
+  cnf.add_clause<4>((lit_t[]){-x, -y, -cin,  s});
+  cnf.add_clause<3>((lit_t[]){-x, -y,   cout});
+  cnf.add_clause<3>((lit_t[]){-x, -cin, cout});
+  cnf.add_clause<3>((lit_t[]){-y, -cin, cout});
+};
+
+inline static size_t
+pow2_of_floor_log2(const size_t n) {
+  size_t p= 1;
+  while ((p << 1) <= n) {
+	 p= p << 1;
+  }
+  return p;
+};
+
+
+static void
+generate_counter(pedcnf_t& cnf,
+					  const std::vector<var_t>& x,
+					  const size_t first, const size_t n,
+					  std::vector<var_t>& d,
+					  my_logger& logger) {
+  const size_t len= n-first;
+  d.clear();
+  TRACE(" --> recursively generating counter for variables [" << first <<
+			 ", " << n-1 << "] ...");
+  if (len == 1) {
+	 d.push_back(x[first]);
+  } else if (len == 2) {
+	 size_t d1, d2;
+	 add_half_adder(cnf, x[first], x[first+1], d1, d2);
+	 d.push_back(d1);
+	 d.push_back(d2);
+  } else {
+	 const size_t tprime= first + pow2_of_floor_log2(len) - 1;
+	 std::vector<var_t> d1, d2;
+	 generate_counter(cnf, x, first, tprime, d1, logger);
+	 if (tprime < n-1) {
+		generate_counter(cnf, x, tprime, n-1, d2, logger);
+		TRACE("     counter [" << first << ", " << n-1 << "] = "
+				"[" << first << ", " << tprime-1 << "] + "
+				"[" << tprime << ", " << n-2 << "] + " << n-1);
+	 } else {
+		TRACE("     counter [" << first << ", " << n-1 << "] = "
+				"[" << first << ", " << tprime-1 << "] + " << n-1);
+	 }
+	 size_t i= 0;
+	 size_t carry= x[n-1];
+	 size_t s= 0;
+	 while (i < d2.size()) {
+		add_full_adder(cnf, d1[i], d2[i], carry, s, carry);
+		d.push_back(s);
+		TRACE("        out[" << i << "]= " << s);
+		++i;
+	 }
+	 while (i < d1.size()) {
+		add_half_adder(cnf, d1[i], carry, s, carry);
+		d.push_back(s);
+		TRACE("        out[" << i << "]= " << s);
+		++i;
+	 }
+	 d.push_back(carry);
+	 TRACE("        out[" << i << "]= " << carry);
+  }
+  TRACE("      #outputs = " << d.size());
+};
+
+static void
+generate_comparator(pedcnf_t& cnf,
+						  const std::vector<var_t>& d,
+						  const size_t k,
+						  my_logger& logger) {
+  TRACE("Generate comparator with " << d.size() << " variables (<="
+		  << k << ")...");
+  std::vector<pedcnf_t::clause_t> clauses;
+  size_t quotient= k;
+  size_t i= 0;
+  while (i < d.size()) {
+	 const size_t remainder= quotient % 2;
+	 TRACE("  k[" << i << "]= " << remainder);
+	 if (remainder == 0) {
+		pedcnf_t::clause_t c;
+		c.insert(-d[i]);
+		clauses.push_back(c);
+	 } else { // remainder == 1
+		BOOST_FOREACH( pedcnf_t::clause_t& c, clauses ) {
+		  c.insert(-d[i]);
+		}
+	 }
+	 quotient= quotient >> 1;
+	 ++i;
+  }
+  BOOST_FOREACH( pedcnf_t::clause_t& c, clauses ) {
+	 cnf.add_clause(pedcnf_t::clause_t(c.begin(), c.end()));
+  }
+}
+
+void
+add_card_constraint_less_or_equal_than(pedcnf_t& cnf,
+													const std::vector<var_t>& in_vars,
+													const size_t k) {
+  my_logger logger(get_my_logger("card_constraints"));
+  if (k < in_vars.size()) {
+	 std::vector<var_t> out_vars;
+	 generate_counter(cnf, in_vars, 0, in_vars.size(), out_vars, logger);
+	 generate_comparator(cnf, out_vars, k, logger);
+  } else {
+	 INFO("The number of variables (" << in_vars.size() << ") "
+			"is not greater than the numeric upper bound (" << k << "). "
+			"No clauses have been added.");
+  }
 };

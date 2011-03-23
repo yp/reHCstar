@@ -53,11 +53,11 @@
 
 
 class ped_var_kind
-  :public enum_like_t<ped_var_kind, 4, 3>
+  :public enum_like_t<ped_var_kind, 8, 0>
 {
 private:
 
-  typedef enum_like_t<ped_var_kind, 4, 3> base;
+  typedef enum_like_t<ped_var_kind, 8, 0> base;
 
   ped_var_kind(const int val)
 		:base(val)
@@ -73,6 +73,10 @@ public:
   static const ped_var_kind P; // Paternal allele
   static const ped_var_kind M; // Maternal allele
   static const ped_var_kind E; // Errors
+  static const ped_var_kind HA_S; // Half-adder sums
+  static const ped_var_kind HA_C; // Half-adder carry
+  static const ped_var_kind FA_S; // Full-adder sums
+  static const ped_var_kind FA_C; // Full-adder carry
 
   static const int int_values[];
   static const std::string str_values[];
@@ -89,12 +93,14 @@ class pedcnf_t
 // Types
 private:
 
+  typedef boost::tuple<ped_var_kind, var_t, var_t> dummy_index_var_t;
   typedef boost::tuple<size_t, size_t> index_var_t;
 
 public:
 
   typedef boost::tuple<ped_var_kind, size_t, size_t> pedvar_t;
   typedef std::map<index_var_t, lit_t> varmap_t;
+  typedef std::map<dummy_index_var_t, lit_t> dummy_varmap_t;
   typedef std::vector<pedvar_t> varvec_t;
   typedef std::vector<bool> valvec_t;
   typedef std::set<lit_t> clause_t;
@@ -112,6 +118,7 @@ private:
   varmap_t _p; // Paternal allele
   varmap_t _m; // Maternal allele
   varmap_t _e; // Errors
+  dummy_varmap_t _dummy; // Dummy
 
   varvec_t _vars;
   valvec_t _vals;
@@ -165,6 +172,9 @@ public:
   lit_t get_m(const size_t i, const size_t l);
 
   lit_t get_e(const size_t i, const size_t l);
+
+  lit_t get_dummy(const ped_var_kind& kind,
+						const var_t i1, const var_t i2);
 
   lit_t get_s(const size_t p, const size_t i) const;
 
@@ -299,6 +309,11 @@ operator<<(std::ostream& out, const pedcnf_t::pedvar_t& var);
 std::ostream&
 operator<<(std::ostream& out, const pedcnf_t::clause_t& clause);
 
+
+void
+add_card_constraint_less_or_equal_than(pedcnf_t& cnf,
+													const std::vector<var_t>& in_vars,
+													const size_t k);
 
 
 #endif // __PEDCNF_HPP__

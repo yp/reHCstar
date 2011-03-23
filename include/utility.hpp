@@ -181,6 +181,14 @@ public:
 	 return e1.get_ordinal_data() != e2.get_ordinal_data();
   }
 
+  friend bool operator<=(const derived_enum& e1, const derived_enum& e2) {
+	 return e1.get_ordinal_data() <= e2.get_ordinal_data();
+  }
+
+  friend bool operator<(const derived_enum& e1, const derived_enum& e2) {
+	 return e1.get_ordinal_data() < e2.get_ordinal_data();
+  }
+
   friend std::ostream& operator<<(std::ostream& out, const derived_enum& val) {
 	 return (out << derived_enum::str_values[val.get_ordinal_data()]);
   }
