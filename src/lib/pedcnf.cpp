@@ -339,6 +339,15 @@ pow2_of_floor_log2(const size_t n) {
   return p;
 };
 
+inline static size_t
+pow2_of_ceiling_log2(const size_t n) {
+  size_t p= 1;
+  while (p < n) {
+	 p= p << 1;
+  }
+  return p;
+};
+
 
 static void
 generate_counter(pedcnf_t& cnf,
@@ -421,10 +430,140 @@ generate_comparator(pedcnf_t& cnf,
   }
 }
 
-void
-add_card_constraint_less_or_equal_than(pedcnf_t& cnf,
-													const std::vector<var_t>& in_vars,
-													const size_t k) {
+static inline void
+divide_vector(const std::vector<var_t>& V,
+				  std::vector<var_t>& odd,
+				  std::vector<var_t>& even) {
+  for(std::vector<var_t>::const_iterator it= V.begin();
+		it != V.end();) {
+	 odd.push_back(*it);
+	 ++it;
+	 even.push_back(*it);
+	 ++it;
+  }
+};
+
+
+static void
+generate_hmerge(pedcnf_t& cnf,
+					 const std::vector<var_t>& A,
+					 const std::vector<var_t>& B,
+					 std::vector<var_t>& vars,
+					 my_logger& logger) {
+  MY_ASSERT_DBG(A.size() == B.size());
+  const size_t n= A.size();
+  MY_ASSERT_DBG(n > 0);
+  MY_ASSERT_DBG(n == pow2_of_floor_log2(n));
+  vars.clear();
+  TRACE(" --> HMerge on two sequences of " << n << " variables.");
+  if (n == 1) {
+	 const lit_t c1= cnf.generate_dummy();
+	 const lit_t c2= cnf.generate_dummy();
+	 vars.push_back(c1);
+	 vars.push_back(c2);
+	 cnf.add_clause<3>((lit_t[]){ -A[0], -B[0], c2 });
+	 cnf.add_clause<2>((lit_t[]){ -A[0], c1 });
+	 cnf.add_clause<2>((lit_t[]){ -B[0], c1 });
+  } else {
+	 std::vector<var_t> A_odd, A_even;
+	 divide_vector(A, A_odd, A_even);
+	 std::vector<var_t> B_odd, B_even;
+	 divide_vector(B, B_odd, B_even);
+	 std::vector<var_t> V_odd, V_even;
+	 generate_hmerge(cnf, A_odd,  B_odd,  V_odd,  logger);
+	 generate_hmerge(cnf, A_even, B_even, V_even, logger);
+	 std::vector<var_t> C;
+	 for (size_t i= 2; i<2*n; ++i) {
+		C.push_back(cnf.generate_dummy());
+	 }
+	 for (size_t i= 1; i<n; ++i) {
+		cnf.add_clause<3>((lit_t[]){ -V_odd[i], -V_even[i-1], C[2*i-1] });
+		cnf.add_clause<2>((lit_t[]){ -V_odd[i], C[2*i-2] });
+		cnf.add_clause<2>((lit_t[]){ -V_even[i-1], C[2*i-2] });
+	 }
+	 vars.push_back(V_odd[0]);
+	 vars.insert(vars.end(), C.begin(), C.end());
+	 vars.push_back(V_even.back());
+  }
+
+}
+
+static void
+generate_hsort(pedcnf_t& cnf,
+					const std::vector<var_t>& S,
+					std::vector<var_t>& vars,
+					my_logger& logger) {
+  const size_t n= S.size();
+  MY_ASSERT_DBG(n > 1);
+  MY_ASSERT_DBG(n == pow2_of_floor_log2(n));
+  vars.clear();
+  TRACE(" --> HSort a sequence of " << n << " variables.");
+  if (n == 2) {
+	 std::vector<var_t> A, B;
+	 A.push_back(S[0]);
+	 B.push_back(S[1]);
+	 generate_hmerge(cnf, A, B, vars, logger);
+  } else {
+	 const size_t halfn= n>>1;
+	 std::vector<var_t> S1, S2;
+	 S1.insert(S1.end(), S.begin(), S.begin()+halfn);
+	 S2.insert(S2.end(), S.begin()+halfn, S.end());
+	 std::vector<var_t> Var1, Var2;
+	 generate_hsort(cnf, S1, Var1, logger);
+	 generate_hsort(cnf, S2, Var2, logger);
+	 generate_hmerge(cnf, Var1, Var2, vars, logger);
+  }
+}
+
+static void
+generate_smerge(pedcnf_t& cnf,
+					 const std::vector<var_t>& A,
+					 const std::vector<var_t>& B,
+					 std::vector<var_t>& vars,
+					 my_logger& logger) {
+  MY_ASSERT_DBG(A.size() == B.size());
+  const size_t n= A.size();
+  MY_ASSERT_DBG(n > 0);
+  MY_ASSERT_DBG(n == pow2_of_floor_log2(n));
+  vars.clear();
+  TRACE(" --> SMerge on two sequences of " << n << " variables.");
+  if (n == 1) {
+	 const lit_t c1= cnf.generate_dummy();
+	 const lit_t c2= cnf.generate_dummy();
+	 vars.push_back(c1);
+	 vars.push_back(c2);
+	 cnf.add_clause<3>((lit_t[]){ -A[0], -B[0], c2 });
+	 cnf.add_clause<2>((lit_t[]){ -A[0], c1 });
+	 cnf.add_clause<2>((lit_t[]){ -B[0], c1 });
+  } else {
+	 std::vector<var_t> A_odd, A_even;
+	 divide_vector(A, A_odd, A_even);
+	 std::vector<var_t> B_odd, B_even;
+	 divide_vector(B, B_odd, B_even);
+	 std::vector<var_t> V_odd, V_even;
+	 generate_smerge(cnf, A_odd,  B_odd,  V_odd,  logger);
+	 generate_smerge(cnf, A_even, B_even, V_even, logger);
+	 std::vector<var_t> C;
+	 for (size_t i= 2; i<n+2; ++i) {
+		C.push_back(cnf.generate_dummy());
+	 }
+	 for (size_t i= 1; i<=(n>>1); ++i) {
+		cnf.add_clause<3>((lit_t[]){ -V_odd[i], -V_even[i-1], C[2*i-1] });
+		cnf.add_clause<2>((lit_t[]){ -V_odd[i], C[2*i-2] });
+		cnf.add_clause<2>((lit_t[]){ -V_even[i-1], C[2*i-2] });
+	 }
+	 vars.push_back(V_odd[0]);
+	 vars.insert(vars.end(), C.begin(), C.end());
+  }
+
+}
+
+
+
+static void
+le_parallel_counter(pedcnf_t& cnf,
+						  const std::vector<var_t>& in_vars,
+						  const size_t k) {
   my_logger logger(get_my_logger("card_constraints"));
   if (k < in_vars.size()) {
 	 std::vector<var_t> out_vars;
@@ -435,4 +574,85 @@ add_card_constraint_less_or_equal_than(pedcnf_t& cnf,
 			"is not greater than the numeric upper bound (" << k << "). "
 			"No clauses have been added.");
   }
+};
+
+
+static void
+le_half_sorting_network(pedcnf_t& cnf,
+								const std::vector<var_t>& in_vars,
+								const size_t k) {
+  my_logger logger(get_my_logger("card_constraints"));
+  if (k < in_vars.size()) {
+	 std::vector<var_t> out_vars;
+	 std::vector<var_t> all_vars(in_vars.begin(), in_vars.end());
+	 size_t n= all_vars.size();
+	 while (n != pow2_of_floor_log2(n)) {
+		const lit_t dummy= cnf.generate_dummy();
+		all_vars.push_back(dummy);
+		cnf.add_clause<1>((lit_t[]){ -dummy });
+		n= all_vars.size();
+	 }
+	 generate_hsort(cnf, all_vars, out_vars, logger);
+	 cnf.add_clause<1>((lit_t[]){ -out_vars[k] });
+  } else {
+	 INFO("The number of variables (" << in_vars.size() << ") "
+			"is not greater than the numeric upper bound (" << k << "). "
+			"No clauses have been added.");
+  }
+};
+
+
+static void
+le_card_network(pedcnf_t& cnf,
+					 const std::vector<var_t>& in_vars,
+					 const size_t k) {
+  my_logger logger(get_my_logger("card_constraints"));
+  if (k < in_vars.size()) {
+	 const size_t p= pow2_of_ceiling_log2(k+1);
+	 DEBUG("Dividing " << in_vars.size() << " variables in blocks of size "
+			 << p << " since the upper bound is " << k << ".");
+// Ensure that the variables are multiples of p
+	 std::vector<var_t> all_vars(in_vars.begin(), in_vars.end());
+	 while (all_vars.size() % p != 0) {
+		const lit_t dummy= cnf.generate_dummy();
+		all_vars.push_back(dummy);
+		cnf.add_clause<1>((lit_t[]){ -dummy });
+	 }
+	 std::vector<var_t> prev_ris;
+	 size_t next_in_var_counter= p;
+	 std::vector<var_t>::iterator next_in_var=
+		all_vars.begin() + next_in_var_counter;
+	 std::vector<var_t> input(all_vars.begin(), next_in_var);
+	 generate_hsort(cnf, input, prev_ris, logger);
+	 while (next_in_var != all_vars.end()) {
+		DEBUG("Considering block " << next_in_var_counter << "--" <<
+				next_in_var_counter + p << "...");
+		input.clear();
+		input.insert(input.end(), next_in_var, next_in_var+p);
+		std::vector<var_t> hsort_out;
+		generate_hsort(cnf, input, hsort_out, logger);
+		std::vector<var_t> smerge_out;
+		generate_smerge(cnf, prev_ris, hsort_out, smerge_out, logger);
+		prev_ris.clear();
+		prev_ris.insert(prev_ris.end(), smerge_out.begin(), smerge_out.begin()+p);
+		next_in_var += p;
+		next_in_var_counter += p;
+		for (size_t limit= k; limit<=p; ++limit) {
+		  cnf.add_clause<1>((lit_t[]){ -smerge_out[limit] });
+		}
+	 }
+  } else {
+	 INFO("The number of variables (" << in_vars.size() << ") "
+			"is not greater than the numeric upper bound (" << k << "). "
+			"No clauses have been added.");
+  }
+};
+
+
+
+void
+add_card_constraint_less_or_equal_than(pedcnf_t& cnf,
+													const std::vector<var_t>& in_vars,
+													const size_t k) {
+  le_card_network(cnf, in_vars, k);
 };
