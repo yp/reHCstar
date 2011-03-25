@@ -41,18 +41,10 @@ const ped_var_kind ped_var_kind::S(0);
 const ped_var_kind ped_var_kind::P(1);
 const ped_var_kind ped_var_kind::M(2);
 const ped_var_kind ped_var_kind::E(3);
-const ped_var_kind ped_var_kind::HA_S(4);
-const ped_var_kind ped_var_kind::HA_C(5);
-const ped_var_kind ped_var_kind::FA_S(6);
-const ped_var_kind ped_var_kind::FA_C(7);
-const int ped_var_kind::int_values[]={0, 1, 2, 3,
-												  4, 5, 6, 7};
-const std::string ped_var_kind::str_values[]={"s", "p", "m", "e",
-															 "ha_s", "ha_c",
-															 "fa_s", "fa_c"};
-const ped_var_kind ped_var_kind::enum_values[]={S, P, M, E,
-																HA_S, HA_C,
-																FA_S, FA_C};
+const ped_var_kind ped_var_kind::DUMMY(4);
+const int ped_var_kind::int_values[]={0, 1, 2, 3, 4};
+const std::string ped_var_kind::str_values[]={"s", "p", "m", "e", "dummy"};
+const ped_var_kind ped_var_kind::enum_values[]={S, P, M, E, DUMMY};
 
 std::ostream&
 operator<<(std::ostream& out, const pedcnf_t::pedvar_t& var) {
@@ -62,18 +54,11 @@ operator<<(std::ostream& out, const pedcnf_t::pedvar_t& var) {
 
 
 lit_t
-pedcnf_t::get_dummy(const ped_var_kind& var_kind,
-						  const var_t i1, const var_t i2) {
-  dummy_varmap_t::iterator it= _dummy.find(boost::make_tuple(var_kind, i1, i2));
-  if (it == _dummy.end()) {
-	 _vars.push_back(boost::make_tuple(var_kind, i1, i2));
-	 _vals.push_back(false);
-	 std::pair< dummy_varmap_t::iterator, bool> ret=
-		_dummy.insert(std::make_pair(boost::make_tuple(var_kind, i1, i2), _vars.size()));
-	 MY_ASSERT_DBG(ret.second);
-	 it= ret.first;
-  }
-  return it->second;
+pedcnf_t::generate_dummy() {
+  _vars.push_back(boost::make_tuple(ped_var_kind::DUMMY, _next_dummy, 0));
+  _vals.push_back(false);
+  ++_next_dummy;
+  return _vars.size();
 };
 
 inline lit_t
@@ -323,8 +308,8 @@ inline static void
 add_half_adder(pedcnf_t& cnf,
 					const var_t x, const var_t y,
 					var_t& s, var_t& cout) {
-  s= cnf.get_dummy(ped_var_kind::HA_S, x, y);
-  cout= cnf.get_dummy(ped_var_kind::HA_C, x, y);
+  s= cnf.generate_dummy();
+  cout= cnf.generate_dummy();
   cnf.add_clause<3>((lit_t[]){ x, -y,  s});
   cnf.add_clause<3>((lit_t[]){-x,  y,  s});
   cnf.add_clause<3>((lit_t[]){-x, -y,  cout});
@@ -334,8 +319,8 @@ inline static void
 add_full_adder(pedcnf_t& cnf,
 					const var_t x, const var_t y, const var_t cin,
 					var_t& s, var_t& cout) {
-  s= cnf.get_dummy(ped_var_kind::FA_S, x, y);
-  cout= cnf.get_dummy(ped_var_kind::FA_C, x, y);
+  s= cnf.generate_dummy();
+  cout= cnf.generate_dummy();
   cnf.add_clause<4>((lit_t[]){ x,  y, -cin,  s});
   cnf.add_clause<4>((lit_t[]){ x, -y,  cin,  s});
   cnf.add_clause<4>((lit_t[]){-x,  y,  cin,  s});
