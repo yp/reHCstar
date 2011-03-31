@@ -38,10 +38,11 @@
 #
 ##########
 
-pedigree_sizes="100 1000 10000"
+pedigree_sizes="100 1000 5000"
 genotype_lengths="20 50 100"
-missing_rates="0.0 0.05 0.10 0.20"
-n_conf=2
+missing_rates="0.00 0.05 0.20"
+error_rates="0.00 0.01 0.05"
+n_conf=5
 
 additional_ped_params=""
 additional_hg_params=""
@@ -75,11 +76,14 @@ for size in ${pedigree_sizes}; do
             length_str=`printf "${formatd}" ${length}`
             for miss in ${missing_rates}; do
                 miss_str=`printf "${formatf}" ${miss}`
-                id="${prefix_id}-length${length_str}-miss${miss_str/./_}"
-                echo "Generating instance: gen-ped-${id}.txt"
-                echo "Generating instance: gen-ped-${id}.txt" >&2
-                ${script_dir}/hc-generator.py -l ${length} -m ${miss} -s ${seed} ${additional_hg_params} < pedigree-${prefix_id}.txt > gen-ped-${id}.txt
-                seed=$((seed + 122))
+                for err in ${error_rates}; do
+                    err_str=`printf "${formatf}" ${err}`
+                    id="${prefix_id}-length${length_str}-miss${miss_str/./_}-err${err_str/./_}"
+                    echo "Generating instance: gen-ped-${id}.txt"
+                    echo "Generating instance: gen-ped-${id}.txt" >&2
+                    ${script_dir}/hc-generator.py -l ${length} -m ${miss} -e ${err} -s ${seed} ${additional_hg_params} < pedigree-${prefix_id}.txt > gen-ped-${id}.txt
+                    seed=$((seed + 122))
+                done
             done
         done
     done
