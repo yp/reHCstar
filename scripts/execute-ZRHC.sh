@@ -40,14 +40,17 @@
 
 
 ZRHC_exe='./bin/ZRHCstar'
-SAT_cmd='./bin/cryptominisat %%INPUT%% %%OUTPUT%% >> execution.log'
+SAT_cmd='./bin/cryptominisat %%INPUT%% %%OUTPUT%% >> sat-execution.log'
 
-pedigrees="`ls gen-ped-*.txt`"
+pedigrees="`ls ./input/gen-ped-*.txt`"
 pedigrees=${*:-${pedigrees}}
 
 LANG=C
 
-for pedigree in ${pedigrees}; do
+echo "`date`  --  Starting experimentation" > sat-execution.log
+for full_pedigree in ${pedigrees}; do
+    pedigree=`basename ${full_pedigree}`
     echo "`date`  --  Executing on ${pedigree}"
-    nice time -f "%U %S %E %x %M %C" -o ${pedigree/#gen-/time-} ${ZRHC_exe} -3 -p ${pedigree} -h ${pedigree/#gen-/hap-} -c "${SAT_cmd}"
+    echo "`date`  --  Executing on ${pedigree}" >> sat-execution.log
+    nice time -f "%U %S %E %x %M %C" -o ${pedigree/#gen-/time-} ${ZRHC_exe} -3 -p ${full_pedigree} -h ${pedigree/#gen-/hap-} -c "${SAT_cmd}"
 done
