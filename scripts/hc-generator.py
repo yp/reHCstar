@@ -167,19 +167,28 @@ while len(remaining)>0:
 
 # Computes the corresponding genotypes
 logging.info("Computing the corresponding genotypes...")
+tot_no_of_err = 0
+max_err_x_ind = 0
 genotypes={}
 for ind in pedigree:
     genotypes[ind]= [mapping[(a,b)] for a,b in zip(hp[ind],hm[ind])]
     # Errors
-    genotypes[ind]= [g if (random.random() >= error_prob)
-                     else random.choice(others[g])
-                     for g in genotypes[ind] ]
+    generr = [g if (random.random() >= error_prob)
+              else random.choice(others[g])
+              for g in genotypes[ind] ]
+    curr_err = sum( [ a != b for a,b in zip(genotypes[ind],generr) ] )
+    tot_no_of_err = tot_no_of_err + curr_err
+    max_err_x_ind = max(max_err_x_ind, curr_err)
     # Missing
-    genotypes[ind]= [g if (random.random() >= missing_genotype_prob) else missing
-                     for g in genotypes[ind] ]
+    genmiss = [g if (random.random() >= missing_genotype_prob) else missing
+               for g in generr ]
+
+    genotypes[ind] = genmiss
 
 # Print haplotype configuration as comment
 logging.info("Saving the generated haplotype configuration...")
+print("##ERRORS_IN_A_INDIVIDUAL\t{}\t{}".format(max_err_x_ind,max_err_x_ind/length))
+print("##TOTAL_ERRORS\t{}\t{}".format(tot_no_of_err, tot_no_of_err/(length*len(genotypes))))
 for ind in pedigree:
     print("# GENERATED_HAPLOTYPES", 0, ind, fathers[ind], mothers[ind], genders[ind], pheno,
           "\t".join(["{}|{}".format(a,b)
