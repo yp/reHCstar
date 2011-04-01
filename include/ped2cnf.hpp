@@ -142,11 +142,14 @@ private:
 		  cnf.add_clause<2>((lit_t[]){ e,  p});
 		  cnf.add_clause<2>((lit_t[]){ e,      m});
 		} else if (gen == g::HETER) {
+#ifdef AVOID_XOR_CLAUSES
+		  cnf.add_clause<3>((lit_t[]){ e,  p,  m});
+		  cnf.add_clause<3>((lit_t[]){ e, -p, -m});
+		  cnf.add_clause<3>((lit_t[]){-e,  p, -m});
+		  cnf.add_clause<3>((lit_t[]){-e, -p,  m});
+#else
 		  cnf.add_xor_clause<3>((lit_t[]){e, p, m});
-		  // cnf.add_clause<3>((lit_t[]){ e,  p,  m});
-		  // cnf.add_clause<3>((lit_t[]){ e, -p, -m});
-		  // cnf.add_clause<3>((lit_t[]){-e,  p, -m});
-		  // cnf.add_clause<3>((lit_t[]){-e, -p,  m});
+#endif
 		} else if (gen == g::MISS) {
 // Do nothing
 		} else {
