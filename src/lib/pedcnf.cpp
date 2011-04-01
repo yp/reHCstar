@@ -649,10 +649,21 @@ le_card_network(pedcnf_t& cnf,
 };
 
 
+static void
+eq_zero(pedcnf_t& cnf,
+		  const std::vector<var_t>& in_vars) {
+  BOOST_FOREACH(const lit_t& var, in_vars) {
+	 cnf.add_clause<1>((lit_t[]){ -var });
+  }
+};
 
 void
 add_card_constraint_less_or_equal_than(pedcnf_t& cnf,
 													const std::vector<var_t>& in_vars,
 													const size_t k) {
-  le_card_network(cnf, in_vars, k);
+  if (k==0) {
+	 eq_zero(cnf, in_vars);
+  } else {
+	 le_card_network(cnf, in_vars, k);
+  }
 };
