@@ -565,15 +565,10 @@ le_parallel_counter(pedcnf_t& cnf,
 						  const std::vector<var_t>& in_vars,
 						  const size_t k) {
   my_logger logger(get_my_logger("card_constraints"));
-  if (k < in_vars.size()) {
-	 std::vector<var_t> out_vars;
-	 generate_counter(cnf, in_vars, 0, in_vars.size(), out_vars, logger);
-	 generate_comparator(cnf, out_vars, k, logger);
-  } else {
-	 INFO("The number of variables (" << in_vars.size() << ") "
-			"is not greater than the numeric upper bound (" << k << "). "
-			"No clauses have been added.");
-  }
+  DEBUG("Generating a parallel counter for encoding the cardinality constraint.");
+  std::vector<var_t> out_vars;
+  generate_counter(cnf, in_vars, 0, in_vars.size(), out_vars, logger);
+  generate_comparator(cnf, out_vars, k, logger);
 };
 
 
@@ -582,23 +577,18 @@ le_half_sorting_network(pedcnf_t& cnf,
 								const std::vector<var_t>& in_vars,
 								const size_t k) {
   my_logger logger(get_my_logger("card_constraints"));
-  if (k < in_vars.size()) {
-	 std::vector<var_t> out_vars;
-	 std::vector<var_t> all_vars(in_vars.begin(), in_vars.end());
-	 size_t n= all_vars.size();
-	 while (n != pow2_of_floor_log2(n)) {
-		const lit_t dummy= cnf.generate_dummy();
-		all_vars.push_back(dummy);
-		cnf.add_clause<1>((lit_t[]){ -dummy });
-		n= all_vars.size();
-	 }
-	 generate_hsort(cnf, all_vars, out_vars, logger);
-	 cnf.add_clause<1>((lit_t[]){ -out_vars[k] });
-  } else {
-	 INFO("The number of variables (" << in_vars.size() << ") "
-			"is not greater than the numeric upper bound (" << k << "). "
-			"No clauses have been added.");
+  DEBUG("Generating an half sorting network for encoding the cardinality constraint.");
+  std::vector<var_t> out_vars;
+  std::vector<var_t> all_vars(in_vars.begin(), in_vars.end());
+  size_t n= all_vars.size();
+  while (n != pow2_of_floor_log2(n)) {
+	 const lit_t dummy= cnf.generate_dummy();
+	 all_vars.push_back(dummy);
+	 cnf.add_clause<1>((lit_t[]){ -dummy });
+	 n= all_vars.size();
   }
+  generate_hsort(cnf, all_vars, out_vars, logger);
+  cnf.add_clause<1>((lit_t[]){ -out_vars[k] });
 };
 
 
@@ -607,44 +597,37 @@ le_card_network(pedcnf_t& cnf,
 					 const std::vector<var_t>& in_vars,
 					 const size_t k) {
   my_logger logger(get_my_logger("card_constraints"));
-  if (k < in_vars.size()) {
-	 const size_t p= pow2_of_ceiling_log2(k+1);
-	 DEBUG("Dividing " << in_vars.size() << " variables in blocks of size "
-			 << p << " since the upper bound is " << k << ".");
+  DEBUG("Generating a cardinality network for encoding the cardinality constraint.");
+  const size_t p= pow2_of_ceiling_log2(k+1);
+  DEBUG("Dividing " << in_vars.size() << " variables in blocks of size "
+		  << p << " since the upper bound is " << k << ".");
 // Ensure that the variables are multiples of p
-	 std::vector<var_t> all_vars(in_vars.begin(), in_vars.end());
-	 while (all_vars.size() % p != 0) {
-		const lit_t dummy= cnf.generate_dummy();
-		all_vars.push_back(dummy);
-		cnf.add_clause<1>((lit_t[]){ -dummy });
+  std::vector<var_t> all_vars(in_vars.begin(), in_vars.end());
+  while (all_vars.size() % p != 0) {
+	 const lit_t dummy= cnf.generate_dummy();
+	 all_vars.push_back(dummy);
+	 cnf.add_clause<1>((lit_t[]){ -dummy });
+  }
+  std::vector<var_t> prev_ris;
+  size_t next_in_var_counter= p;
+  std::vector<var_t>::iterator next_in_var=
+	 all_vars.begin() + next_in_var_counter;
+  std::vector<var_t> input(all_vars.begin(), next_in_var);
+  generate_hsort(cnf, input, prev_ris, logger);
+  while (next_in_var != all_vars.end()) {
+	 input.clear();
+	 input.insert(input.end(), next_in_var, next_in_var+p);
+	 std::vector<var_t> hsort_out;
+	 generate_hsort(cnf, input, hsort_out, logger);
+	 std::vector<var_t> smerge_out;
+	 generate_smerge(cnf, prev_ris, hsort_out, smerge_out, logger);
+	 prev_ris.clear();
+	 prev_ris.insert(prev_ris.end(), smerge_out.begin(), smerge_out.begin()+p);
+	 next_in_var += p;
+	 next_in_var_counter += p;
+	 for (size_t limit= k; limit<=p; ++limit) {
+		cnf.add_clause<1>((lit_t[]){ -smerge_out[limit] });
 	 }
-	 std::vector<var_t> prev_ris;
-	 size_t next_in_var_counter= p;
-	 std::vector<var_t>::iterator next_in_var=
-		all_vars.begin() + next_in_var_counter;
-	 std::vector<var_t> input(all_vars.begin(), next_in_var);
-	 generate_hsort(cnf, input, prev_ris, logger);
-	 while (next_in_var != all_vars.end()) {
-		DEBUG("Considering block " << next_in_var_counter << "--" <<
-				next_in_var_counter + p << "...");
-		input.clear();
-		input.insert(input.end(), next_in_var, next_in_var+p);
-		std::vector<var_t> hsort_out;
-		generate_hsort(cnf, input, hsort_out, logger);
-		std::vector<var_t> smerge_out;
-		generate_smerge(cnf, prev_ris, hsort_out, smerge_out, logger);
-		prev_ris.clear();
-		prev_ris.insert(prev_ris.end(), smerge_out.begin(), smerge_out.begin()+p);
-		next_in_var += p;
-		next_in_var_counter += p;
-		for (size_t limit= k; limit<=p; ++limit) {
-		  cnf.add_clause<1>((lit_t[]){ -smerge_out[limit] });
-		}
-	 }
-  } else {
-	 INFO("The number of variables (" << in_vars.size() << ") "
-			"is not greater than the numeric upper bound (" << k << "). "
-			"No clauses have been added.");
   }
 };
 
@@ -661,9 +644,21 @@ void
 add_card_constraint_less_or_equal_than(pedcnf_t& cnf,
 													const std::vector<var_t>& in_vars,
 													const size_t k) {
+  my_logger logger(get_my_logger("card_constraints"));
   if (k==0) {
 	 eq_zero(cnf, in_vars);
+  } else if (k >= in_vars.size()) {
+	 INFO("The number of variables (" << in_vars.size() << ") "
+			"is not greater than the numeric upper bound (" << k << "). "
+			"No clauses have been added.");
   } else {
+// Use Cardinality Networks (preferred)
 	 le_card_network(cnf, in_vars, k);
+
+// Use Parallel Counter
+//	 le_parallel_counter(cnf, in_vars, k);
+
+//	Use Half Sorting Network
+//	 le_half_sorting_network(cnf, in_vars, k);
   }
 };
