@@ -65,10 +65,8 @@ protected:
 
   virtual po::options_description
   get_named_options() const {
-	 po::options_description desc("Available options");
+	 po::options_description desc("Program options");
 	 desc.add_options()
-		("help,?", po::bool_switch(),
-		 "Produce (this) help message.")
 #ifndef ONLY_INTERNAL_SAT_SOLVER
 		("create,1", po::bool_switch(),
 		 "Create the SAT instance from the pedigree file.")
@@ -117,20 +115,7 @@ protected:
 	 return desc;
   };
 
-  virtual int execution(int argc, char** argv,
-								const po::variables_map& vm) {
-
-// Generate the help message and exit
-	 if (vm["help"].as<bool>()) {
-		cout << _name << endl;
-		cout << get_named_options() << endl;
-		return EXIT_SUCCESS;
-	 }
-
-	 int main_ris= EXIT_SUCCESS;
-
-// Check parameter values
-	 DEBUG("Checking program parameters...");
+  virtual bool check_options(const po::variables_map& vm) {
 #if defined(NO_INTERNAL_SAT_SOLVER)
 	 mode_options(vm, "create", "read", "create-read");
 #endif
@@ -162,7 +147,14 @@ protected:
 	 option_dependency(vm, "solve-internal", "pedigree");
 	 option_dependency(vm, "solve-internal", "haplotypes");
 #endif
-	 DEBUG("Check completed.");
+	 return true;
+  }
+
+  virtual int execution(int argc, char** argv,
+								const po::variables_map& vm) {
+
+	 int main_ris= EXIT_SUCCESS;
+
 
 	 const bool in_compress=
 		vm["compress"].as<bool>() ||
