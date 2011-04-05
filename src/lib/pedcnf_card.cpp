@@ -395,3 +395,54 @@ add_card_constraint_less_or_equal_than(pedcnf_t& cnf,
   }
 };
 
+
+static void
+add_uniform_card_constraint_less_or_equal_than_int(pedcnf_t& cnf,
+																	const std::vector<var_t>& in_vars,
+																	const size_t window_size,
+																	const size_t k) {
+  my_logger logger(get_my_logger("card_constraints"));
+  const size_t p= window_size>>1;
+  std::vector<var_t>::const_iterator next_in_var=
+	 in_vars.begin();
+  std::vector<var_t> all_hsort_out;
+  std::vector<var_t> input;
+  while (next_in_var != in_vars.end()) {
+	 input.clear();
+	 input.insert(input.end(), next_in_var, next_in_var+p);
+	 std::vector<var_t> hsort_out;
+	 generate_hsort(cnf, input, hsort_out, logger);
+	 all_hsort_out.insert(all_hsort_out.end(), hsort_out.begin(), hsort_out.end());
+	 next_in_var += p;
+  }
+
+  std::vector<var_t>::iterator next_hsort_out=
+	 all_hsort_out.begin()+p;
+  std::vector<var_t> prev_input(all_hsort_out.begin(), next_hsort_out);
+  while (next_hsort_out != all_hsort_out.end()) {
+	 std::vector<var_t> cur_input(next_hsort_out, next_hsort_out+p);
+	 std::vector<var_t> smerge_out;
+	 generate_smerge(cnf, prev_input, cur_input, smerge_out, logger);
+	 next_hsort_out += p;
+	 prev_input= cur_input;
+	 cnf.add_clause<1>((lit_t[]){ -smerge_out[k] });
+  }
+
+};
+
+void
+add_uniform_card_constraint_less_or_equal_than(pedcnf_t& cnf,
+															  const std::vector<var_t>& in_vars,
+															  const size_t window_size,
+															  const size_t k) {
+  MY_ASSERT( window_size == pow2_of_floor_log2(window_size) );
+  MY_ASSERT( k <= (window_size>>1) );
+  std::vector<var_t> all_vars= in_vars;
+  while (all_vars.size() % window_size != 0) {
+	 var_t v= cnf.generate_dummy();
+	 all_vars.push_back(v);
+	 cnf.add_clause<1>((lit_t[]){ -v });
+  }
+  add_uniform_card_constraint_less_or_equal_than_int(cnf, all_vars, window_size, k);
+
+}
