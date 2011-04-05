@@ -329,5 +329,23 @@ public:
 std::ostream&
 operator<<(std::ostream& out, const percent_t& val);
 
+inline static size_t
+pow2_of_floor_log2(const size_t n) {
+  size_t p= 1;
+  while ((p << 1) <= n) {
+	 p= p << 1;
+  }
+  return p;
+};
+
+inline static size_t
+pow2_of_ceiling_log2(const size_t n) {
+  size_t p= 1;
+  while (p < n) {
+	 p= p << 1;
+  }
+  return p;
+};
+
 
 #endif // __UTILITY_HPP__

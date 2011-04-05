@@ -35,6 +35,7 @@
 #include "pedcnf.hpp"
 
 #include <boost/foreach.hpp>
+#include "utility.hpp"
 
 inline static void
 add_half_adder(pedcnf_t& cnf,
@@ -60,24 +61,6 @@ add_full_adder(pedcnf_t& cnf,
   cnf.add_clause<3>((lit_t[]){-x, -y,   cout});
   cnf.add_clause<3>((lit_t[]){-x, -cin, cout});
   cnf.add_clause<3>((lit_t[]){-y, -cin, cout});
-};
-
-inline static size_t
-pow2_of_floor_log2(const size_t n) {
-  size_t p= 1;
-  while ((p << 1) <= n) {
-	 p= p << 1;
-  }
-  return p;
-};
-
-inline static size_t
-pow2_of_ceiling_log2(const size_t n) {
-  size_t p= 1;
-  while (p < n) {
-	 p= p << 1;
-  }
-  return p;
 };
 
 
