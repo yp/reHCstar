@@ -216,7 +216,7 @@ pedcnf_t::clauses_to_dimacs_format(std::ostream& out,
   for (pedcnf_t::varvec_t::const_iterator it= _vars.begin();
 		 it != _vars.end();
 		 ++it, ++i) {
-	 out << "c v " << std::setw(5) << i << " " << *it << std::endl;
+	 out << "c v " << std::setw(7) << i << " " << *it << std::endl;
   }
   out << "c" << std::endl;
   out << "p cnf " << _vars.size() << " " << _clauses.size() << std::endl;
@@ -275,7 +275,7 @@ operator<<(std::ostream& out, const pedcnf_t::clause_t& clause) {
   for (pedcnf_t::clause_t::const_iterator it= clause.begin();
 		 it != clause.end();
 		 ++it) {
-	 out << std::setw(6) << *it << " ";
+	 out << std::setw(10) << *it << " ";
   }
   out << "     0";
   return out;
