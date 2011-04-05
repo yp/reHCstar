@@ -331,15 +331,20 @@ protected:
 // We have to trust the return value
 		DEBUG("The SAT solver returned: '" << ret_value << "'.");
 
-		file_utility::postream hap_os=
-		  file_utility::get_file_utility().
-		  get_ofstream(vm["haplotypes"].as<string>(), out_compress);
-		bool is_zrhc= zrhcstar.compute_HC_from_model_and_save(ped, cnf,
-																				*hap_os);
-		if (is_zrhc) {
-		  INFO("Zero-Recombinant Haplotype Configuration successfully "
-				 "computed and saved.");
-		  main_ris= EXIT_SUCCESS;
+		if (ret_value) {
+		  file_utility::postream hap_os=
+			 file_utility::get_file_utility().
+			 get_ofstream(vm["haplotypes"].as<string>(), out_compress);
+		  bool is_zrhc= zrhcstar.compute_HC_from_model_and_save(ped, cnf,
+																				  *hap_os);
+		  if (is_zrhc) {
+			 INFO("Zero-Recombinant Haplotype Configuration successfully "
+					"computed and saved.");
+			 main_ris= EXIT_SUCCESS;
+		  } else {
+			 INFO("A Haplotype Configuration has been computed but it is not valid!!");
+			 main_ris= EXIT_NO_ZRHC;
+		  }
 		} else {
 		  INFO("No Zero-Recombinant Haplotype Configuration can exist. "
 				 "Exiting without haplotype configuration.");
