@@ -218,7 +218,7 @@ protected:
 				 "computed and saved.");
 		  main_ris= EXIT_SUCCESS;
 		} else {
-		  INFO("No Zero-Recombinant Haplotype Configuration can exist. "
+		  WARN("No Zero-Recombinant Haplotype Configuration can exist. "
 				 "Exiting without haplotype configuration.");
 		  main_ris= EXIT_NO_ZRHC;
 		}
@@ -299,7 +299,7 @@ protected:
 					"computed and saved.");
 			 main_ris= EXIT_SUCCESS;
 		  } else {
-			 INFO("No Zero-Recombinant Haplotype Configuration can exist. "
+			 WARN("No Zero-Recombinant Haplotype Configuration can exist. "
 					"Exiting without haplotype configuration.");
 			 main_ris= EXIT_NO_ZRHC;
 		  }
@@ -342,11 +342,11 @@ protected:
 					"computed and saved.");
 			 main_ris= EXIT_SUCCESS;
 		  } else {
-			 INFO("A Haplotype Configuration has been computed but it is not valid!!");
+			 WARN("A Haplotype Configuration has been computed but it is not valid!!");
 			 main_ris= EXIT_NO_ZRHC;
 		  }
 		} else {
-		  INFO("No Zero-Recombinant Haplotype Configuration can exist. "
+		  WARN("No Zero-Recombinant Haplotype Configuration can exist. "
 				 "Exiting without haplotype configuration.");
 		  main_ris= EXIT_NO_ZRHC;
 		}
