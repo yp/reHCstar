@@ -57,7 +57,7 @@ public:
 
   void prepare_pedigree_and_sat(std::istream& ped_is,
 										  pedigree_t& mped,
-										  pedcnf_t*& cnf,
+										  pedcnf_t& cnf,
 										  const double error_rate) const {
 	 L_INFO("Reading pedigree...");
 	 biallelic_genotype_reader_t<> gr;
@@ -76,7 +76,7 @@ public:
 
 // Prepare the SAT instance
 	 L_INFO("Preparing SAT instance from pedigree...");
-	 cnf= ped2cnf(mped.families().front(), error_rate);
+	 ped2cnf(mped.families().front(), cnf, error_rate);
 	 L_INFO("SAT instance successfully prepared.");
   }
 
@@ -112,22 +112,21 @@ public:
 													  const std::vector<std::string>& headers,
 													  const double error_rate) const {
 	 pedigree_t ped;
-	 pedcnf_t* cnf;
+	 pedcnf_t cnf;
 	 create_SAT_instance_from_pedigree(ped_is, sat_os, headers,
 												  ped, cnf, error_rate);
-	 delete cnf;
   }
 
   void create_SAT_instance_from_pedigree(std::istream& ped_is,
 													  std::ostream& sat_os,
 													  const std::vector<std::string>& headers,
 													  pedigree_t& ped,
-													  pedcnf_t*& cnf,
+													  pedcnf_t& cnf,
 													  const double error_rate) const {
 	 prepare_pedigree_and_sat(ped_is, ped, cnf, error_rate);
 // Output the instance
 	 L_INFO("Saving SAT instance...");
-	 cnf->clauses_to_dimacs_format(sat_os, headers);
+	 cnf.clauses_to_dimacs_format(sat_os, headers);
 	 L_INFO("SAT instance successfully saved.");
   };
 
@@ -136,7 +135,7 @@ public:
   bool compute_HC_from_SAT_results(std::istream& ped_is,
 											  std::istream& res_is,
 											  pedigree_t& ped,
-											  pedcnf_t*& cnf,
+											  pedcnf_t& cnf,
 											  const double error_rate) const {
 	 prepare_pedigree_and_sat(ped_is, ped, cnf, error_rate);
 	 return compute_HC_from_SAT_results(res_is, ped, cnf);
@@ -144,9 +143,9 @@ public:
 
   bool compute_HC_from_SAT_results(std::istream& res_is,
 											  pedigree_t& ped,
-											  pedcnf_t*& cnf) const {
+											  pedcnf_t& cnf) const {
 // Open the result file and read the assignment
-	 const bool is_sat= read_SAT_results(*cnf, res_is);
+	 const bool is_sat= read_SAT_results(cnf, res_is);
 	 if (is_sat) {
 		L_INFO("The pedigree can be realized by a zero-recombinant haplotype "
 			  "configuration.");
@@ -164,10 +163,10 @@ public:
 #endif // not defined ONLY_INTERNAL_SAT_SOLVER
 
   bool compute_HC_from_model(pedigree_t& ped,
-									  pedcnf_t*& cnf) const {
+									  pedcnf_t& cnf) const {
 	 pedigree_t::pedigree_t& family= ped.families().front();
 // Compute the actual haplotype configuration
-	 compute_ZRHC_from_SAT(family, *cnf);
+	 compute_ZRHC_from_SAT(family, cnf);
 // Check the haplotype configuration
 	 const bool ok=
 		family.is_completely_haplotyped() &&
@@ -182,7 +181,7 @@ public:
   };
 
   bool compute_HC_from_model_and_save(pedigree_t& ped,
-												  pedcnf_t*& cnf,
+												  pedcnf_t& cnf,
 												  std::ostream& hap_os) const {
 	 const bool ok= compute_HC_from_model(ped, cnf);
 	 if (ok) {
@@ -200,11 +199,10 @@ public:
 											  std::ostream& hap_os,
 											  const double error_rate) const {
 	 pedigree_t ped;
-	 pedcnf_t* cnf;
+	 pedcnf_t cnf;
 	 const bool is_sat=
 		compute_HC_from_SAT_results(ped_is, res_is,
 											 ped, cnf, error_rate);
-	 delete cnf;
 	 if (is_sat) {
 // Output the haplotype configuration
 		save_ZRHC(ped, hap_os);
@@ -213,7 +211,7 @@ public:
   }
 
   bool compute_HC_from_SAT_results(pedigree_t& ped,
-											  pedcnf_t*& cnf,
+											  pedcnf_t& cnf,
 											  std::istream& res_is,
 											  std::ostream& hap_os) const {
 	 const bool is_sat=

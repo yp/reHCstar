@@ -229,7 +229,7 @@ protected:
 			  << vm["pedigree"].as<string>() << "' by direct invocation of the SAT solver...");
 		string sat_name;
 		zrhcstar_t::pedigree_t ped;
-		pedcnf_t* cnf;
+		pedcnf_t cnf;
 // Block for reading the pedigree and writing the SAT instance
 // The block is needed to close the SAT instance stream before executing
 // the solver
@@ -293,7 +293,6 @@ protected:
 				DEBUG("Temporary files removed.");
 			 }
 		  }
-		  delete cnf;
 
 		  if (is_zrhc) {
 			 INFO("Zero-Recombinant Haplotype Configuration successfully "
@@ -314,7 +313,7 @@ protected:
 			  "pedigree of file '"
 			  << vm["pedigree"].as<string>() << "' by using the internal SAT solver...");
 		zrhcstar_t::pedigree_t ped;
-		pedcnf_t* cnf;
+		pedcnf_t cnf;
 // Block for reading the pedigree and writing the SAT instance
 // The block is needed to close the SAT instance stream before executing
 // the solver
@@ -328,7 +327,7 @@ protected:
 
 // Execute the SAT solver
 		INFO("Execution of the internal SAT solver...");
-		const bool ret_value= cnf->solve();
+		const bool ret_value= cnf.solve();
 // We have to trust the return value
 		DEBUG("The SAT solver returned: '" << ret_value << "'.");
 
@@ -337,8 +336,6 @@ protected:
 		  get_ofstream(vm["haplotypes"].as<string>(), out_compress);
 		bool is_zrhc= zrhcstar.compute_HC_from_model_and_save(ped, cnf,
 																				*hap_os);
-		delete cnf;
-
 		if (is_zrhc) {
 		  INFO("Zero-Recombinant Haplotype Configuration successfully "
 				 "computed and saved.");

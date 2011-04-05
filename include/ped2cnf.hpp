@@ -189,9 +189,7 @@ private:
 
 public:
 
-  pedcnf_t* convert(const pedigree_t& ped, const double error_rate) {
-	 pedcnf_t* pcnf= new pedcnf_t;
-	 pedcnf_t& cnf= *pcnf;
+  void convert(const pedigree_t& ped, pedcnf_t& cnf, const double error_rate) {
 	 BOOST_FOREACH( const individual_t& ind,
 						 ped.individuals() ) {
 		L_TRACE("Considering individual " << ind.progr_id());
@@ -233,7 +231,6 @@ public:
 	 L_INFO("The SAT instance is composed by " <<
 			  std::setw(8) << cnf.vars().size() << " variables and " <<
 			  std::setw(8) << cnf.no_of_clauses() << " clauses");
-	 return pcnf;
   };
 };
 
@@ -243,14 +240,15 @@ template <
   typename T_PHENOTYPE,
   typename T_ID
 >
-pedcnf_t*
+void
 ped2cnf(const basic_pedigree_t<T_GENOTYPE,
 										 T_HAPLOTYPE,
 										 T_PHENOTYPE,
 										 T_ID>& ped,
+		  pedcnf_t& cnf,
 		  const double error_rate) {
   ped2cnf_conv_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE, T_ID> conv;
-  return conv.convert(ped, error_rate);
+  conv.convert(ped, cnf, error_rate);
 }
 
 
