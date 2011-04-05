@@ -334,6 +334,110 @@ le_card_network(pedcnf_t& cnf,
 	 input.insert(input.end(), next_in_var, next_in_var+p);
 	 std::vector<var_t> hsort_out;
 	 generate_hsort(cnf, input, hsort_out, logger);
+	 cnf.add_clause<1>((lit_t[]){ -hsort_out[k] });
+	 // for (size_t limit= k; limit<p; ++limit) {
+	 // 	cnf.add_clause<1>((lit_t[]){ -hsort_out[limit] });
+	 // }
+	 std::vector<var_t> smerge_out;
+	 generate_smerge(cnf, prev_ris, hsort_out, smerge_out, logger);
+	 prev_ris.clear();
+	 prev_ris.insert(prev_ris.end(), smerge_out.begin(), smerge_out.begin()+p);
+	 next_in_var += p;
+	 next_in_var_counter += p;
+	 cnf.add_clause<1>((lit_t[]){ -smerge_out[k] });
+	 // for (size_t limit= k; limit<=p; ++limit) {
+	 // 	cnf.add_clause<1>((lit_t[]){ -smerge_out[limit] });
+	 // }
+  }
+};
+
+static void
+le_card_network_tree_rec(pedcnf_t& cnf,
+								 std::vector<var_t>& out_vars,
+								 const std::vector<var_t>& in_vars,
+								 const size_t k, const size_t p,
+								 my_logger& logger) {
+  const size_t n= in_vars.size();
+  std::vector<var_t> firsthalf_in(in_vars.begin(), in_vars.begin()+(n>>1));
+  std::vector<var_t> secondhalf_in(in_vars.begin()+(n>>1), in_vars.end());
+  std::vector<var_t> out_vars_int;
+  if (n == 2*p) {
+	 generate_smerge(cnf, firsthalf_in, secondhalf_in, out_vars_int, logger);
+  } else {
+	 std::vector<var_t> firsthalf_out;
+	 std::vector<var_t> secondhalf_out;
+	 le_card_network_tree_rec(cnf, firsthalf_out, firsthalf_in, k, p, logger);
+	 le_card_network_tree_rec(cnf, secondhalf_out, secondhalf_in, k, p, logger);
+	 generate_smerge(cnf, firsthalf_out, secondhalf_out, out_vars_int, logger);
+  }
+  for (size_t limit= k; limit<=p; ++limit) {
+	 cnf.add_clause<1>((lit_t[]){ -out_vars_int[limit] });
+  }
+  out_vars.insert(out_vars.end(), out_vars_int.begin(), out_vars_int.end()-1);
+};
+
+static void
+le_card_network_tree(pedcnf_t& cnf,
+							std::vector<var_t>& out_vars,
+							const std::vector<var_t>& in_vars,
+							const size_t k, const size_t p,
+							my_logger& logger) {
+  std::vector<var_t>::const_iterator next_in_var=
+	 in_vars.begin();
+  std::vector<var_t> all_hsort_out;
+  std::vector<var_t> input;
+  while (next_in_var != in_vars.end()) {
+	 input.clear();
+	 input.insert(input.end(), next_in_var, next_in_var+p);
+	 std::vector<var_t> hsort_out;
+	 generate_hsort(cnf, input, hsort_out, logger);
+	 all_hsort_out.insert(all_hsort_out.end(), hsort_out.begin(), hsort_out.end());
+	 next_in_var += p;
+	 for (size_t limit= k; limit<p; ++limit) {
+		cnf.add_clause<1>((lit_t[]){ -hsort_out[limit] });
+	 }
+  }
+  if (in_vars.size() > p) {
+	 le_card_network_tree_rec(cnf, out_vars, all_hsort_out, k, p, logger);
+  } else {
+	 out_vars.insert(out_vars.end(), all_hsort_out.begin(), all_hsort_out.end());
+  }
+};
+
+
+// Generate a cardinality network by using a complete tree of sorters
+// and comparators
+static void
+le_card_network_new(pedcnf_t& cnf,
+						  const std::vector<var_t>& in_vars,
+						  const size_t k) {
+  my_logger logger(get_my_logger("card_constraints"));
+  DEBUG("Generating a cardinality network for encoding the cardinality constraint.");
+  const size_t p= pow2_of_ceiling_log2(k+1);
+  DEBUG("Dividing " << in_vars.size() << " variables in blocks of size "
+		  << p << " since the upper bound is " << k << ".");
+// Ensure that the variables are multiples of p
+  std::vector<var_t> all_vars(in_vars.begin(), in_vars.end());
+  while (all_vars.size() % p != 0) {
+	 const lit_t dummy= cnf.generate_dummy();
+	 all_vars.push_back(dummy);
+	 cnf.add_clause<1>((lit_t[]){ -dummy });
+  }
+// The first 2^i * p <= n variables are arranged as a binary tree
+  const size_t n= all_vars.size();
+  std::vector<var_t> prev_ris;
+  size_t next_in_var_counter= pow2_of_floor_log2(n/p)*p;
+  DEBUG("The first " << next_in_var_counter << " variables are in a tree over " << all_vars.size() << ".");
+  std::vector<var_t>::iterator next_in_var=
+	 all_vars.begin() + next_in_var_counter;
+  std::vector<var_t> input(all_vars.begin(), next_in_var);
+  le_card_network_tree(cnf, prev_ris, input, k, p, logger);
+
+  while (next_in_var != all_vars.end()) {
+	 input.clear();
+	 input.insert(input.end(), next_in_var, next_in_var+p);
+	 std::vector<var_t> hsort_out;
+	 generate_hsort(cnf, input, hsort_out, logger);
 	 std::vector<var_t> smerge_out;
 	 generate_smerge(cnf, prev_ris, hsort_out, smerge_out, logger);
 	 prev_ris.clear();
