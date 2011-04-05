@@ -147,6 +147,9 @@ private:
   lit_t get_var(const varmap_t& map,
 					 const size_t i1, const size_t i2) const;
 
+  bool has_var(const varmap_t& map,
+					const size_t i1, const size_t i2) const;
+
   bool get_val(const varmap_t& map,
 					const size_t i1, const size_t i2) const;
 
@@ -167,6 +170,14 @@ public:
   lit_t get_m(const size_t i, const size_t l);
 
   lit_t get_e(const size_t i, const size_t l);
+
+  bool has_s(const size_t p, const size_t i) const;
+
+  bool has_p(const size_t i, const size_t l) const;
+
+  bool has_m(const size_t i, const size_t l) const;
+
+  bool has_e(const size_t i, const size_t l) const;
 
   lit_t generate_dummy();
 

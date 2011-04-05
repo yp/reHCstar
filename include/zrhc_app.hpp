@@ -34,9 +34,11 @@
 
 #include "io-pedigree.hpp"
 #include "ped2cnf.hpp"
+#include "ped2cnf-errors.hpp"
 #include "pedcnf2hc.hpp"
 
 #include <iostream>
+#include <boost/program_options.hpp>
 
 using namespace std;
 
@@ -52,13 +54,37 @@ public:
 
 private:
 
+  composite_error_handler_t err_handler;
 
 public:
 
+  void prepare_program_options(const boost::program_options::variables_map& vm) {
+	 bool has_error= false;
+	 if (vm["global-error"].as<bool>()) {
+		const double err_rate= vm["global-error-rate"].as<double>();
+		L_INFO("Enabling *GLOBAL* error handling ("
+				 "error-rate=" << err_rate << ")");
+		err_handler.add(new whole_individual_genotype_error_handler_t(err_rate));
+		has_error= true;
+	 }
+	 if (vm["uniform-error"].as<bool>()) {
+		const unsigned int winerr= vm["max-errors-in-window"].as<unsigned int>();
+		const unsigned int winlen= vm["window-length"].as<unsigned int>();
+		L_INFO("Enabling *WINDOWED* error handling ("
+				 "max-errors-in-windows=" << winerr << ", "
+				 "window-length=" << winlen << ")");
+		err_handler.add(new windowed_error_handler_t(winerr, winlen));
+		has_error= true;
+	 }
+	 if (!has_error) {
+		L_INFO("*DISABLING* genotyping errors");
+		err_handler.add(new no_errors_handler_t());
+	 }
+  };
+
   void prepare_pedigree_and_sat(std::istream& ped_is,
 										  pedigree_t& mped,
-										  pedcnf_t& cnf,
-										  const double error_rate) const {
+										  pedcnf_t& cnf) const {
 	 L_INFO("Reading pedigree...");
 	 biallelic_genotype_reader_t<> gr;
 	 plink_reader_t<> reader(gr);
@@ -76,8 +102,18 @@ public:
 
 // Prepare the SAT instance
 	 L_INFO("Preparing SAT instance from pedigree...");
-	 ped2cnf(mped.families().front(), cnf, error_rate);
+	 ped2cnf(mped.families().front(), cnf);
+	 L_INFO("Adding clauses for managing genotyping errors...");
+	 error_handler_t::individuals_errors_t errors;
+	 err_handler.prepare_errors(cnf,
+										 mped.families().front().size(),
+										 mped.families().front().genotype_length(),
+										 errors);
+	 err_handler.handle_errors(cnf, errors);
 	 L_INFO("SAT instance successfully prepared.");
+	 L_INFO("The SAT instance is composed by " <<
+			  std::setw(8) << cnf.vars().size() << " variables and " <<
+			  std::setw(8) << cnf.no_of_clauses() << " clauses");
   }
 
 
@@ -109,21 +145,19 @@ public:
 #ifndef ONLY_INTERNAL_SAT_SOLVER
   void create_SAT_instance_from_pedigree(std::istream& ped_is,
 													  std::ostream& sat_os,
-													  const std::vector<std::string>& headers,
-													  const double error_rate) const {
+													  const std::vector<std::string>& headers) const {
 	 pedigree_t ped;
 	 pedcnf_t cnf;
 	 create_SAT_instance_from_pedigree(ped_is, sat_os, headers,
-												  ped, cnf, error_rate);
+												  ped, cnf);
   }
 
   void create_SAT_instance_from_pedigree(std::istream& ped_is,
 													  std::ostream& sat_os,
 													  const std::vector<std::string>& headers,
 													  pedigree_t& ped,
-													  pedcnf_t& cnf,
-													  const double error_rate) const {
-	 prepare_pedigree_and_sat(ped_is, ped, cnf, error_rate);
+													  pedcnf_t& cnf) const {
+	 prepare_pedigree_and_sat(ped_is, ped, cnf);
 // Output the instance
 	 L_INFO("Saving SAT instance...");
 	 cnf.clauses_to_dimacs_format(sat_os, headers);
@@ -135,9 +169,8 @@ public:
   bool compute_HC_from_SAT_results(std::istream& ped_is,
 											  std::istream& res_is,
 											  pedigree_t& ped,
-											  pedcnf_t& cnf,
-											  const double error_rate) const {
-	 prepare_pedigree_and_sat(ped_is, ped, cnf, error_rate);
+											  pedcnf_t& cnf) const {
+	 prepare_pedigree_and_sat(ped_is, ped, cnf);
 	 return compute_HC_from_SAT_results(res_is, ped, cnf);
   };
 
@@ -196,13 +229,12 @@ public:
 
   bool compute_HC_from_SAT_results(std::istream& ped_is,
 											  std::istream& res_is,
-											  std::ostream& hap_os,
-											  const double error_rate) const {
+											  std::ostream& hap_os) const {
 	 pedigree_t ped;
 	 pedcnf_t cnf;
 	 const bool is_sat=
 		compute_HC_from_SAT_results(ped_is, res_is,
-											 ped, cnf, error_rate);
+											 ped, cnf);
 	 if (is_sat) {
 // Output the haplotype configuration
 		save_ZRHC(ped, hap_os);

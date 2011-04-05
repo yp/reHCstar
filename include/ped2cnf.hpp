@@ -88,8 +88,7 @@ public:
 private:
 
   void prepare_individual(pedcnf_t& cnf, const pedigree_t& ped,
-								  const individual_t& ind,
-								  const double error_rate) {
+								  const individual_t& ind) {
 // Create the variables for the individual
 //   -> p-variables
 	 for (size_t l= 0; l < ped.genotype_length(); ++l) {
@@ -108,16 +107,6 @@ private:
 		  evars.push_back(e);
 		}
 	 }
-/************
- * Clauses for limiting the number of errors
- ************/
-	 const size_t k= std::ceil(error_rate*evars.size());
-	 L_DEBUG("Generating cardinality constraints for " << evars.size() <<
-				" error variables (<= " << k << ")...");
-	 add_card_constraint_less_or_equal_than(cnf, evars, k);
-/************
- * End clauses for limiting the number of errors
- ************/
   }
 
   void add_individual_constraint(pedcnf_t& cnf,
@@ -189,11 +178,11 @@ private:
 
 public:
 
-  void convert(const pedigree_t& ped, pedcnf_t& cnf, const double error_rate) {
+  void convert(const pedigree_t& ped, pedcnf_t& cnf) {
 	 BOOST_FOREACH( const individual_t& ind,
 						 ped.individuals() ) {
 		L_TRACE("Considering individual " << ind.progr_id());
-		prepare_individual(cnf, ped, ind, error_rate);
+		prepare_individual(cnf, ped, ind);
 		for (size_t l= 0; l < ped.genotype_length(); ++l) {
 		  L_TRACE("  locus = " << l <<
 					 ", g_i = " << ind.obs_g(l));
@@ -228,9 +217,6 @@ public:
 		  }
 		}
 	 }
-	 L_INFO("The SAT instance is composed by " <<
-			  std::setw(8) << cnf.vars().size() << " variables and " <<
-			  std::setw(8) << cnf.no_of_clauses() << " clauses");
   };
 };
 
@@ -245,10 +231,9 @@ ped2cnf(const basic_pedigree_t<T_GENOTYPE,
 										 T_HAPLOTYPE,
 										 T_PHENOTYPE,
 										 T_ID>& ped,
-		  pedcnf_t& cnf,
-		  const double error_rate) {
+		  pedcnf_t& cnf) {
   ped2cnf_conv_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE, T_ID> conv;
-  conv.convert(ped, cnf, error_rate);
+  conv.convert(ped, cnf);
 }
 
 

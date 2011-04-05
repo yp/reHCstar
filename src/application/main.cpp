@@ -106,8 +106,24 @@ protected:
 		("keep,k", po::bool_switch()->default_value(false),
 		 "Keep temporary files (such as 'cnf-instance-*' and 'res-cnf-instance-*' "
 		 "files for '--create-read'/'-3' mode) after the execution.")
-		("error-rate,e", po::value< double >()->default_value(0.05),
-		 "Maximum error rate.")
+		("global-error,g", po::bool_switch()->default_value(false),
+		 "Enable GLOBAL error handling (i.e., the error rate in each genotype is less or "
+		 "equal than the specified error rate, computed over genotyped loci).")
+		("global-error-rate,e", po::value< double >()->default_value(0.05),
+		 "Maximum error rate in each genotype, computed only over genotyped loci "
+		 "(used only if '--global-error' is specified).")
+		("uniform-error,u", po::bool_switch()->default_value(false),
+		 "Enable UNIFORM error handling (i.e., the number of errors in each window is less "
+		 "or equal than the maximum number of errors).")
+		("max-errors-in-window,m", po::value< unsigned int >()->default_value(4),
+		 "Maximum number of errors in each window "
+		 "(used only if '--uniform-error' is specified).\n"
+		 "*MUST* be less or equal than half window size.")
+		("window-length,w", po::value< unsigned int >()->default_value(16),
+		 "number of typed loci that compose a window "
+		 "(used only if '--uniform-error' is specified).\n"
+		 "*MUST* be a power of 2 and *MUST* be greater than 2.\n"
+		 "Windows overlap each other by half their length.")
 		;
 	 return desc;
   };
@@ -144,6 +160,22 @@ protected:
 	 option_dependency(vm, "solve-internal", "pedigree");
 	 option_dependency(vm, "solve-internal", "haplotypes");
 #endif
+	 option_dependency(vm, "global-error-rate", "global-error");
+	 option_dependency(vm, "max-errors-in-window", "uniform-error");
+	 option_dependency(vm, "window-length", "uniform-error");
+	 if (vm["uniform-error"].as<bool>()) {
+		const unsigned int wlen= vm["window-length"].as<unsigned int>();
+		const unsigned int merr= vm["max-errors-in-window"].as<unsigned int>();
+		if (wlen != pow2_of_floor_log2(wlen)) {
+		  throw std::logic_error(std::string("The window length must be a power of 2."));
+		}
+		if (wlen < 4) {
+		  throw std::logic_error(std::string("The window length must be greater than 2."));
+		}
+		if (merr > (wlen>>1)) {
+		  throw std::logic_error(std::string("The maximum number of errors in a single window must be less or equal then the half the window length."));
+		}
+	 }
 	 return true;
   }
 
@@ -160,10 +192,8 @@ protected:
 		vm["compress"].as<bool>() ||
 		vm["compress-output"].as<bool>();
 
-	 const double error_rate=
-		vm["error-rate"].as<double>();
-
 	 zrhcstar_t zrhcstar;
+	 zrhcstar.prepare_program_options(vm);
 
 // Dispatch the work depending on the program parameters
 #ifndef ONLY_INTERNAL_SAT_SOLVER
@@ -187,8 +217,7 @@ protected:
 		zrhcstar.create_SAT_instance_from_pedigree(*ped_is,
 																 *sat_os,
 																 vector<string>(headers,
-																					 headers+4),
-																 error_rate);
+																					 headers+4));
 
 		INFO("SAT instance successfully created and saved.");
 
@@ -211,7 +240,7 @@ protected:
 		  file_utility::get_file_utility().
 		  get_ofstream(vm["haplotypes"].as<string>(), out_compress);
 		bool is_zrhc=
-		  zrhcstar.compute_HC_from_SAT_results(*ped_is, *res_is, *hap_os, error_rate);
+		  zrhcstar.compute_HC_from_SAT_results(*ped_is, *res_is, *hap_os);
 
 		if (is_zrhc) {
 		  INFO("Zero-Recombinant Haplotype Configuration successfully "
@@ -249,7 +278,7 @@ protected:
 		  zrhcstar.create_SAT_instance_from_pedigree(*ped_is, *sat_os,
 																	vector<string>(headers,
 																						headers+4),
-																	ped, cnf, error_rate);
+																	ped, cnf);
 		}
 
 // Execute the SAT solver
@@ -322,7 +351,7 @@ protected:
 			 file_utility::get_file_utility().
 			 get_ifstream(vm["pedigree"].as<string>(), in_compress);
 		  zrhcstar.prepare_pedigree_and_sat(*ped_is,
-														ped, cnf, error_rate);
+														ped, cnf);
 		}
 
 // Execute the SAT solver

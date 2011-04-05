@@ -87,6 +87,33 @@ pedcnf_t::get_var(const varmap_t& map,
   }
 };
 
+inline bool
+pedcnf_t::has_var(const varmap_t& map,
+						const size_t i1, const size_t i2) const {
+  return get_var(map, i1, i2) != -1;
+};
+
+bool
+pedcnf_t::has_s(const size_t p, const size_t i) const {
+  return has_var(_s, p, i);
+};
+
+bool
+pedcnf_t::has_p(const size_t i, const size_t l) const {
+  return has_var(_p, i, l);
+}
+
+bool
+pedcnf_t::has_m(const size_t i, const size_t l) const {
+  return has_var(_m, i, l);
+};
+
+bool
+pedcnf_t::has_e(const size_t i, const size_t l) const {
+  return has_var(_e, i, l);
+};
+
+
 bool
 pedcnf_t::get_val(const varmap_t& map,
 						const size_t i1, const size_t i2) const {
