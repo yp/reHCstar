@@ -99,12 +99,10 @@ private:
 		cnf.get_m(ind.progr_id(), l);
 	 }
 //   -> e-variables
-	 std::vector<var_t> evars;
 	 for (size_t l= 0; l < ped.genotype_length(); ++l) {
 //    errors only for genotyped loci
 		if (is_genotyped(ind.obs_g(l))) {
-		  const var_t& e= cnf.get_e(ind.progr_id(), l);
-		  evars.push_back(e);
+		  cnf.get_e(ind.progr_id(), l);
 		}
 	 }
   }
