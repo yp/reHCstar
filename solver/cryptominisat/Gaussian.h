@@ -51,11 +51,11 @@ class Clause;
 class Gaussian
 {
 public:
-    Gaussian(Solver& solver, const GaussianConfig& config, const uint32_t matrix_no, const vector<XorClause*>& xorclauses);
+    Gaussian(Solver& solver, const GaussConf& config, const uint32_t matrix_no, const vector<XorClause*>& xorclauses);
     ~Gaussian();
 
     const bool full_init();
-    llbool find_truths(vec<Lit>& learnt_clause, int& conflictC);
+    llbool find_truths(vec<Lit>& learnt_clause, uint64_t& conflictC);
 
     //statistics
     void print_stats() const;
@@ -74,14 +74,14 @@ public:
 
 protected:
     Solver& solver;
-    
+
     //Gauss high-level configuration
-    const GaussianConfig& config;
+    const GaussConf& config;
     const uint32_t matrix_no;
     vector<XorClause*> xorclauses;
 
     enum gaussian_ret {conflict, unit_conflict, propagation, unit_propagation, nothing};
-    gaussian_ret gaussian(Clause*& confl);
+    gaussian_ret gaussian(PropBy& confl);
 
     vector<Var> col_to_var_original; //Matches columns to variables
     BitArray var_is_in; //variable is part of the the matrix. var_is_in's size is _minimal_ so you should check whether var_is_in.getSize() < var before issuing var_is_in[var]
@@ -110,7 +110,7 @@ protected:
     int gauss_last_level;
     vector<pair<Clause*, uint32_t> > clauses_toclear;
     bool disabled; // Gauss is disabled
-    
+
     //State of current elimnation
     vec<uint32_t> propagatable_rows; //used to store which rows were deemed propagatable during elimination
     vector<unsigned char> changed_rows; //used to store which rows were deemed propagatable during elimination
@@ -137,9 +137,9 @@ protected:
     //void update_matrix_by_col(matrixset& matrix, const uint32_t last_level) const;
 
     //conflict&propagation handling
-    gaussian_ret handle_matrix_prop_and_confl(matrixset& m, uint32_t row, Clause*& confl);
+    gaussian_ret handle_matrix_prop_and_confl(matrixset& m, uint32_t row, PropBy& confl);
     void analyse_confl(const matrixset& m, const uint32_t row, int32_t& maxlevel, uint32_t& size, uint32_t& best_row) const; // analyse conflcit to find the best conflict. Gets & returns the best one in 'maxlevel', 'size' and 'best row' (these are all UINT_MAX when calling this function first, i.e. when there is no other possible conflict to compare to the new in 'row')
-    gaussian_ret handle_matrix_confl(Clause*& confl, const matrixset& m, const uint32_t size, const uint32_t maxlevel, const uint32_t best_row);
+    gaussian_ret handle_matrix_confl(PropBy& confl, const matrixset& m, const uint32_t size, const uint32_t maxlevel, const uint32_t best_row);
     gaussian_ret handle_matrix_prop(matrixset& m, const uint32_t row); // Handle matrix propagation at row 'row'
     vec<Lit> tmp_clause;
 
@@ -154,9 +154,9 @@ protected:
     void disable_if_necessary();
     void reset_stats();
     void update_last_one_in_col(matrixset& m);
-    
+
 private:
-    
+
     //debug functions
     bool check_no_conflict(matrixset& m) const; // Are there any conflicts that the matrixset 'm' causes?
     const bool nothing_to_propagate(matrixset& m) const; // Are there any conflicts of propagations that matrixset 'm' clauses?
@@ -193,7 +193,7 @@ inline void Gaussian::canceling(const uint32_t sublevel)
         a++;
     }
     clauses_toclear.resize(clauses_toclear.size()-a);
-    
+
     if (messed_matrix_vars_since_reversal)
         return;
     int c = std::min((int)gauss_last_level, (int)(solver.trail.size())-1);

@@ -47,7 +47,7 @@ clause
 class XorFinder
 {
     public:
-        XorFinder(Solver& _solver, vec<Clause*>& cls, ClauseCleaner::ClauseSetType _type);
+        XorFinder(Solver& _solver, vec<Clause*>& cls);
         const bool fullFindXors(const uint32_t minSize, const uint32_t maxSize);
         void addAllXorAsNorm();
 
@@ -56,18 +56,6 @@ class XorFinder
 
         const bool findXors(uint32_t& sumLengths);
         bool getNextXor(ClauseTable::iterator& begin, ClauseTable::iterator& end, bool& impair);
-
-        struct clause_hasher {
-            size_t operator()(const Clause* c) const
-            {
-                size_t hash = 5381;
-                hash = ((hash << 5) + hash) ^ c->size();
-                for (uint32_t i = 0, size = c->size(); i < size; i++)
-                    hash = ((hash << 5) + hash) ^ (*c)[i].var();
-
-                return hash;
-            }
-        };
 
         /**
         @brief For sorting clauses according to their size&their var content. Clauses' variables must already be sorted
@@ -88,7 +76,7 @@ class XorFinder
                     assert(c2[i].var() <= c2[i+1].var());
                 #endif //DEBUG_XORFIND2
 
-                for (a = c11.first->getData(), b = c22.first->getData(), end = a + c11.first->size(); a != end; a++, b++) {
+                for (a = c11.first->getData(), b = c22.first->getData(), end = c11.first->getDataEnd(); a != end; a++, b++) {
                     if (a->var() != b->var())
                         return (a->var() > b->var());
                 }
@@ -102,15 +90,23 @@ class XorFinder
         };
 
         /**
-        @brief Sorts clauses with equal lenght and variable content according to their literals' signs
+        @brief Sorts clauses with equal length and variable content according to their literals' signs
+
+        NOTE: the length and variable content of c11 and c22 MUST be the same
+
+        Used to avoid the problem of having 2 clauses with exactly the same
+        content being counted as two different clauses (when counting the
+        (im)pairedness of XOR being searched)
         */
         struct clause_sorter_secondary {
             bool operator()(const pair<Clause*, uint32_t>& c11, const pair<Clause*, uint32_t>& c22) const
             {
                 const Clause& c1 = *(c11.first);
                 const Clause& c2 = *(c22.first);
+                assert(c1.size() == c2.size());
 
                 for (uint32_t i = 0, size = c1.size(); i < size; i++) {
+                    assert(c1[i].var() == c2[i].var());
                     if (c1[i].sign() !=  c2[i].sign())
                         return c1[i].sign();
                 }
@@ -145,7 +141,6 @@ class XorFinder
         void addXorAsNormal4(XorClause& c);
 
         vec<Clause*>& cls;
-        ClauseCleaner::ClauseSetType type;
 
         bool clauseEqual(const Clause& c1, const Clause& c2) const;
         bool impairSigns(const Clause& c) const;

@@ -20,7 +20,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "Vec.h"
 #include "Solver.h"
-#include "OnlyNonLearntBins.h"
 #ifdef _MSC_VER
 #include <msvc/stdint.h>
 #else
@@ -45,7 +44,7 @@ binary clauses are not removed.
 */
 class UselessBinRemover {
     public:
-        UselessBinRemover(Solver& solver, OnlyNonLearntBins& onlyNonLearntBins);
+        UselessBinRemover(Solver& solver);
         const bool removeUslessBinFull();
 
     private:
@@ -53,9 +52,9 @@ class UselessBinRemover {
         uint32_t extraTime; ///<Time that cannot be meausured in bogoprops (~propagation time)
 
         //Remove useless binaries
-        const bool fillBinImpliesMinusLast(const Lit& origLit, const Lit& lit, vec<Lit>& wrong);
-        const bool removeUselessBinaries(const Lit& lit);
-        void removeBin(const Lit& lit1, const Lit& lit2);
+        const bool fillBinImpliesMinusLast(const Lit origLit, const Lit lit, vec<Lit>& wrong);
+        const bool removeUselessBinaries(const Lit lit);
+        void removeBin(const Lit lit1, const Lit lit2);
         /**
         @brief Don't delete the same binary twice, and don't assume that deleted binaries still exist
 
@@ -77,17 +76,6 @@ class UselessBinRemover {
         vec<Lit> wrong;
 
         Solver& solver; ///<The solver class e want to remove useless binary clauses from
-        /**
-        @brief This class MUST be filled with all non-learnt binary clauses of solver
-
-        It is imperative not to mix learnt and non-learnt clauses. Otherwise, we
-        might remove a non-learnt clause because it can be reached through
-        learnt clauses, and then the learnt clauses are removed for other
-        reasons (e.g. variable elimination). Then, we messed up our problem, and
-        we will no longer be solving the orignal problem -- the solution might
-        not be correct.
-        */
-        OnlyNonLearntBins& onlyNonLearntBins;
 };
 
 #endif //USELESSBINREMOVER_H

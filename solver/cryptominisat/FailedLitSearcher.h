@@ -15,8 +15,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
-#ifndef FAILEDVARSEARCHER_H
-#define FAILEDVARSEARCHER_H
+#ifndef FAILEDLITSEARCHER_H
+#define FAILEDLITSEARCHER_H
 
 #include <set>
 #include <map>
@@ -47,24 +47,25 @@ Perfoms in asymmBranch(): asymmetric branching, heuristically. Best paper
 on this is 'Vivifying Propositional Clausal Formulae', though we do it much
 more heuristically
 */
-class FailedVarSearcher {
+class FailedLitSearcher {
     public:
-        FailedVarSearcher(Solver& _solver);
+        FailedLitSearcher(Solver& _solver);
 
         const bool search();
-        const bool asymmBranch();
+        const double getTotalTime() const;
 
     private:
         //Main
         const bool tryBoth(const Lit lit1, const Lit lit2);
         const bool tryAll(const Lit* begin, const Lit* end);
-        void printResults(const double myTime, uint32_t numBinAdded) const;
+        void printResults(const double myTime) const;
 
         Solver& solver; ///<The solver we are updating&working with
 
         bool failed; ///<For checking that a specific propagation failed (=conflict). It is used in many places
 
         //bothprop finding
+        vector<uint32_t> propagatedBitSet;
         BitArray propagated; ///<These lits have been propagated by propagating the lit picked
         BitArray propValue; ///<The value (0 or 1) of the lits propagated set in "propagated"
         /**
@@ -114,6 +115,21 @@ class FailedVarSearcher {
             Var var[2];
             bool inverted;
         };
+
+        class BinXorToAdd
+        {
+            public:
+                BinXorToAdd(const Lit _lit1, const Lit _lit2, const bool _isEqualFalse, const uint32_t _group) :
+                    lit1(_lit1)
+                    , lit2(_lit2)
+                    , isEqualFalse(_isEqualFalse)
+                    , group(_group)
+                {}
+                Lit lit1;
+                Lit lit2;
+                bool isEqualFalse;
+                uint32_t group;
+        };
         const TwoLongXor getTwoLongXor(const XorClause& c);
         void addFromSolver(const vec<XorClause*>& cs);
         void removeVarFromXors(const Var var);
@@ -127,6 +143,7 @@ class FailedVarSearcher {
         std::set<TwoLongXor> twoLongXors;
         bool binXorFind;
         uint32_t lastTrailSize;
+        vector<BinXorToAdd> binXorToAdd;
 
         /**
         @brief Num. 2-long xor-found through Le Berre paper
@@ -138,35 +155,49 @@ class FailedVarSearcher {
         uint32_t bothInvert;
 
         //finding HyperBins
-        /**
-        @brief For sorting literals according to their in-degree
-
-        Used to add the hyper-binary clause to the literal that makes the most
-        sense -- not the most trivial, but the one where it will make the most
-        impact (impact = makes the most routes in the graph longer)
-        */
-        struct litOrder
+        struct LitOrder2
         {
-            litOrder(const vector<uint32_t>& _litDegrees) :
-            litDegrees(_litDegrees)
+            LitOrder2(const vec<BinPropData>& _binPropData) :
+            binPropData(_binPropData)
             {}
 
-            bool operator () (const Lit& x, const Lit& y) {
-                return litDegrees[x.toInt()] > litDegrees[y.toInt()];
+            const bool operator () (const Lit x, const Lit y) const
+            {
+                return binPropData[x.var()].lev > binPropData[y.var()].lev;
             }
 
-            const vector<uint32_t>& litDegrees;
+            const vec<BinPropData>& binPropData;
         };
-        void hyperBinResolution(const Lit& lit);
+        struct BinAddData
+        {
+            vector<Lit> lits;
+            Lit lit;
+        };
+        struct BinAddDataSorter
+        {
+            const bool operator() (const BinAddData& a, const BinAddData& b) const
+            {
+                return (a.lits.size() > b.lits.size());
+            }
+        };
+        void addMyImpliesSetAsBins(Lit lit, int32_t& difference);
+
+        uint32_t addedBin;
+        void hyperBinResolution(const Lit lit);
         BitArray unPropagatedBin;
+        BitArray needToVisit;
         vec<Var> propagatedVars;
-        void addBin(const Lit& lit1, const Lit& lit2);
-        void fillImplies(const Lit& lit);
-        BitArray myimplies; ///<variables that have been set by a lit propagated only at the binary level
+        void addBin(const Lit lit1, const Lit lit2);
+        void fillImplies(const Lit lit);
         vec<Var> myImpliesSet; ///<variables set in myimplies
         uint64_t hyperbinProps; ///<Number of bogoprops done by the hyper-binary resolution function hyperBinResolution()
-        vector<uint32_t> litDegrees;
-        const bool orderLits();
+
+        //bin-removal within hyper-bin-res
+        vec<Lit> uselessBin;
+        uint32_t removedUselessLearnt;
+        uint32_t removedUselessNonLearnt;
+        BitArray dontRemoveAncestor;
+        vec<Var> toClearDontRemoveAcestor;
         /**
         @brief Controls hyper-binary resolution's time-usage
 
@@ -196,35 +227,17 @@ class FailedVarSearcher {
         uint32_t goodBothSame;  ///<Records num. of literals that have been propagated to the same value by both "var" and "~var"
 
         //State between runs
-        bool finishedLastTimeVar;      ///<Did we finish going through all vars last time we launched search() ?
-        uint32_t lastTimeWentUntilVar; ///<Last time we executed search() we went until this variable number (then time was up)
-        bool finishedLastTimeBin;      ///<Currently not used, but should be used when reasoning on clause (a OR b) is enabled
-        uint32_t lastTimeWentUntilBin; ///<Currently not used, but should be used when reasoning on clause (a OR b) is enabled
-
+        double totalTime;
         double numPropsMultiplier; ///<If last time we called search() all went fine, then this is incremented, so we do more searching this time
         uint32_t lastTimeFoundTruths; ///<Records how many unit clauses we found last time we called search()
-
-        /**
-        @brief Records data for asymmBranch()
-
-        Clauses are ordered accurding to sze in asymmBranch() and then some are
-        checked if we could shorten them. This value records that between calls
-        to asymmBranch() where we stopped last time in the list
-        */
-        uint32_t asymmLastTimeWentUntil;
-        /**
-        @brief Used in asymmBranch() to sort clauses according to size
-        */
-        struct sortBySize
-        {
-            const bool operator () (const Clause* x, const Clause* y)
-            {
-              return (x->size() > y->size());
-            }
-        };
-
         uint32_t numCalls; ///<Number of times search() has been called
+        uint32_t lastTimeStopped;
 };
+
+inline const double FailedLitSearcher::getTotalTime() const
+{
+    return totalTime;
+}
 
 
 #endif //FAILEDVARSEARCHER_H

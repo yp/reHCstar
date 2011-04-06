@@ -27,7 +27,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include <stdint.h>
 #endif //_MSC_VER
 
-#ifdef _MSC_VER
+#if defined (_MSC_VER) || defined(CROSS_COMPILE)
 #include <ctime>
 
 static inline double cpuTime(void)
@@ -35,14 +35,6 @@ static inline double cpuTime(void)
     return (double)clock() / CLOCKS_PER_SEC;
 }
 #else //_MSC_VER
-#ifdef CROSS_COMPILE
-#include <ctime>
-
-static inline double cpuTime(void)
-{
-    return (double)clock() / CLOCKS_PER_SEC;
-}
-#else //CROSS_COMPILE
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <unistd.h>
@@ -50,14 +42,25 @@ static inline double cpuTime(void)
 static inline double cpuTime(void)
 {
     struct rusage ru;
+    #ifdef RUSAGE_THREAD
+    getrusage(RUSAGE_THREAD, &ru);
+    #else
     getrusage(RUSAGE_SELF, &ru);
-    return (double)ru.ru_utime.tv_sec + (double)ru.ru_utime.tv_usec / 1000000;
+    #endif
+    return (double)ru.ru_utime.tv_sec + (double)ru.ru_utime.tv_usec / 1000000.0;
+}
+
+static inline double cpuTimeTotal(void)
+{
+    struct rusage ru;
+    getrusage(RUSAGE_SELF, &ru);
+    return (double)ru.ru_utime.tv_sec + (double)ru.ru_utime.tv_usec / 1000000.0;
 }
 #endif //CROSS_COMPILE
-#endif //_MSC_VER
 
 
 #if defined(__linux__)
+#include <stdio.h>
 static inline int memReadStat(int field)
 {
     char    name[256];
@@ -66,9 +69,11 @@ static inline int memReadStat(int field)
     FILE*   in = fopen(name, "rb");
     if (in == NULL) return 0;
     int     value;
-	 int     rvalue= 1;
-	 for (; (field >= 0) && (rvalue == 1); field--)
-        rvalue= fscanf(in, "%d", &value);
+
+    int rvalue= 1;
+    for (; (field >= 0) && (rvalue == 1); field--)
+        rvalue = fscanf(in, "%d", &value);
+
     fclose(in);
     return value;
 }

@@ -26,11 +26,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "PackedRow.h"
 
-class GaussianConfig
+class GaussConf
 {
     public:
-    
-    GaussianConfig() :
+
+    GaussConf() :
         only_nth_gauss_save(2)
         , decision_until(0)
         , dontDisable(false)
@@ -42,7 +42,7 @@ class GaussianConfig
         , maxNumMatrixes(3)
     {
     }
-        
+
     //tuneable gauss parameters
     uint32_t only_nth_gauss_save;  //save only every n-th gauss matrix
     uint32_t decision_until; //do Gauss until this level
