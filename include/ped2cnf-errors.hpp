@@ -109,6 +109,22 @@ public:
 
 };
 
+class whole_pedigree_genotype_error_handler_t
+  :public error_handler_t
+{
+private:
+  const double _error_rate;
+
+  virtual void
+  _handle_errors(pedcnf_t& cnf, const individuals_errors_t& errors) const;
+
+public:
+  whole_pedigree_genotype_error_handler_t(const double error_rate)
+		:_error_rate(error_rate)
+  {};
+
+};
+
 
 class windowed_error_handler_t
   :public error_handler_t

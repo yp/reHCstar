@@ -87,6 +87,19 @@ whole_individual_genotype_error_handler_t::_handle_errors(pedcnf_t& cnf,
 };
 
 void
+whole_pedigree_genotype_error_handler_t::_handle_errors(pedcnf_t& cnf,
+																		  const individuals_errors_t& errors) const {
+  individual_errors_t all_errs;
+  BOOST_FOREACH(const individual_errors_t& ierr, errors) {
+	 all_errs.insert(all_errs.end(), ierr.begin(), ierr.end());
+  }
+  const size_t k= std::ceil(_error_rate*all_errs.size());
+  DEBUG("Generating cardinality constraints for " << all_errs.size() <<
+		  " error variables (<= " << k << ")...");
+  add_card_constraint_less_or_equal_than(cnf, all_errs, k);
+};
+
+void
 windowed_error_handler_t::_handle_errors(pedcnf_t& cnf,
 													  const individuals_errors_t& errors) const {
   BOOST_FOREACH(const individual_errors_t& ierr, errors) {

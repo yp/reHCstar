@@ -64,6 +64,13 @@ public:
 		const double err_rate= vm["global-error-rate"].as<double>();
 		L_INFO("Enabling *GLOBAL* error handling ("
 				 "error-rate=" << err_rate << ")");
+		err_handler.add(new whole_pedigree_genotype_error_handler_t(err_rate));
+		has_error= true;
+	 }
+	 if (vm["individual-error"].as<bool>()) {
+		const double err_rate= vm["individual-error-rate"].as<double>();
+		L_INFO("Enabling *INDIVIDUAL* error handling ("
+				 "error-rate=" << err_rate << ")");
 		err_handler.add(new whole_individual_genotype_error_handler_t(err_rate));
 		has_error= true;
 	 }

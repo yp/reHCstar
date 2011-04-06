@@ -107,11 +107,17 @@ protected:
 		 "Keep temporary files (such as 'cnf-instance-*' and 'res-cnf-instance-*' "
 		 "files for '--create-read'/'-3' mode) after the execution.")
 		("global-error,g", po::bool_switch()->default_value(false),
-		 "Enable GLOBAL error handling (i.e., the error rate in each genotype is less or "
-		 "equal than the specified error rate, computed over genotyped loci).")
-		("global-error-rate,e", po::value< double >()->default_value(0.05),
+		 "Enable GLOABL error handling (i.e., the global error rate in the whole pedigree is "
+		 "less or equal than the specified error rate, computed over genotyped loci).")
+		("global-error-rate", po::value< double >()->default_value(0.05),
 		 "Maximum error rate in each genotype, computed only over genotyped loci "
 		 "(used only if '--global-error' is specified).")
+		("individual-error,i", po::bool_switch()->default_value(false),
+		 "Enable INDIVIDUAL error handling (i.e., the error rate in each genotype is less or "
+		 "equal than the specified error rate, computed over genotyped loci).")
+		("individual-error-rate,e", po::value< double >()->default_value(0.05),
+		 "Maximum error rate in each genotype, computed only over genotyped loci "
+		 "(used only if '--individual-error' is specified).")
 		("uniform-error,u", po::bool_switch()->default_value(false),
 		 "Enable UNIFORM error handling (i.e., the number of errors in each window is less "
 		 "or equal than the maximum number of errors).")
@@ -161,6 +167,7 @@ protected:
 	 option_dependency(vm, "solve-internal", "haplotypes");
 #endif
 	 option_dependency(vm, "global-error-rate", "global-error");
+	 option_dependency(vm, "individual-error-rate", "individual-error");
 	 option_dependency(vm, "max-errors-in-window", "uniform-error");
 	 option_dependency(vm, "window-length", "uniform-error");
 	 if (vm["uniform-error"].as<bool>()) {
