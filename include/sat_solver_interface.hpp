@@ -74,6 +74,7 @@
 #include <set>
 
 #include "Solver.h"
+#include "SolverConf.h"
 
 
 class SAT_solver_iface_t
@@ -89,7 +90,15 @@ private:
 public:
   SAT_solver_iface_t()
 		:_solver(new Solver()), _solved(false), _sat(false)
-  {};
+  {
+	 SolverConf& conf= _solver->conf;
+	 conf.verbosity= 1;
+	 conf.doFindXors= false;
+	 conf.doFindEqLits= false;
+	 conf.doRegFindEqLits= false;
+	 conf.libraryUsage= true;
+	 conf.restrictPickBranch= 0;
+  };
 
   ~SAT_solver_iface_t() {
 	 delete _solver;
