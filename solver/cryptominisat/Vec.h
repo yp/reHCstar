@@ -22,12 +22,17 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 #include <cstdlib>
 #include <cassert>
+#include <iostream>
 #include <new>
 #ifdef _MSC_VER
 #include <msvc/stdint.h>
 #else
 #include <stdint.h>
 #endif //_MSC_VER
+
+#include <malloc.h>
+#include <string.h>
+
 
 //=================================================================================================
 // Automatically resizable arrays
@@ -50,7 +55,7 @@ class vec {
     static inline uint32_t imax(int x, int y) {
         int mask = (y-x) >> (sizeof(int)*8-1);
         return (x&mask) + (y&(~mask)); }
-    
+
     void     myCopy (const vec<T>& other);
 
 public:
@@ -82,11 +87,28 @@ public:
     void     growTo (uint32_t size, const T& pad);
     void     clear  (bool dealloc = false);
     void     capacity (uint32_t size) { grow(size); }
+    const bool empty() const {return size() == 0;}
+
+    typedef T* iterator;
+    typedef const T* const_iterator;
 
     // Stack interface:
     void     reserve(uint32_t res)     { if (cap < res) {cap = res; data = (T*)realloc(data, cap * sizeof(T));}}
-    void     push  (void)              { if (sz == cap) { cap = imax(2, (cap*3+1)>>1); data = (T*)realloc(data, cap * sizeof(T)); } new (&data[sz]) T(); sz++; }
-    void     push  (const T& elem)     { if (sz == cap) { cap = imax(2, (cap*3+1)>>1); data = (T*)realloc(data, cap * sizeof(T)); } data[sz++] = elem; }
+    void     push  (void)
+    {
+        if (sz == cap) {
+            grow(cap+1);
+        }
+        new (&data[sz]) T();
+        sz++;
+    }
+    void     push  (const T& elem)
+    {
+        if (sz == cap) {
+            grow(cap+1);
+        }
+        data[sz++] = elem;
+    }
     void     push_ (const T& elem)     { assert(sz < cap); data[sz++] = elem; }
 
     const T& last  (void) const        { return data[sz-1]; }
@@ -107,7 +129,8 @@ void vec<T>::grow(uint32_t min_cap) {
     if (min_cap <= cap) return;
     if (cap == 0) cap = (min_cap >= 2) ? min_cap : 2;
     else          do cap = (cap*3+1) >> 1; while (cap < min_cap);
-    data = (T*)realloc(data, cap * sizeof(T)); }
+    data = (T*)realloc(data, cap * sizeof(T));
+}
 
 template<class T>
 void vec<T>::growTo(uint32_t size, const T& pad) {
@@ -122,7 +145,7 @@ void vec<T>::growTo(uint32_t size) {
     grow(size);
     for (uint32_t i = sz; i != size; i++) new (&data[i]) T();
     sz = size; }
-    
+
 template<class T>
 void vec<T>::myCopy(const vec<T>& other) {
     assert(sz == 0);
@@ -135,7 +158,13 @@ void vec<T>::clear(bool dealloc) {
     if (data != NULL){
         for (uint32_t i = 0; i != sz; i++) data[i].~T();
         sz = 0;
-        if (dealloc) free(data), data = NULL, cap = 0; } }
+        if (dealloc) {
+            free(data);
+            data = NULL;
+            cap = 0;
+        }
+    }
+}
 
 
 #endif

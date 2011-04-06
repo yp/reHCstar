@@ -28,6 +28,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "ClauseOffset.h"
 #include "SolverTypes.h"
+#include <stdio.h>
+#include <limits>
+#include "constants.h"
 
 /**
 @brief An element in the watchlist. Natively contains 2- and 3-long clauses, others are referenced by pointer
@@ -42,29 +45,35 @@ offset (as per ClauseAllocator ), in the case of normal clauses
 class Watched {
     public:
         /**
-        @brief Constructor for a >3-long normal clause
+        @brief Constructor for a long normal clause
         */
         Watched(const ClauseOffset offset, Lit blockedLit)
         {
-            data1 = (uint32_t)1 + (blockedLit.toInt() << 2);
-            data2 = (uint32_t)offset;
+            data1 = blockedLit.toInt();
+            data2 = (uint32_t)1 + ((uint32_t)offset << 2);
         }
+
+        Watched() :
+            data1 (std::numeric_limits<uint32_t>::max())
+            , data2(std::numeric_limits<uint32_t>::max())
+        {}
 
         /**
         @brief Constructor for an xor-clause
         */
         Watched(const ClauseOffset offset)
         {
-            data1 = (uint32_t)2;
-            data2 = (uint32_t)offset;
+            data1 = (uint32_t)offset;
+            data2 = (uint32_t)2;
         }
 
         /**
         @brief Constructor for a binary clause
         */
-        Watched(const Lit lit)
+        Watched(const Lit lit, const bool learnt)
         {
-            data1 = (uint32_t)0 + (lit.toInt() << 2);
+            data1 = lit.toInt();
+            data2 = (uint32_t)0 + (((uint32_t)learnt) << 2);
         }
 
         /**
@@ -72,13 +81,24 @@ class Watched {
         */
         Watched(const Lit lit1, const Lit lit2)
         {
-            data1 = (uint32_t)3 + (lit1.toInt() << 2);
-            data2 = lit2.toInt();
+            data1 = lit1.toInt();
+            data2 = (uint32_t)3 + (lit2.toInt()<< 2);
         }
 
-        void setOffset(const ClauseOffset offset)
+        void setNormOffset(const ClauseOffset offset)
         {
-            data2 = (uint32_t)offset;
+            #ifdef DEBUG_WATCHED
+            assert(isClause());
+            #endif
+            data2 = (uint32_t)1 + ((uint32_t)offset << 2);
+        }
+
+        void setXorOffset(const ClauseOffset offset)
+        {
+            #ifdef DEBUG_WATCHED
+            assert(isXorClause());
+            #endif
+            data1 = (uint32_t)offset;
         }
 
         /**
@@ -89,32 +109,32 @@ class Watched {
             #ifdef DEBUG_WATCHED
             assert(isClause());
             #endif
-            data1 = (uint32_t)1 + (lit.toInt() << 2);
-        }
-
-        void setClause()
-        {
-            data1 = 1;
+            data1 = lit.toInt();
         }
 
         const bool isBinary() const
         {
-            return ((data1&3) == 0);
+            return ((data2&3) == 0);
+        }
+
+        const bool isNonLearntBinary() const
+        {
+            return (data2 == 0);
         }
 
         const bool isClause() const
         {
-            return ((data1&3) == 1);
+            return ((data2&3) == 1);
         }
 
         const bool isXorClause() const
         {
-            return ((data1&3) == 2);
+            return ((data2&3) == 2);
         }
 
         const bool isTriClause() const
         {
-            return ((data1&3) == 3);
+            return ((data2&3) == 3);
         }
 
         /**
@@ -126,6 +146,34 @@ class Watched {
             assert(isBinary() || isTriClause());
             #endif
             return data1AsLit();
+        }
+
+        /**
+        @brief Set the sole other lit of the binary clause
+        */
+        void setOtherLit(const Lit lit)
+        {
+            #ifdef DEBUG_WATCHED
+            assert(isBinary() || isTriClause());
+            #endif
+            data1 = lit.toInt();
+        }
+
+        const bool getLearnt() const
+        {
+            #ifdef DEBUG_WATCHED
+            assert(isBinary());
+            #endif
+            return (bool)(data2 >> 2);
+        }
+
+        void setLearnt(const bool learnt)
+        {
+            #ifdef DEBUG_WATCHED
+            assert(isBinary());
+            assert(learnt == false);
+            #endif
+            data2 = (uint32_t)0 + (((uint32_t)learnt) << 2);
         }
 
         /**
@@ -153,27 +201,47 @@ class Watched {
         /**
         @brief Get offset of a >3-long normal clause or of an xor clause (which may be 3-long)
         */
-        const ClauseOffset getOffset() const
+        const ClauseOffset getNormOffset() const
         {
             #ifdef DEBUG_WATCHED
-            assert(isClause() || isXorClause());
+            assert(isClause());
             #endif
-            return (ClauseOffset)(data2);
+            return (ClauseOffset)(data2 >> 2);
+        }
+
+        const ClauseOffset getXorOffset() const
+        {
+            #ifdef DEBUG_WATCHED
+            assert(isXorClause());
+            #endif
+            return (ClauseOffset)(data1);
+        }
+
+        void dump(FILE* outfile, const Lit lit) const
+        {
+            assert(isBinary());
+            lit.print(outfile);
+            getOtherLit().printFull(outfile);
+        }
+
+        void setNormClause()
+        {
+            data2 = 1;
         }
 
     private:
         const Lit data1AsLit() const
         {
-            return (Lit::toLit(data1>>2));
+            return (Lit::toLit(data1));
         }
 
         const Lit data2AsLit() const
         {
-            return (Lit::toLit(data2));
+            return (Lit::toLit(data2>>2));
         }
 
-        uint32_t data1; ///<Either the other lit (for bin clauses) or the blocked lit it stored here
-        uint32_t data2; ///<Either the offset (for >3-long normal, or xor clauses) or the 3rd literal (for 3-long clauses) is stored here
+        uint32_t data1;
+        uint32_t data2;
 };
 
 /**

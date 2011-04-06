@@ -1,28 +1,19 @@
-/***********************************************************************************[SolverTypes.h]
+/*****************************************************************************
 MiniSat -- Copyright (c) 2003-2006, Niklas Een, Niklas Sorensson
+glucose -- Gilles Audemard, Laurent Simon (2008)
 CryptoMiniSat -- Copyright (c) 2009 Mate Soos
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-associated documentation files (the "Software"), to deal in the Software without restriction,
-including without limitation the rights to use, copy, modify, merge, publish, distribute,
-sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or
-substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
-NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
-OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-**************************************************************************************************/
+Original code by MiniSat and glucose authors are under an MIT licence.
+Modifications for CryptoMiniSat are under GPLv3 licence.
+******************************************************************************/
 
 
 #ifndef SOLVERTYPES_H
 #define SOLVERTYPES_H
 
 #include <cassert>
+#include <iostream>
+#include <Vec.h>
 #ifdef _MSC_VER
 #include <msvc/stdint.h>
 #else
@@ -30,6 +21,8 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #endif //_MSC_VER
 
 #include <stdio.h>
+#include <vector>
+#include "constants.h"
 
 //=================================================================================================
 // Variables, literals, lifted booleans, clauses:
@@ -89,7 +82,7 @@ public:
     }
     inline void print(FILE* outfile = stdout) const
     {
-        fprintf(outfile,"%s%d", sign() ? "-" : "", var()+1);
+        fprintf(outfile,"%s%d ", sign() ? "-" : "", var()+1);
     }
     inline void printFull(FILE* outfile = stdout) const
     {
@@ -103,6 +96,36 @@ public:
 
 const Lit lit_Undef(var_Undef, false);  // Useful special constants.
 const Lit lit_Error(var_Undef, true );  //
+
+inline std::ostream& operator<<(std::ostream& cout, const Lit& lit)
+{
+    cout << (lit.sign() ? "-" : "") << (lit.var() + 1);
+    return cout;
+}
+
+inline std::ostream& operator<<(std::ostream& cout, const vec<Lit>& lits)
+{
+    for (uint32_t i = 0; i < lits.size(); i++) {
+        cout << lits[i] << " ";
+    }
+    return cout;
+}
+
+inline void printClause(FILE* outFile, const std::vector<Lit>& clause)
+{
+    for (size_t i = 0; i < clause.size(); i++) {
+        fprintf(outFile,"%s%d ", clause[i].sign() ? "-" : "", clause[i].var()+1);
+    }
+    fprintf(outFile, "0\n");
+}
+
+inline void printClause(FILE* outFile, const vec<Lit>& clause)
+{
+    for (uint32_t i = 0; i < clause.size(); i++) {
+        fprintf(outFile,"%s%d ", clause[i].sign() ? "-" : "", clause[i].var()+1);
+    }
+    fprintf(outFile, "0\n");
+}
 
 //=================================================================================================
 // Lifted booleans:
@@ -158,6 +181,14 @@ const lbool l_True  = toLbool( 1);
 const lbool l_False = toLbool(-1);
 const lbool l_Undef = toLbool( 0);
 
+inline std::ostream& operator<<(std::ostream& cout, const lbool val)
+{
+    if (val == l_True) cout << "l_True";
+    if (val == l_False) cout << "l_False";
+    if (val == l_Undef) cout << "l_Undef";
+    return cout;
+}
+
 
 /**
 @brief A very hackish lbool that also supports l_Nothing and l_Continue
@@ -187,5 +218,27 @@ const llbool l_Nothing  = toLbool(2);
 const llbool l_Continue = toLbool(3);
 
 lbool::lbool(llbool b) : value(b.value) {};
+
+inline std::ostream& operator<<(std::ostream& os, const llbool val)
+{
+    if (val == l_True) os << "l_True";
+    if (val == l_False) os << "l_False";
+    if (val == l_Undef) os << "l_Undef";
+    if (val == l_Nothing) os << "l_Nothing";
+    if (val == l_Continue) os << "l_Continue";
+    return os;
+}
+
+enum { polarity_true = 0, polarity_false = 1, polarity_rnd = 3, polarity_auto = 4};
+
+struct BinPropData {
+    uint32_t lev;
+    Lit lev1Ancestor;
+    bool learntLeadHere;
+    bool hasChildren;
+};
+
+
+
 
 #endif //SOLVERTYPES_H

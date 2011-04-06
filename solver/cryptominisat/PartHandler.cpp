@@ -31,7 +31,7 @@ PartHandler::PartHandler(Solver& s) :
 
 const bool PartHandler::handle()
 {
-    if (solver.doReplace == false)
+    if (solver.conf.doReplace == false)
         return true;
 
     PartFinder partFinder(solver);
@@ -59,18 +59,16 @@ const bool PartHandler::handle()
     for (uint32_t it = 0; it < sizes.size()-1; it++) {
         uint32_t part = sizes[it].first;
         vector<Var> vars = reverseTable[part];
-        if (solver.verbosity >= 1)
+        if (solver.conf.verbosity  >= 1)
             std::cout << "c Solving part " << part << std::endl;
 
         Solver newSolver;
         configureNewSolver(newSolver);
         moveVariablesBetweenSolvers(newSolver, vars, part, partFinder);
 
-        assert(solver.varReplacer->getClauses().size() == 0);
+        moveBinClauses(newSolver, part, partFinder);
         moveClauses(solver.clauses, newSolver, part, partFinder);
-        moveClauses(solver.binaryClauses, newSolver, part, partFinder);
         moveClauses(solver.xorclauses, newSolver, part, partFinder);
-        moveLearntClauses(solver.binaryClauses, newSolver, part, partFinder);
         moveLearntClauses(solver.learnts, newSolver, part, partFinder);
         assert(checkClauseMovement(newSolver, part, partFinder));
 
@@ -95,7 +93,7 @@ const bool PartHandler::handle()
         for (uint32_t i = 0; i < newSolver.trail.size(); i++) {
             solver.uncheckedEnqueue(newSolver.trail[i]);
         }
-        solver.ok = (solver.propagate().isNULL());
+        solver.ok = (solver.propagate<false>().isNULL());
         assert(solver.ok);
 
         for (Var var = 0; var < newSolver.nVars(); var++) {
@@ -110,14 +108,14 @@ const bool PartHandler::handle()
             }
         }
 
-        if (solver.verbosity >= 1) {
+        if (solver.conf.verbosity  >= 1) {
             std::cout << "c Solved part" << std::endl;
             std::cout << "c "
             << "========================================================================================="
             << std::endl;
         }
     }
-    if (solver.verbosity >= 1) {
+    if (solver.conf.verbosity  >= 1) {
         std::cout << "c Coming back to original instance"
         << std::endl;
         std::cout << "c "
@@ -151,32 +149,15 @@ need to pass all configurations from the original solver to the sub-solver.
 void PartHandler::configureNewSolver(Solver& newSolver) const
 {
     newSolver.mtrand.seed(solver.mtrand.randInt());
-    newSolver.random_var_freq = solver.random_var_freq;
-    newSolver.verbosity = solver.verbosity;
-    newSolver.restrictedPickBranch = solver.restrictedPickBranch;
-    newSolver.greedyUnbound = solver.greedyUnbound;
-    newSolver.findNormalXors = solver.findNormalXors;
-    newSolver.findBinaryXors = solver.findBinaryXors;
-    newSolver.regFindBinaryXors = solver.regFindBinaryXors;
-    newSolver.conglomerateXors = solver.conglomerateXors;
-    newSolver.schedSimplification = solver.schedSimplification;
-    newSolver.doReplace = solver.doReplace;
-    newSolver.failedVarSearch = solver.failedVarSearch;
-    newSolver.gaussconfig.dontDisable = solver.gaussconfig.dontDisable;
-    newSolver.heuleProcess = solver.heuleProcess;
-    newSolver.doSubsumption = solver.doSubsumption;
-    newSolver.doPartHandler = solver.doPartHandler;
-    newSolver.fixRestartType = solver.fixRestartType;
-    newSolver.var_inc = solver.var_inc;
-    newSolver.polarity_mode = solver.polarity_mode;
+    newSolver.conf = solver.conf;
+    newSolver.gaussconfig = solver.gaussconfig;
 
     //Memory-usage reduction
-    newSolver.schedSimplification = false;
-    newSolver.doSubsumption = false;
-    newSolver.doXorSubsumption = false;
-    newSolver.doPartHandler = false;
-    newSolver.subsWNonExistBins = false;
-    newSolver.regSubsWNonExistBins = false;
+    newSolver.conf.doSchedSimp = false;
+    newSolver.conf.doSatELite = false;
+    newSolver.conf.doXorSubsumption = false;
+    newSolver.conf.doPartHandler = false;
+    newSolver.conf.doSubsWNonExistBins = false;
 }
 
 /**
@@ -224,7 +205,7 @@ const bool PartHandler::checkClauseMovement(const Solver& thisSolver, const uint
         return false;
     if (!checkOnlyThisPart(thisSolver.learnts, part, partFinder))
         return false;
-    if (!checkOnlyThisPart(thisSolver.binaryClauses, part, partFinder))
+    if (!checkOnlyThisPartBin(thisSolver, part, partFinder))
         return false;
     if (!checkOnlyThisPart(thisSolver.xorclauses, part, partFinder))
         return false;
@@ -251,6 +232,28 @@ const bool PartHandler::checkOnlyThisPart(const vec<T*>& cs, const uint32_t part
     return true;
 }
 
+const bool PartHandler::checkOnlyThisPartBin(const Solver& thisSolver, const uint32_t part, const PartFinder& partFinder) const
+{
+    bool retval = true;
+    uint32_t wsLit = 0;
+    for (const vec2<Watched> *it = thisSolver.watches.getData(), *end = thisSolver.watches.getDataEnd(); it != end; it++, wsLit++) {
+        const Lit lit = ~Lit::toLit(wsLit);
+        const vec2<Watched>& ws = *it;
+        for (vec2<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
+            if (it2->isBinary()) {
+                if (partFinder.getVarPart(lit.var()) != part
+                    || partFinder.getVarPart(it2->getOtherLit().var()) != part
+                    ) {
+                    std::cout << "bin incorrectly moved to this part:" << lit << " , " << it2->getOtherLit() << std::endl;
+                    retval = false;
+                }
+            }
+        }
+    }
+
+    return retval;
+}
+
 /**
 @brief Move clauses from original to the part
 
@@ -261,23 +264,107 @@ void PartHandler::moveClauses(vec<Clause*>& cs, Solver& newSolver, const uint32_
 {
     Clause **i, **j, **end;
     for (i = j = cs.getData(), j = i , end = i + cs.size(); i != end; i++) {
-        if ((**i).learnt() || partFinder.getVarPart((**i)[0].var()) != part) {
-            *j++ = *i;
-            continue;
+        Clause& c = **i;
+        if (!c.learnt()) {
+            if (partFinder.getVarPart(c[0].var()) != part) {
+                //different part, move along
+                *j++ = *i;
+                continue;
+            }
+            //later we will move it
         }
-        solver.detachClause(**i);
+        if (c.learnt()) {
+            bool thisPart = false;
+            bool otherPart = false;
+            for (Lit* l = c.getData(), *end2 = c.getDataEnd(); l != end2; l++) {
+                if (partFinder.getVarPart(l->var()) == part) thisPart = true;
+                if (partFinder.getVarPart(l->var()) != part) otherPart = true;
+            }
+            //in both parts, remove it
+            if (thisPart && otherPart) {
+                solver.detachClause(c);
+                solver.clauseAllocator.clauseFree(&c);
+                continue;
+            }
+            if (!thisPart) {
+                //different part, move along
+                *j++ = *i;
+                continue;
+            }
+            assert(thisPart && !otherPart);
+        }
+
+        solver.detachClause(c);
         #ifdef VERBOSE_DEBUG
         std::cout << "clause in this part:"; (**i).plainPrint();
         #endif
 
-        Clause& c = **i;
         vec<Lit> tmp(c.size());
         std::copy(c.getData(), c.getDataEnd(), tmp.getData());
         newSolver.addClause(tmp, c.getGroup());
-        //NOTE: we need the CS because otherwise, the addClause could have changed **i, which we need to re-add later!
+        //NOTE: we need the tmp because otherwise, the addClause could have changed "c", which we need to re-add later!
         clausesRemoved.push(*i);
     }
     cs.shrink(i-j);
+}
+
+void PartHandler::moveBinClauses(Solver& newSolver, const uint32_t part, PartFinder& partFinder)
+{
+    uint32_t numRemovedHalfNonLearnt = 0;
+    uint32_t numRemovedHalfLearnt = 0;
+
+    uint32_t wsLit = 0;
+    for (vec2<Watched> *it = solver.watches.getData(), *end = solver.watches.getDataEnd(); it != end; it++, wsLit++) {
+        const Lit lit = ~Lit::toLit(wsLit);
+        vec2<Watched>& ws = *it;
+
+        vec2<Watched>::iterator i = ws.getData();
+        vec2<Watched>::iterator j = i;
+        for (vec2<Watched>::iterator end2 = ws.getDataEnd(); i != end2; i++) {
+            if (i->isBinary()
+                && (partFinder.getVarPart(lit.var()) == part || partFinder.getVarPart(i->getOtherLit().var()) == part))
+            {
+                const Lit lit2 = i->getOtherLit();
+                assert((partFinder.getVarPart(lit2.var()) == part && partFinder.getVarPart(lit.var()) == part) || i->getLearnt());
+
+                //If it's learnt and the lits are in different parts, remove it.
+                if (partFinder.getVarPart(lit.var()) != part
+                    || partFinder.getVarPart(lit2.var()) != part
+                    ) {
+                    assert(i->getLearnt());
+                    numRemovedHalfLearnt++;
+                    continue;
+                }
+
+                assert(lit != lit2);
+                if (lit < lit2) { //don't add the same clause twice
+                    vec<Lit> lits(2);
+                    lits[0] = lit;
+                    lits[1] = lit2;
+                    assert(partFinder.getVarPart(lit.var()) == part);
+                    assert(partFinder.getVarPart(lit2.var()) == part);
+                    if (i->getLearnt()) {
+                        newSolver.addLearntClause(lits);
+                        binClausesRemoved.push_back(std::make_pair(lit, lit2));
+                        numRemovedHalfLearnt++;
+                    } else {
+                        newSolver.addClause(lits);
+                        numRemovedHalfNonLearnt++;
+                    }
+                } else {
+                    if (i->getLearnt()) numRemovedHalfLearnt++;
+                    else numRemovedHalfNonLearnt++;
+                }
+            } else {
+                *j++ = *i;
+            }
+        }
+        ws.shrink_(i-j);
+    }
+
+    solver.learnts_literals -= numRemovedHalfLearnt;
+    solver.clauses_literals -= numRemovedHalfNonLearnt;
+    solver.numBins -= (numRemovedHalfLearnt + numRemovedHalfNonLearnt)/2;
 }
 
 /**
@@ -303,7 +390,7 @@ void PartHandler::moveClauses(vec<XorClause*>& cs, Solver& newSolver, const uint
         vec<Lit> tmp(c.size());
         std::copy(c.getData(), c.getDataEnd(), tmp.getData());
         newSolver.addXorClause(tmp, c.xorEqualFalse(), c.getGroup());
-        //NOTE: we need the CS because otherwise, the addXorClause could have changed **i, which we need to re-add later!
+        //NOTE: we need the tmp because otherwise, the addXorClause could have changed "c", which we need to re-add later!
         xorClausesRemoved.push(*i);
     }
     cs.shrink(i-j);
@@ -350,7 +437,7 @@ void PartHandler::moveLearntClauses(vec<Clause*>& cs, Solver& newSolver, const u
             #endif
 
             solver.detachClause(c);
-            newSolver.addLearntClause(c, c.getGlue(), c.getMiniSatAct(), c.getGroup());
+            newSolver.addLearntClause(c, c.getGroup(), NULL, c.getGlue(), c.getMiniSatAct());
             solver.clauseAllocator.clauseFree(&c);
         } else {
             #ifdef VERBOSE_DEBUG
@@ -417,6 +504,16 @@ void PartHandler::readdRemovedClauses()
         assert(solver.ok);
     }
     xorClausesRemoved.clear();
+
+    for (vector<pair<Lit, Lit> >::const_iterator it = binClausesRemoved.begin(), end = binClausesRemoved.end(); it != end; it++) {
+        vec<Lit> lits(2);
+        lits[0] = it->first;
+        lits[1] = it->second;
+        solver.addClause(lits);
+        assert(solver.ok);
+    }
+    binClausesRemoved.clear();
+
     solver.libraryCNFFile = backup_libraryCNFfile;
 }
 

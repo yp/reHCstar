@@ -1,22 +1,11 @@
-/***********************************************************************************[SolverTypes.h]
+/*****************************************************************************
 MiniSat -- Copyright (c) 2003-2006, Niklas Een, Niklas Sorensson
+glucose -- Gilles Audemard, Laurent Simon (2008)
 CryptoMiniSat -- Copyright (c) 2009 Mate Soos
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-associated documentation files (the "Software"), to deal in the Software without restriction,
-including without limitation the rights to use, copy, modify, merge, publish, distribute,
-sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or
-substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
-NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
-OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-**************************************************************************************************/
+Original code by MiniSat and glucose authors are under an MIT licence.
+Modifications for CryptoMiniSat are under GPLv3 licence.
+******************************************************************************/
 
 #ifndef CLAUSE_H
 #define CLAUSE_H
@@ -36,6 +25,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "constants.h"
 #include "Watched.h"
 #include "Alg.h"
+#include "constants.h"
 
 template <class T>
 uint32_t calcAbstraction(const T& ps) {
@@ -59,18 +49,13 @@ for the class that it can hold the literals as well. I.e. it malloc()-s
     sizeof(Clause)+LENGHT*sizeof(Lit)
 to hold the clause.
 */
-class Clause
+struct Clause
 {
 protected:
 
     uint32_t isLearnt:1; ///<Is the clause a learnt clause?
     uint32_t strenghtened:1; ///<Has the clause been strenghtened since last SatELite-like work?
-    /**
-    @brief Is the clause sorted in the binaryClauses[]?
-
-    If it is a new clause, this is set to FALSE
-    */
-    uint32_t sorted:1;
+    uint32_t changed:1; ///<Var inside clause has been changed
     /**
     @brief Is the XOR equal to 1 or 0?
 
@@ -81,23 +66,11 @@ protected:
     */
     uint32_t isXorEqualFalse:1;
     uint32_t isXorClause:1; ///< Is the clause an XOR clause?
-    uint32_t subsume0Done:1; ///Has normal subsumption been done with this clause?
     uint32_t isRemoved:1; ///<Is this clause queued for removal because of usless binary removal?
     uint32_t isFreed:1; ///<Has this clause been marked as freed by the ClauseAllocator ?
-    /**
-    @brief When the clause was allocated, was it a binary clause?
+    uint32_t glue:MAX_GLUE_BITS;    ///<Clause glue -- clause activity according to GLUCOSE
+    uint32_t mySize:18; ///<The current size of the clause
 
-    This is imporant, because if the cluause is binary AT THE MOMENT OF
-    ALLOCATION, it is allocated differently. Note that clauses can shrink, so
-    clauses may become binary, even though they were allocated the "normal" way,
-    i.e. with ClauseAllocator's special stack-allocation procedure. We need to
-    know if a cluase was allocated specially or not, so that we can properly
-    free it
-    */
-    uint32_t wasBinInternal:1;
-    uint32_t mySize:20; ///<The current size of the clause
-
-    uint32_t glue;  ///<Clause glue -- clause activity according to GLUCOSE
     float miniSatAct; ///<Clause activity according to MiniSat
 
     uint32_t abst; //Abstraction of clause
@@ -127,9 +100,9 @@ public:
     template<class V>
     Clause(const V& ps, const uint32_t _group, const bool learnt)
     {
-        wasBinInternal = (ps.size() == 2);
         isFreed = false;
         isXorClause = false;
+        assert(ps.size() > 2);
         mySize = ps.size();
         isLearnt = learnt;
         isRemoved = false;
@@ -137,7 +110,7 @@ public:
 
         memcpy(data, ps.getData(), ps.size()*sizeof(Lit));
         miniSatAct = 0;
-        setStrenghtened();
+        setChanged();
     }
 
 public:
@@ -146,6 +119,22 @@ public:
     const uint32_t size() const
     {
         return mySize;
+    }
+
+    const bool getChanged() const
+    {
+        return changed;
+    }
+
+    void setChanged()
+    {
+        setStrenghtened();
+        changed = 1;
+    }
+
+    void unsetChanged()
+    {
+        changed = 0;
     }
 
     void shrink (const uint32_t i)
@@ -160,7 +149,7 @@ public:
         shrink(1);
     }
 
-    const bool isXor()
+    const bool isXor() const
     {
         return isXorClause;
     }
@@ -193,39 +182,12 @@ public:
     void setStrenghtened()
     {
         strenghtened = true;
-        sorted = false;
-        subsume0Done = false;
         calcAbstractionClause();
     }
 
     void unsetStrenghtened()
     {
         strenghtened = false;
-    }
-
-    const bool getSorted() const
-    {
-        return sorted;
-    }
-
-    void setSorted()
-    {
-        sorted = true;
-    }
-
-    void setUnsorted()
-    {
-        sorted = false;
-    }
-
-    void subsume0Finished()
-    {
-        subsume0Done = 1;
-    }
-
-    const bool subsume0IsFinished()
-    {
-        return subsume0Done;
     }
 
     Lit& operator [] (uint32_t i)
@@ -238,12 +200,13 @@ public:
         return data[i];
     }
 
-    void setGlue(uint32_t newGlue)
+    void setGlue(const uint32_t newGlue)
     {
+        assert(newGlue <= MAX_THEORETICAL_GLUE);
         glue = newGlue;
     }
 
-    const uint32_t& getGlue() const
+    const uint32_t getGlue() const
     {
         return glue;
     }
@@ -272,7 +235,7 @@ public:
         abst = calcAbstraction(*this);
     }
 
-    uint32_t getAbst()
+    const uint32_t getAbst() const
     {
         return abst;
     }
@@ -336,7 +299,7 @@ public:
         isRemoved = true;
     }
 
-    const bool removed() const
+    const bool getRemoved() const
     {
         return isRemoved;
     }
@@ -346,19 +309,17 @@ public:
         isFreed = true;
     }
 
-    const bool freed() const
+    const bool getFreed() const
     {
         return isFreed;
     }
 
-    const bool wasBin() const
+    void takeMaxOfStats(Clause& other)
     {
-        return wasBinInternal;
-    }
-
-    void setWasBin(const bool toSet)
-    {
-        wasBinInternal = toSet;
+        if (other.getGlue() < getGlue())
+            setGlue(other.getGlue());
+        if (other.getMiniSatAct() > getMiniSatAct())
+            setMiniSatAct(other.getMiniSatAct());
     }
 };
 
@@ -392,17 +353,17 @@ public:
         isXorEqualFalse ^= b;
     }
 
-    void print() const
+    void print(FILE* to = stdout) const
     {
-        printf("XOR Clause   group: %d, size: %d, learnt:%d, lits:\"", getGroup(), size(), learnt());
-        plainPrint();
+        plainPrint(to);
+        fprintf(to, "c clause learnt %s glue %d miniSatAct %.3f group %d\n", (learnt() ? "yes" : "no"), getGlue(), getMiniSatAct(), getGroup());
     }
 
     void plainPrint(FILE* to = stdout) const
     {
         fprintf(to, "x");
         if (xorEqualFalse())
-            printf("-");
+            fprintf(to, "-");
         for (uint32_t i = 0; i < size(); i++) {
             fprintf(to, "%d ", data[i].var() + 1);
         }
@@ -411,6 +372,26 @@ public:
 
     friend class MatrixFinder;
 };
+
+inline std::ostream& operator<<(std::ostream& cout, const Clause& cl)
+{
+    for (uint32_t i = 0; i < cl.size(); i++) {
+        cout << cl[i] << " ";
+    }
+    return cout;
+}
+
+inline std::ostream& operator<<(std::ostream& cout, const XorClause& cl)
+{
+    cout << "x";
+    for (uint32_t i = 0; i < cl.size(); i++) {
+        cout << cl[i].var() + 1 << " ";
+    }
+    if (cl.xorEqualFalse()) cout << " =  false";
+    else cout << " = true";
+
+    return cout;
+}
 
 
 #endif //CLAUSE_H

@@ -1,3 +1,11 @@
+/*****************************************************************************
+MiniSat -- Copyright (c) 2003-2006, Niklas Een, Niklas Sorensson
+CryptoMiniSat -- Copyright (c) 2009 Mate Soos
+
+Original code by MiniSat authors are under an MIT licence.
+Modifications for CryptoMiniSat are under GPLv3 licence.
+******************************************************************************/
+
 #ifndef DIMACSPARSER_H
 #define DIMACSPARSER_H
 
@@ -31,23 +39,21 @@ class DimacsParser
     public:
         DimacsParser(Solver* solver, const bool debugLib, const bool debugNewVar, const bool grouping, const bool addAsLearnt = false);
 
-        #ifdef DISABLE_ZLIB
-        void parse_DIMACS(FILE * input_stream);
-        #else
-        void parse_DIMACS(gzFile input_stream);
-        #endif // DISABLE_ZLIB
+        template <class T>
+        void parse_DIMACS(T input_stream);
 
     private:
         void parse_DIMACS_main(StreamBuffer& in);
         void skipWhitespace(StreamBuffer& in);
         void skipLine(StreamBuffer& in);
         std::string untilEnd(StreamBuffer& in);
-        int parseInt(StreamBuffer& in, uint32_t& len);
+        int32_t parseInt(StreamBuffer& in, uint32_t& len);
         float parseFloat(StreamBuffer& in);
         void parseString(StreamBuffer& in, std::string& str);
         void readClause(StreamBuffer& in, vec<Lit>& lits);
         void parseClauseParameters(StreamBuffer& in, bool& learnt, uint32_t& glue, float& miniSatAct);
         void readFullClause(StreamBuffer& in);
+        void readBranchingOrder(StreamBuffer& in);
         bool match(StreamBuffer& in, const char* str);
         void printHeader(StreamBuffer& in);
         void parseComments(StreamBuffer& in, const std::string str);

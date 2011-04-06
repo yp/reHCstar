@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdlib.h>
 #include "Vec.h"
+#include "Vec2.h"
 #include <map>
 #include <vector>
 using std::map;
@@ -34,12 +35,8 @@ using std::vector;
 #include "ClauseOffset.h"
 #include "Watched.h"
 
-#ifdef USE_BOOST
-#include <boost/pool/pool.hpp>
-#endif //USE_BOOST
-
 #define NUM_BITS_OUTER_OFFSET 4
-
+#define BASE_DATA_TYPE char
 
 class Clause;
 class XorClause;
@@ -54,12 +51,6 @@ needed. When instructed, it consolidates the unused space (i.e. clauses free()-e
 Essentially, it is a stack-like allocator for clauses. It is useful to have
 this, because this way, we can address clauses according to their number,
 which is 32-bit, instead of their address, which might be 64-bit
-
-2-long clauses are specially treated. If BOOST is enabled, a special memory
-allocator is used for 2-long clauses. If BOOST is not available, then regular
-memory allocation is used (i.e. not stack-based). This is because for 2-long
-clauses, a 64-bit pointer doesn't cause problems (while for other clauses, it
-does)
 */
 class ClauseAllocator {
     public:
@@ -69,7 +60,7 @@ class ClauseAllocator {
         template<class T>
         Clause* Clause_new(const T& ps, const uint32_t group, const bool learnt = false);
         template<class T>
-        XorClause* XorClause_new(const T& ps, const bool inverted, const uint32_t group);
+        XorClause* XorClause_new(const T& ps, const bool xorEqualFalse, const uint32_t group);
         Clause* Clause_new(Clause& c);
 
         const ClauseOffset getOffset(const Clause* ptr) const;
@@ -81,7 +72,7 @@ class ClauseAllocator {
         returning the thus created pointer. Used a LOT in propagation, thus this
         is very important to be fast (therefore, it is an inlined method)
         */
-        inline Clause* getPointer(const uint32_t offset)
+        inline Clause* getPointer(const uint32_t offset) const
         {
             return (Clause*)(dataStarts[offset&((1 << NUM_BITS_OUTER_OFFSET) - 1)]
                             +(offset >> NUM_BITS_OUTER_OFFSET));
@@ -89,13 +80,14 @@ class ClauseAllocator {
 
         void clauseFree(Clause* c);
 
-        void consolidate(Solver* solver);
+        void consolidate(Solver* solver, const bool force = false);
+
+        const uint32_t getNewClauseNum();
 
     private:
         uint32_t getOuterOffset(const Clause* c) const;
         uint32_t getInterOffset(const Clause* c, const uint32_t outerOffset) const;
         const ClauseOffset combineOuterInterOffsets(const uint32_t outerOffset, const uint32_t interOffset) const;
-        const bool insideMemoryRange(const Clause* c) const;
 
         void updateAllOffsetsAndPointers(Solver* solver);
         template<class T>
@@ -103,10 +95,12 @@ class ClauseAllocator {
         void updatePointers(vector<Clause*>& toUpdate);
         void updatePointers(vector<XorClause*>& toUpdate);
         void updatePointers(vector<std::pair<Clause*, uint32_t> >& toUpdate);
+        void updateOffsets(vec<vec2<Watched> >& watches);
+        void checkGoodPropBy(const Solver* solver);
 
-        void updateOffsets(vec<vec<Watched> >& watches);
+        void releaseClauseNum(const uint32_t num);
 
-        vec<uint32_t*> dataStarts; ///<Stacks start at these positions
+        vec<BASE_DATA_TYPE*> dataStarts; ///<Stacks start at these positions
         vec<size_t> sizes; ///<The number of 32-bit datapieces currently used in each stack
         /**
         @brief Clauses in the stack had this size when they were allocated
@@ -125,10 +119,6 @@ class ClauseAllocator {
         */
         vec<size_t> currentlyUsedSizes;
 
-        #ifdef USE_BOOST
-        boost::pool<> clausePoolBin;
-        #endif //USE_BOOST
-
         void* allocEnough(const uint32_t size);
 
         /**
@@ -140,10 +130,14 @@ class ClauseAllocator {
         */
         struct NewPointerAndOffset
         {
-            uint32_t clauseData; ///<Data that is crucial part of the clause and is needed in updating
             uint32_t newOffset; ///<The new offset where the clause now resides
             Clause* newPointer; ///<The new place
         };
+
+        vector<Clause*> otherClauses;
+        vector<Clause*> threeLongClauses;
+        Clause* getClause();
+        void putClausesIntoDatastruct(std::vector<Clause*>& clauses);
 };
 
 #endif //CLAUSEALLOCATOR_H

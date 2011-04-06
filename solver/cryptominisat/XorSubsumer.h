@@ -1,7 +1,10 @@
-/**************************************************************************************************
-Originally From: Solver.C -- (C) Niklas Een, Niklas Sorensson, 2004
-Substantially modified by: Mate Soos (2010)
-**************************************************************************************************/
+/*****************************************************************************
+SatELite -- (C) Niklas Een, Niklas Sorensson, 2004
+CryptoMiniSat -- Copyright (c) 2009 Mate Soos
+
+Original code by SatELite authors are under an MIT licence.
+Modifications for CryptoMiniSat are under GPLv3.
+******************************************************************************/
 
 #ifndef XORSIMPLIFIER_H
 #define XORSIMPLIFIER_H
@@ -31,9 +34,9 @@ in the process, but one of them is going to be much smaller than it was original
 class XorSubsumer
 {
 public:
-    
+
     XorSubsumer(Solver& S2);
-    const bool simplifyBySubsumption(const bool doFullSubsume = false);
+    const bool simplifyBySubsumption();
     void unlinkModifiedClause(vec<Lit>& origClause, XorClauseSimp c);
     void unlinkModifiedClauseNoDetachNoNULL(vec<Lit>& origClause, XorClauseSimp c);
     void unlinkClause(XorClauseSimp cc, Var elim = var_Undef);
@@ -41,30 +44,49 @@ public:
     void linkInAlreadyClause(XorClauseSimp& c);
     void newVar();
     void extendModel(Solver& solver2);
+
     const uint32_t getNumElimed() const;
     const vec<char>& getVarElimed() const;
     const bool unEliminate(const Var var);
     const bool checkElimedUnassigned() const;
     const double getTotalTime() const;
-    
+
+    struct XorElimedClause
+    {
+        vector<Lit> lits;
+        bool xorEqualFalse;
+
+        void plainPrint(FILE* to = stdout) const
+        {
+            fprintf(to, "x");
+            if (xorEqualFalse) fprintf(to, "-");
+            for (size_t i = 0; i < lits.size(); i++) {
+                assert(!lits[i].sign());
+                fprintf(to, "%d ", lits[i].var() + 1);
+            }
+            fprintf(to, "0\n");
+        }
+    };
+    const map<Var, vector<XorElimedClause> >& getElimedOutVar() const;
+
 private:
-    
+
     friend class ClauseCleaner;
     friend class ClauseAllocator;
-    
+
     //Main
     vec<XorClauseSimp>        clauses;
     vec<vec<XorClauseSimp> >  occur;          // 'occur[index(lit)]' is a list of constraints containing 'lit'.
     Solver&                   solver;         // The Solver
-    
+
     // Temporaries (to reduce allocation overhead):
     //
     vec<char>                 seen_tmp;       // (used in various places)
-    
+
     //Start-up
     void addFromSolver(vec<XorClause*>& cs);
     void addBackToSolver();
-    
+
     // Subsumption:
     void findSubsumed(XorClause& ps, vec<XorClauseSimp>& out_subsumed);
     bool isSubsumed(XorClause& ps);
@@ -77,26 +99,28 @@ private:
 
     //helper
     void testAllClauseAttach() const;
-    
+
     //dependent removal
     const bool removeDependent();
     void fillCannotEliminate();
     vec<char> cannot_eliminate;
     void addToCannotEliminate(Clause* it);
     void removeWrong(vec<Clause*>& cs);
+    void removeWrongBins();
+    void removeAssignedVarsFromEliminated();
 
     //Global stats
     double totalTime;
-    map<Var, vector<XorClause*> > elimedOutVar;
+    map<Var, vector<XorElimedClause> > elimedOutVar;
     vec<char> var_elimed;
     uint32_t numElimed;
-    
+
     //Heule-process
     template<class T>
     void xorTwoClauses(const T& c1, const T& c2, vec<Lit>& xored);
     const bool localSubstitute();
     uint32_t localSubstituteUseful;
-    
+
     uint32_t clauses_subsumed;
     uint32_t clauses_cut;
     uint32_t origNClauses;
@@ -149,5 +173,9 @@ inline const double XorSubsumer::getTotalTime() const
     return totalTime;
 }
 
+inline const map<Var, vector<XorSubsumer::XorElimedClause> >& XorSubsumer::getElimedOutVar() const
+{
+    return elimedOutVar;
+}
 
 #endif //XORSIMPLIFIER_H
