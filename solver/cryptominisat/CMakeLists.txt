@@ -1,6 +1,6 @@
 message("   Building CryptoMiniSat as SAT solver.")
 
-add_definitions(-DUSE_GAUSS)
+add_definitions(-UUSE_GAUSS)
 add_definitions(-DDISABLE_ZLIB)
 
 get_property(DEFINITIONS
