@@ -246,7 +246,7 @@ pedcnf_t::clauses_to_dimacs_format(std::ostream& out,
 	 out << "c v " << std::setw(7) << i << " " << *it << std::endl;
   }
   out << "c" << std::endl;
-  out << "p cnf " << _vars.size() << " " << _clauses.size() << std::endl;
+  out << "p cnf " << _vars.size() << " " << (_no_of_clauses + _no_of_xor_clauses) << std::endl;
   for (clauses_t::const_iterator it= _clauses.begin();
 		 it != _clauses.end();
 		 ++it) {
