@@ -98,6 +98,18 @@ private:
 	 for (size_t l= 0; l < ped.genotype_length(); ++l) {
 		cnf.get_m(ind.progr_id(), l);
 	 }
+//   -> r-variables
+// (start at 1, no recombinations in the first locus)
+	 if (ind.has_father()) {
+		for (size_t l= 1; l < ped.genotype_length(); ++l) {
+		  cnf.get_rp(ind.progr_id(), l);
+		}
+	 }
+	 if (ind.has_mother()) {
+		for (size_t l= 1; l < ped.genotype_length(); ++l) {
+		  cnf.get_rm(ind.progr_id(), l);
+		}
+	 }
 //   -> e-variables
 	 for (size_t l= 0; l < ped.genotype_length(); ++l) {
 //    errors only for genotyped loci
@@ -108,6 +120,7 @@ private:
   }
 
   void add_individual_constraint(pedcnf_t& cnf,
+											const individual_t& ind,
 											const g& gen,
 											const size_t l,
 											const size_t i) {
@@ -146,6 +159,31 @@ private:
 /************
  * End clauses for errors variables
  ************/
+/************
+ * Clauses for recombination variables
+ ************/
+// (only for loci after the first)
+	 if (l > 0) {
+// a recombination event occurs only on heterozygous loci, thus:
+//    ( p_{i,l} == m_{i,l} )  implies  not r_{i,l}
+		if (ind.has_father()) {
+		  lit_t p= cnf.get_p(ind.father().progr_id(), l);
+		  lit_t m= cnf.get_m(ind.father().progr_id(), l);
+		  lit_t rp= cnf.get_rp(i, l);
+		  cnf.add_clause<3>((lit_t[]){-rp,  p,  m});
+		  cnf.add_clause<3>((lit_t[]){-rp, -p, -m});
+		}
+		if (ind.has_mother()) {
+		  lit_t p= cnf.get_p(ind.mother().progr_id(), l);
+		  lit_t m= cnf.get_m(ind.mother().progr_id(), l);
+		  lit_t rm= cnf.get_rm(i, l);
+		  cnf.add_clause<3>((lit_t[]){-rm,  p,  m});
+		  cnf.add_clause<3>((lit_t[]){-rm, -p, -m});
+		}
+	 }
+/************
+ * End clauses for recombination variables
+ ************/
   };
 
   void add_parental_constraint(pedcnf_t& cnf,
@@ -158,7 +196,8 @@ private:
 /************
  * Clauses for Mendelian consistency (s-variables)
  ************/
-	 lit_t s= cnf.get_s(progr_id_parent, progr_id_ind);
+	 lit_t s= (!is_mother) ?
+		cnf.get_sp(progr_id_ind, locus) : cnf.get_sm(progr_id_ind, locus);
 	 lit_t p= cnf.get_p(progr_id_parent, locus);
 	 lit_t m= cnf.get_m(progr_id_parent, locus);
 	 lit_t c= (!is_mother) ?
@@ -172,6 +211,27 @@ private:
 /************
  * End clauses for Mendelian consistency (s-variables)
  ************/
+/************
+ * Clauses for Recombination events (r-variables)
+ ************/
+	 if (locus>0) {
+		lit_t prevs= (!is_mother) ?
+		  cnf.get_sp(progr_id_ind, locus-1) : cnf.get_sm(progr_id_ind, locus-1);
+		lit_t r= (!is_mother) ?
+		  cnf.get_rp(progr_id_ind, locus) : cnf.get_rm(progr_id_ind, locus);
+// s == prevs + r
+#ifdef AVOID_XOR_CLAUSES
+		  cnf.add_clause<3>((lit_t[]){-s,  r,  prevs});
+		  cnf.add_clause<3>((lit_t[]){-s, -r, -prevs});
+		  cnf.add_clause<3>((lit_t[]){ s,  r, -prevs});
+		  cnf.add_clause<3>((lit_t[]){ s, -r,  prevs});
+#else
+		  cnf.add_xor_clause<3>((lit_t[]){-s, r, prevs});
+#endif
+	 }
+/************
+ * End clauses for Recombination events (r-variables)
+ ************/
   };
 
 public:
@@ -184,7 +244,7 @@ public:
 		for (size_t l= 0; l < ped.genotype_length(); ++l) {
 		  L_TRACE("  locus = " << l <<
 					 ", g_i = " << ind.obs_g(l));
-		  add_individual_constraint(cnf, ind.obs_g(l), l, ind.progr_id());
+		  add_individual_constraint(cnf, ind, ind.obs_g(l), l, ind.progr_id());
 		}
 		if (ind.has_father()) {
 		  L_TRACE(" --> father " << ind.father().progr_id());

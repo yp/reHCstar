@@ -130,6 +130,29 @@ protected:
 		 "(used only if '--uniform-error' is specified).\n"
 		 "*MUST* be a power of 2 and *MUST* be greater than 2.\n"
 		 "Windows overlap each other by half their length.")
+		("global-recomb", po::bool_switch()->default_value(false),
+		 "Enable GLOABL recombination handling (i.e., the global recombination rate in the whole "
+		 "pedigree is less than or equal to the specified recombination rate, computed over *ALL* loci).")
+		("global-recomb-rate", po::value< double >()->default_value(0.03),
+		 "Maximum recombination rate in all the genotypes (used only if '--global-recomb' is specified).")
+		("individual-recomb", po::bool_switch()->default_value(false),
+		 "Enable INDIVIDUAL recombination handling (i.e., the recombination rate in each genotype is "
+		 "less than or equal to the specified recombination rate, computed over *ALL* loci).")
+		("individual-recomb-rate", po::value< double >()->default_value(0.03),
+		 "Maximum recombination rate in each genotype "
+		 "(used only if '--individual-recomb' is specified).")
+		("uniform-recomb", po::bool_switch()->default_value(false),
+		 "Enable UNIFORM recombination handling (i.e., the number of recombinations in each window is "
+		 "less than or equal to the specified maximum number of recombinations).")
+		("max-recombs-in-window", po::value< unsigned int >()->default_value(4),
+		 "Maximum number of recombinations in each window "
+		 "(used only if '--uniform-recomb' is specified).\n"
+		 "*MUST* be less than or equal to half window size.")
+		("recomb-window-length", po::value< unsigned int >()->default_value(16),
+		 "number of loci that compose a window "
+		 "(used only if '--uniform-recomb' is specified).\n"
+		 "*MUST* be a power of 2 and *MUST* be greater than 2.\n"
+		 "Windows overlap each other by half their length.")
 		;
 	 return desc;
   };
@@ -170,6 +193,10 @@ protected:
 	 option_dependency(vm, "individual-error-rate", "individual-error");
 	 option_dependency(vm, "max-errors-in-window", "uniform-error");
 	 option_dependency(vm, "error-window-length", "uniform-error");
+	 option_dependency(vm, "global-recomb-rate", "global-recomb");
+	 option_dependency(vm, "individual-recomb-rate", "individual-recomb");
+	 option_dependency(vm, "max-recombs-in-window", "uniform-recomb");
+	 option_dependency(vm, "recomb-window-length", "uniform-recomb");
 	 if (vm["uniform-error"].as<bool>()) {
 		const unsigned int wlen= vm["error-window-length"].as<unsigned int>();
 		const unsigned int merr= vm["max-errors-in-window"].as<unsigned int>();
@@ -181,6 +208,19 @@ protected:
 		}
 		if (merr > (wlen>>1)) {
 		  throw std::logic_error(std::string("The maximum number of errors in a single window must be less than or equal to the half the window length."));
+		}
+	 }
+	 if (vm["uniform-recomb"].as<bool>()) {
+		const unsigned int wlen= vm["recomb-window-length"].as<unsigned int>();
+		const unsigned int merr= vm["max-recombs-in-window"].as<unsigned int>();
+		if (wlen != pow2_of_floor_log2(wlen)) {
+		  throw std::logic_error(std::string("The window length must be a power of 2."));
+		}
+		if (wlen < 4) {
+		  throw std::logic_error(std::string("The window length must be greater than 2."));
+		}
+		if (merr > (wlen>>1)) {
+		  throw std::logic_error(std::string("The maximum number of recombinations in a single window must be less than or equal to the half the window length."));
 		}
 	 }
 	 return true;

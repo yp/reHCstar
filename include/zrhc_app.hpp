@@ -55,7 +55,9 @@ public:
 private:
 
   composite_constraints_t err_constraints;
+  composite_constraints_t recomb_constraints;
   bool has_errors;
+  bool has_recombinations;
 
 public:
 
@@ -89,6 +91,35 @@ public:
 		L_INFO("*DISABLING* genotyping errors");
 		err_constraints.add(new all_false_constraints_t());
 	 }
+// Analyze recombination-related program options
+	 has_recombinations= false;
+	 if (vm["global-recomb"].as<bool>()) {
+		const double recomb_rate= vm["global-recomb-rate"].as<double>();
+		L_INFO("Enabling *GLOBAL* recombination handling ("
+				 "recomb-rate=" << recomb_rate << ")");
+		recomb_constraints.add(new at_most_global_constraints_t(recomb_rate));
+		has_recombinations= true;
+	 }
+	 if (vm["individual-recomb"].as<bool>()) {
+		const double recomb_rate= vm["individual-recomb-rate"].as<double>();
+		L_INFO("Enabling *INDIVIDUAL* recombination handling ("
+				 "recomb-rate=" << recomb_rate << ")");
+		recomb_constraints.add(new at_most_individual_constraints_t(recomb_rate));
+		has_recombinations= true;
+	 }
+	 if (vm["uniform-recomb"].as<bool>()) {
+		const unsigned int winrecomb= vm["max-recombs-in-window"].as<unsigned int>();
+		const unsigned int winlen= vm["recomb-window-length"].as<unsigned int>();
+		L_INFO("Enabling *WINDOWED* recombination handling ("
+				 "max-recombs-in-windows=" << winrecomb << ", "
+				 "recomb-window-length=" << winlen << ")");
+		recomb_constraints.add(new at_most_windowed_constraints_t(winrecomb, winlen));
+		has_recombinations= true;
+	 }
+	 if (!has_recombinations) {
+		L_INFO("*DISABLING* recombinations");
+		recomb_constraints.add(new all_false_constraints_t());
+	 }
   };
 
   void prepare_pedigree_and_sat(std::istream& ped_is,
@@ -119,6 +150,13 @@ public:
 	 error_handler_t err_handler(err_constraints);
 	 err_handler.handle_errors(cnf, mped.families().front().size(),
 										mped.families().front().genotype_length());
+	 L_DEBUG("So far the SAT instance is composed by " <<
+				std::setw(8) << cnf.vars().size() << " variables and " <<
+				std::setw(8) << cnf.no_of_clauses() << " clauses");
+	 L_INFO("Adding clauses for managing recombination events...");
+	 recombination_handler_t recomb_handler(recomb_constraints);
+	 recomb_handler.handle_recombinations(cnf, mped.families().front().size(),
+													  mped.families().front().genotype_length());
 	 L_INFO("SAT instance successfully prepared.");
 	 L_INFO("The SAT instance is composed by " <<
 			  std::setw(8) << cnf.vars().size() << " variables and " <<
@@ -130,7 +168,7 @@ public:
 public:
 
   explicit zrhcstar_t()
-		:has_errors(false)
+		:has_errors(false), has_recombinations(false)
   {
   };
 
@@ -214,8 +252,9 @@ public:
 // Check the haplotype configuration
 	 const bool ok=
 		family.is_completely_haplotyped() &&
-		family.is_consistent(false) &&
-		family.is_zero_recombinant();
+		family.is_consistent(false);
+//&&
+//		family.is_zero_recombinant();
 	 if (ok) {
 		L_INFO("The computed haplotype configuration is valid.");
 	 } else {

@@ -37,14 +37,17 @@
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string/trim.hpp>
 
-const ped_var_kind ped_var_kind::S(0);
-const ped_var_kind ped_var_kind::P(1);
-const ped_var_kind ped_var_kind::M(2);
-const ped_var_kind ped_var_kind::E(3);
-const ped_var_kind ped_var_kind::DUMMY(4);
-const int ped_var_kind::int_values[]={0, 1, 2, 3, 4};
-const std::string ped_var_kind::str_values[]={"s", "p", "m", "e", "dummy"};
-const ped_var_kind ped_var_kind::enum_values[]={S, P, M, E, DUMMY};
+const ped_var_kind ped_var_kind::SP(0);
+const ped_var_kind ped_var_kind::SM(1);
+const ped_var_kind ped_var_kind::P(2);
+const ped_var_kind ped_var_kind::M(3);
+const ped_var_kind ped_var_kind::RP(4);
+const ped_var_kind ped_var_kind::RM(5);
+const ped_var_kind ped_var_kind::E(6);
+const ped_var_kind ped_var_kind::DUMMY(7);
+const int ped_var_kind::int_values[]={0, 1, 2, 3, 4, 5, 6, 7};
+const std::string ped_var_kind::str_values[]={"sp", "sm", "p", "m", "rp", "rm", "e", "dummy"};
+const ped_var_kind ped_var_kind::enum_values[]={SP, SM, P, M, RP, RM, E, DUMMY};
 
 std::ostream&
 operator<<(std::ostream& out, const pedcnf_t::pedvar_t& var) {
@@ -94,8 +97,13 @@ pedcnf_t::has_var(const varmap_t& map,
 };
 
 bool
-pedcnf_t::has_s(const size_t p, const size_t i) const {
-  return has_var(_s, p, i);
+pedcnf_t::has_sp(const size_t i, const size_t l) const {
+  return has_var(_sp, i, l);
+};
+
+bool
+pedcnf_t::has_sm(const size_t i, const size_t l) const {
+  return has_var(_sm, i, l);
 };
 
 bool
@@ -106,6 +114,16 @@ pedcnf_t::has_p(const size_t i, const size_t l) const {
 bool
 pedcnf_t::has_m(const size_t i, const size_t l) const {
   return has_var(_m, i, l);
+};
+
+bool
+pedcnf_t::has_rp(const size_t i, const size_t l) const {
+  return has_var(_rp, i, l);
+};
+
+bool
+pedcnf_t::has_rm(const size_t i, const size_t l) const {
+  return has_var(_rm, i, l);
 };
 
 bool
@@ -123,8 +141,13 @@ pedcnf_t::get_val(const varmap_t& map,
 };
 
 lit_t
-pedcnf_t::get_s(const size_t p, const size_t i) {
-  return get_var(_s, ped_var_kind::S, p, i);
+pedcnf_t::get_sp(const size_t i, const size_t l) {
+  return get_var(_sp, ped_var_kind::SP, i, l);
+};
+
+lit_t
+pedcnf_t::get_sm(const size_t i, const size_t l) {
+  return get_var(_sm, ped_var_kind::SM, i, l);
 };
 
 lit_t
@@ -138,13 +161,28 @@ pedcnf_t::get_m(const size_t i, const size_t l) {
 };
 
 lit_t
+pedcnf_t::get_rp(const size_t i, const size_t l) {
+  return get_var(_rp, ped_var_kind::RP, i, l);
+};
+
+lit_t
+pedcnf_t::get_rm(const size_t i, const size_t l) {
+  return get_var(_rm, ped_var_kind::RM, i, l);
+};
+
+lit_t
 pedcnf_t::get_e(const size_t i, const size_t l) {
   return get_var(_e, ped_var_kind::E, i, l);
 };
 
 lit_t
-pedcnf_t::get_s(const size_t p, const size_t i) const {
-  return get_var(_s, p, i);
+pedcnf_t::get_sp(const size_t i, const size_t l) const {
+  return get_var(_sp, i, l);
+};
+
+lit_t
+pedcnf_t::get_sm(const size_t i, const size_t l) const {
+  return get_var(_sm, i, l);
 };
 
 lit_t
@@ -155,6 +193,16 @@ pedcnf_t::get_p(const size_t i, const size_t l) const {
 lit_t
 pedcnf_t::get_m(const size_t i, const size_t l) const {
   return get_var(_m, i, l);
+};
+
+lit_t
+pedcnf_t::get_rp(const size_t i, const size_t l) const {
+  return get_var(_rp, i, l);
+};
+
+lit_t
+pedcnf_t::get_rm(const size_t i, const size_t l) const {
+  return get_var(_rm, i, l);
 };
 
 lit_t
