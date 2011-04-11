@@ -359,6 +359,9 @@ public:
   typedef _reader reader;
   typedef _writer writer;
 
+  typedef base* iterator;
+  typedef const base* const_iterator;
+
 private:
   const size_t _len;
   base* _v;
@@ -421,20 +424,20 @@ public:
   };
 
   bool is_compatible_with(const generic_fixlen_vector_t<_base_t,_reader,_writer>& v) const {
-  typedef generic_fixlen_vector_t<_base_t,_reader,_writer> v_t;
-  if (size() != v.size())
-	 return false;
-  const typename v_t::base* v1it= begin();
-  const typename v_t::base* v2it= v.begin();
-  for (; v1it != end(); ++v1it, ++v2it) {
-	 if ( (*v1it != v_t::base::MISS) &&
-			(*v2it != v_t::base::MISS) &&
-			(*v1it != *v2it) ) {
+	 typedef generic_fixlen_vector_t<_base_t,_reader,_writer> v_t;
+	 if (size() != v.size())
 		return false;
+	 const typename v_t::base* v1it= begin();
+	 const typename v_t::base* v2it= v.begin();
+	 for (; v1it != end(); ++v1it, ++v2it) {
+		if ( (*v1it != v_t::base::MISS) &&
+			  (*v2it != v_t::base::MISS) &&
+			  (*v1it != *v2it) ) {
+		  return false;
+		}
 	 }
-  }
-  return true;
-};
+	 return true;
+  };
 
 };
 
@@ -463,9 +466,9 @@ strict_multilocus_haplotype_genotype_consistent(const h_t& h1,
 																const g_t& g) {
   MY_ASSERT_DBG(g.size() == h1.size());
   MY_ASSERT_DBG(g.size() == h2.size());
-  const typename g_t::base* git= g.begin();
-  const typename h_t::base* h1it= h1.begin();
-  const typename h_t::base* h2it= h2.begin();
+  typename g_t::const_iterator git= g.begin();
+  typename h_t::const_iterator h1it= h1.begin();
+  typename h_t::const_iterator h2it= h2.begin();
   for (; git != g.end(); ++git, ++h1it, ++h2it) {
 	 if (! strict_haplotype_genotype_consistent(*h1it, *h2it, *git)) {
 		return false;
