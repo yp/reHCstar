@@ -549,7 +549,7 @@ public:
 	 return consistent;
   };
 
-// Check if the haplotypes realize the genotypes
+// Check if the haplotype configuration has no recombinations
   bool is_zero_recombinant() const {
 	 DEBUG("Checking if the haplotype configuration is zero-recombinant...");
 	 bool zr= true;
