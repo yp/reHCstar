@@ -72,8 +72,6 @@ generate_counter(pedcnf_t& cnf,
 					  my_logger& logger) {
   const size_t len= n-first;
   d.clear();
-  TRACE(" --> recursively generating counter for variables [" << first <<
-			 ", " << n-1 << "] ...");
   if (len == 1) {
 	 d.push_back(x[first]);
   } else if (len == 2) {
@@ -87,12 +85,7 @@ generate_counter(pedcnf_t& cnf,
 	 generate_counter(cnf, x, first, tprime, d1, logger);
 	 if (tprime < n-1) {
 		generate_counter(cnf, x, tprime, n-1, d2, logger);
-		TRACE("     counter [" << first << ", " << n-1 << "] = "
-				"[" << first << ", " << tprime-1 << "] + "
-				"[" << tprime << ", " << n-2 << "] + " << n-1);
 	 } else {
-		TRACE("     counter [" << first << ", " << n-1 << "] = "
-				"[" << first << ", " << tprime-1 << "] + " << n-1);
 	 }
 	 size_t i= 0;
 	 size_t carry= x[n-1];
@@ -100,19 +93,15 @@ generate_counter(pedcnf_t& cnf,
 	 while (i < d2.size()) {
 		add_full_adder(cnf, d1[i], d2[i], carry, s, carry);
 		d.push_back(s);
-		TRACE("        out[" << i << "]= " << s);
 		++i;
 	 }
 	 while (i < d1.size()) {
 		add_half_adder(cnf, d1[i], carry, s, carry);
 		d.push_back(s);
-		TRACE("        out[" << i << "]= " << s);
 		++i;
 	 }
 	 d.push_back(carry);
-	 TRACE("        out[" << i << "]= " << carry);
   }
-  TRACE("      #outputs = " << d.size());
 };
 
 static void
@@ -170,7 +159,6 @@ generate_hmerge(pedcnf_t& cnf,
   MY_ASSERT_DBG(n > 0);
   MY_ASSERT_DBG(n == pow2_of_floor_log2(n));
   vars.clear();
-  TRACE(" --> HMerge on two sequences of " << n << " variables.");
   if (n == 1) {
 	 const lit_t c1= cnf.generate_dummy();
 	 const lit_t c2= cnf.generate_dummy();
@@ -212,7 +200,6 @@ generate_hsort(pedcnf_t& cnf,
   MY_ASSERT_DBG(n > 1);
   MY_ASSERT_DBG(n == pow2_of_floor_log2(n));
   vars.clear();
-  TRACE(" --> HSort a sequence of " << n << " variables.");
   if (n == 2) {
 	 std::vector<var_t> A, B;
 	 A.push_back(S[0]);
@@ -241,7 +228,6 @@ generate_smerge(pedcnf_t& cnf,
   MY_ASSERT_DBG(n > 0);
   MY_ASSERT_DBG(n == pow2_of_floor_log2(n));
   vars.clear();
-  TRACE(" --> SMerge on two sequences of " << n << " variables.");
   if (n == 1) {
 	 const lit_t c1= cnf.generate_dummy();
 	 const lit_t c2= cnf.generate_dummy();
