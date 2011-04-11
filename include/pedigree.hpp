@@ -587,6 +587,50 @@ public:
 	 return zr;
   }
 
+// Check if the haplotype configuration is consistent with the Mendel's laws
+// Return the total number of recombination events or -1 if it is not consistent
+  int is_mendelian_consistent() const {
+	 DEBUG("Checking if the haplotype configuration is consistent with the Mendel's laws...");
+	 int n_recomb_p= 0;
+	 int n_recomb_m= 0;
+	 BOOST_FOREACH( const individual_t& ind,
+						 individuals() ) {
+		TRACE("Checking individual " << ind.progr_id());
+		if (ind.has_father()) {
+		  TRACE(" --> father " << ind.father().progr_id());
+		  int tmp_recomb= strict_multilocus_mendelian_consistent(ind.father().hp(),
+																					ind.father().hm(),
+																					ind.hp());
+		  if (tmp_recomb < 0) {
+			 DEBUG("Individual " << ind.progr_id() <<
+					 " has not inherited his paternal allele at locus " << -tmp_recomb <<
+					 " from his father " << ind.father().progr_id());
+			 return -1;
+		  } else {
+			 n_recomb_p= n_recomb_p+tmp_recomb;
+		  }
+		}
+		if (ind.has_mother()) {
+		  TRACE(" --> mother " << ind.mother().progr_id());
+		  int tmp_recomb= strict_multilocus_mendelian_consistent(ind.mother().hp(),
+																					ind.mother().hm(),
+																					ind.hm());
+		  if (tmp_recomb < 0) {
+			 DEBUG("Individual " << ind.progr_id() <<
+					 " has not inherited his maternal allele at locus " << -tmp_recomb <<
+					 " from his mother " << ind.mother().progr_id());
+			 return -1;
+		  } else {
+			 n_recomb_m= n_recomb_m+tmp_recomb;
+		  }
+		}
+	 }
+	 const int n_recomb= n_recomb_p + n_recomb_m;
+	 DEBUG("The haplotype configuration has " << n_recomb << " (" << n_recomb_p << " + "
+			 << n_recomb_m << ") recombinations.");
+	 return n_recomb;
+  };
+
   void print_stats(const bool of_obs_g= true) const {
 	 using namespace boost::accumulators;
 	 INFO("No. of individuals: " << std::setw(10) << size());

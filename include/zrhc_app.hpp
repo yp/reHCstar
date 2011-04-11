@@ -255,6 +255,8 @@ public:
 		family.is_consistent(false);
 //&&
 //		family.is_zero_recombinant();
+	 const int n_recomb= family.is_mendelian_consistent();
+	 L_INFO("The computed haplotype configuration has " << n_recomb << " recombinations.");
 	 if (ok) {
 		L_INFO("The computed haplotype configuration is valid.");
 	 } else {
