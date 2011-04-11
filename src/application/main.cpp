@@ -106,26 +106,26 @@ protected:
 		("keep,k", po::bool_switch()->default_value(false),
 		 "Keep temporary files (such as 'cnf-instance-*' and 'res-cnf-instance-*' "
 		 "files for '--create-read'/'-3' mode) after the execution.")
-		("global-error,g", po::bool_switch()->default_value(false),
+		("global-error", po::bool_switch()->default_value(false),
 		 "Enable GLOABL error handling (i.e., the global error rate in the whole pedigree is "
-		 "less or equal than the specified error rate, computed over genotyped loci).")
-		("global-error-rate", po::value< double >()->default_value(0.05),
-		 "Maximum error rate in each genotype, computed only over genotyped loci "
+		 "less than or equal to the specified error rate, computed over genotyped loci).")
+		("global-error-rate", po::value< double >()->default_value(0.03),
+		 "Maximum error rate in all the genotypes, computed only over genotyped loci "
 		 "(used only if '--global-error' is specified).")
-		("individual-error,i", po::bool_switch()->default_value(false),
-		 "Enable INDIVIDUAL error handling (i.e., the error rate in each genotype is less or "
-		 "equal than the specified error rate, computed over genotyped loci).")
-		("individual-error-rate,e", po::value< double >()->default_value(0.05),
+		("individual-error", po::bool_switch()->default_value(false),
+		 "Enable INDIVIDUAL error handling (i.e., the error rate in each genotype is less than "
+		 "or equal to the specified error rate, computed over genotyped loci).")
+		("individual-error-rate", po::value< double >()->default_value(0.03),
 		 "Maximum error rate in each genotype, computed only over genotyped loci "
 		 "(used only if '--individual-error' is specified).")
-		("uniform-error,u", po::bool_switch()->default_value(false),
-		 "Enable UNIFORM error handling (i.e., the number of errors in each window is less "
-		 "or equal than the maximum number of errors).")
-		("max-errors-in-window,m", po::value< unsigned int >()->default_value(4),
+		("uniform-error", po::bool_switch()->default_value(false),
+		 "Enable UNIFORM error handling (i.e., the number of errors in each window is less than "
+		 "or equal to the maximum number of errors).")
+		("max-errors-in-window", po::value< unsigned int >()->default_value(4),
 		 "Maximum number of errors in each window "
 		 "(used only if '--uniform-error' is specified).\n"
-		 "*MUST* be less or equal than half window size.")
-		("window-length,w", po::value< unsigned int >()->default_value(16),
+		 "*MUST* be less than or equal to half window size.")
+		("error-window-length", po::value< unsigned int >()->default_value(16),
 		 "number of typed loci that compose a window "
 		 "(used only if '--uniform-error' is specified).\n"
 		 "*MUST* be a power of 2 and *MUST* be greater than 2.\n"
@@ -169,9 +169,9 @@ protected:
 	 option_dependency(vm, "global-error-rate", "global-error");
 	 option_dependency(vm, "individual-error-rate", "individual-error");
 	 option_dependency(vm, "max-errors-in-window", "uniform-error");
-	 option_dependency(vm, "window-length", "uniform-error");
+	 option_dependency(vm, "error-window-length", "uniform-error");
 	 if (vm["uniform-error"].as<bool>()) {
-		const unsigned int wlen= vm["window-length"].as<unsigned int>();
+		const unsigned int wlen= vm["error-window-length"].as<unsigned int>();
 		const unsigned int merr= vm["max-errors-in-window"].as<unsigned int>();
 		if (wlen != pow2_of_floor_log2(wlen)) {
 		  throw std::logic_error(std::string("The window length must be a power of 2."));
@@ -180,7 +180,7 @@ protected:
 		  throw std::logic_error(std::string("The window length must be greater than 2."));
 		}
 		if (merr > (wlen>>1)) {
-		  throw std::logic_error(std::string("The maximum number of errors in a single window must be less or equal then the half the window length."));
+		  throw std::logic_error(std::string("The maximum number of errors in a single window must be less than or equal to the half the window length."));
 		}
 	 }
 	 return true;

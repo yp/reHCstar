@@ -34,7 +34,7 @@
 
 #include "io-pedigree.hpp"
 #include "ped2cnf.hpp"
-#include "ped2cnf-errors.hpp"
+#include "ped2cnf-constraints.hpp"
 #include "pedcnf2hc.hpp"
 
 #include <iostream>
@@ -54,38 +54,40 @@ public:
 
 private:
 
-  composite_error_handler_t err_handler;
+  composite_constraints_t err_constraints;
+  bool has_errors;
 
 public:
 
   void prepare_program_options(const boost::program_options::variables_map& vm) {
-	 bool has_error= false;
+// Analyze error-related program options
+	 has_errors= false;
 	 if (vm["global-error"].as<bool>()) {
 		const double err_rate= vm["global-error-rate"].as<double>();
 		L_INFO("Enabling *GLOBAL* error handling ("
 				 "error-rate=" << err_rate << ")");
-		err_handler.add(new whole_pedigree_genotype_error_handler_t(err_rate));
-		has_error= true;
+		err_constraints.add(new at_most_global_constraints_t(err_rate));
+		has_errors= true;
 	 }
 	 if (vm["individual-error"].as<bool>()) {
 		const double err_rate= vm["individual-error-rate"].as<double>();
 		L_INFO("Enabling *INDIVIDUAL* error handling ("
 				 "error-rate=" << err_rate << ")");
-		err_handler.add(new whole_individual_genotype_error_handler_t(err_rate));
-		has_error= true;
+		err_constraints.add(new at_most_individual_constraints_t(err_rate));
+		has_errors= true;
 	 }
 	 if (vm["uniform-error"].as<bool>()) {
 		const unsigned int winerr= vm["max-errors-in-window"].as<unsigned int>();
-		const unsigned int winlen= vm["window-length"].as<unsigned int>();
+		const unsigned int winlen= vm["error-window-length"].as<unsigned int>();
 		L_INFO("Enabling *WINDOWED* error handling ("
 				 "max-errors-in-windows=" << winerr << ", "
-				 "window-length=" << winlen << ")");
-		err_handler.add(new windowed_error_handler_t(winerr, winlen));
-		has_error= true;
+				 "error-window-length=" << winlen << ")");
+		err_constraints.add(new at_most_windowed_constraints_t(winerr, winlen));
+		has_errors= true;
 	 }
-	 if (!has_error) {
+	 if (!has_errors) {
 		L_INFO("*DISABLING* genotyping errors");
-		err_handler.add(new no_errors_handler_t());
+		err_constraints.add(new all_false_constraints_t());
 	 }
   };
 
@@ -110,13 +112,13 @@ public:
 // Prepare the SAT instance
 	 L_INFO("Preparing SAT instance from pedigree...");
 	 ped2cnf(mped.families().front(), cnf);
+	 L_DEBUG("So far the SAT instance is composed by " <<
+				std::setw(8) << cnf.vars().size() << " variables and " <<
+				std::setw(8) << cnf.no_of_clauses() << " clauses");
 	 L_INFO("Adding clauses for managing genotyping errors...");
-	 error_handler_t::individuals_errors_t errors;
-	 err_handler.prepare_errors(cnf,
-										 mped.families().front().size(),
-										 mped.families().front().genotype_length(),
-										 errors);
-	 err_handler.handle_errors(cnf, errors);
+	 error_handler_t err_handler(err_constraints);
+	 err_handler.handle_errors(cnf, mped.families().front().size(),
+										mped.families().front().genotype_length());
 	 L_INFO("SAT instance successfully prepared.");
 	 L_INFO("The SAT instance is composed by " <<
 			  std::setw(8) << cnf.vars().size() << " variables and " <<
@@ -127,7 +129,9 @@ public:
 
 public:
 
-  explicit zrhcstar_t() {
+  explicit zrhcstar_t()
+		:has_errors(false)
+  {
   };
 
   void save_ZRHC(pedigree_t& ped,
