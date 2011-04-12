@@ -1,0 +1,33 @@
+##
+## Configuration file for 'execute-ZRHC.sh'
+##
+## It must be placed in the current directory 
+
+
+## * Required parameters
+
+ZRHC_exe="./ZRHCstar"
+
+## Invocation of the SAT solver
+## Uncomment the following line for the invocation of an external solver
+#ZRHC_sat_mode="-3 --sat-cmdline './bin/cryptominisat %%INPUT%% %%OUTPUT%%' --compress-output"
+## Uncomment the following line for the invocation of the internal solver
+ZRHC_sat_mode="-4"
+
+
+## * Optional parameters
+
+## How are errors handled?
+error_handler=""    # errors = off
+#error_handler="--global-error --global-error-rate=0.01"
+#error_handler="--individual-error --individual-error-rate=0.01 --uniform-error --max-errors-in-window=4 --error-window-length=16"
+
+## How are recombinations handled?
+recomb_handler=""   # recombinations = off
+#recomb_handler="--global-recomb --global-recomb-rate=0.01"
+#recomb_handler="--individual-recomb --individual-recomb-rate=0.01 --uniform-recomb --max-recombs-in-window=4 --recomb-window-length=16"
+
+## Input pedigrees
+pedigrees=gen-ped-*.txt
+
+dest_dir="./zrhcstar-out/"

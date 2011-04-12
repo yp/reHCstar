@@ -38,19 +38,58 @@
 #
 ##########
 
-
-ZRHC_exe='./bin/ZRHCstar'
-SAT_cmd='./bin/cryptominisat %%INPUT%% %%OUTPUT%% >> sat-execution.log'
-
-pedigrees="`ls ./input/gen-ped-*.txt`"
-pedigrees=${*:-${pedigrees}}
-
 LANG=C
 
-echo "`date`  --  Starting experimentation" > sat-execution.log
+# Check existence of required files
+if [ ! -f "./config-execution.ini"  ];
+then
+    echo "Configuration file 'config-execution.ini' not found. Aborting..."
+    exit 1
+fi
+
+# Set parameters to default values
+ZRHC_exe=""
+ZRHC_sat_mode=""
+error_handler=""
+recomb_handler=""
+pedigrees=gen-ped-*.txt
+dest_dir="./zrhcstar-out/"
+
+# Read configuration
+source ./config-execution.ini
+
+# Check required parameters...
+if [ -z "${ZRHC_exe}" ]; then echo "Parameter 'ZRHC_exe' not defined. Aborting..."; exit 1; fi
+if [ -z "${ZRHC_sat_mode}" ]; then echo "Parameter 'ZRHC_sat_mode' not defined. Aborting..."; exit 1; fi
+if [ -z "${pedigrees}" ]; then echo "Parameter 'pedigrees' not defined. Aborting..."; exit 1; fi
+
+
+if [ ! -x "${ZRHC_exe}" ]; then echo "Main program '${ZRHC_exe}' not found or not executable. Aborting..."; exit 1; fi
+
+for pedigree in ${pedigrees}; do
+    if [ ! -f ${pedigree} ]; then
+        echo "Pedigree '${pedigree}' refers to a non-existent file. Aborting..."
+        exit 1
+    fi
+done
+
+if [ ! -e "${dest_dir}" ]; then
+    mkdir -p "${dest_dir}"
+fi
+if [ ! -d "${dest_dir}" ]; then
+    echo "Impossible to create output directory '${dest_dir}'. Aborting..."
+    exit 1
+fi
+
+
+ZRHC_partial="${ZRHC_exe} ${ZRHC_sat_mode} ${error_handler} ${recomb_handler}"
+
+echo "`date`  --  Starting experimentation" > execution.log
 for full_pedigree in ${pedigrees}; do
     pedigree=`basename ${full_pedigree}`
     echo "`date`  --  Executing on ${pedigree}"
-    echo "`date`  --  Executing on ${pedigree}" >> sat-execution.log
-    nice time -f "%U %S %E %x %M %C" -o ${pedigree/#gen-/time-} ${ZRHC_exe} -3 -p ${full_pedigree} -h ${pedigree/#gen-/hap-} -c "${SAT_cmd}"
+    echo "`date`  --  Executing on ${pedigree}" >> execution.log
+    nice time -f "%U %S %E %x %M %C" -o ${dest_dir}/time-${pedigree} \
+        ${ZRHC_partial} \
+        -p ${full_pedigree} -h ${dest_dir}/hap-${pedigree} > ${dest_dir}/log-${pedigree}
 done

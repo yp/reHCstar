@@ -1,0 +1,9 @@
+## Minimal logging configuration:
+# Important messages are printed to stdout and everything else is discarded
+
+log4j.rootLogger=INFO, STDOUT
+
+log4j.appender.STDOUT=org.apache.log4j.ConsoleAppender
+log4j.appender.STDOUT.target=System.out
+log4j.appender.STDOUT.layout=org.apache.log4j.PatternLayout
+log4j.appender.STDOUT.layout.ConversionPattern=%5p [%15r] (%30.30F:%-4L) - %m%n
