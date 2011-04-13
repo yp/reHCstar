@@ -54,6 +54,8 @@ error_handler=""
 recomb_handler=""
 pedigrees=gen-ped-*.txt
 dest_dir="./zrhcstar-out/"
+time_limit=0   # no limit
+memory_limit=0   # no limit
 
 # Read configuration
 source ./config-execution.ini
@@ -62,7 +64,10 @@ source ./config-execution.ini
 if [ -z "${ZRHC_exe}" ]; then echo "Parameter 'ZRHC_exe' not defined. Aborting..."; exit 1; fi
 if [ -z "${ZRHC_sat_mode}" ]; then echo "Parameter 'ZRHC_sat_mode' not defined. Aborting..."; exit 1; fi
 if [ -z "${pedigrees}" ]; then echo "Parameter 'pedigrees' not defined. Aborting..."; exit 1; fi
-
+time_limit=`echo ${time_limit} | sed 's/[^0-9]//g'`   # Remove non-digits
+memory_limit=`echo ${memory_limit} | sed 's/[^0-9]//g'`
+if [ -z "${time_limit}" ]; then echo "Parameter 'time_limit' is not correctly defined. Aborting..."; exit 1; fi
+if [ -z "${memory_limit}" ]; then echo "Parameter 'memory_limit' is not correctly defined. Aborting..."; exit 1; fi
 
 if [ ! -x "${ZRHC_exe}" ]; then echo "Main program '${ZRHC_exe}' not found or not executable. Aborting..."; exit 1; fi
 
@@ -84,7 +89,18 @@ fi
 
 ZRHC_partial="${ZRHC_exe} ${ZRHC_sat_mode} ${error_handler} ${recomb_handler}"
 
+echo "`date`  --  Starting experimentation"
 echo "`date`  --  Starting experimentation" > execution.log
+if [ ${time_limit} -gt 0 ]; then
+    echo "`date`  --  Setting time limit to ${time_limit} minutes (each)"
+    echo "`date`  --  Setting time limit to ${time_limit} minutes (each)" >> execution.log
+    ulimit -t $(( time_limit * 60 ))
+fi
+if [ ${memory_limit} -gt 0 ]; then
+    echo "`date`  --  Setting memory limit to ${memory_limit} MB (each)"
+    echo "`date`  --  Setting memory limit to ${memory_limit} MB (each)" >> execution.log
+    ulimit -v $(( memory_limit * 1024 ))
+fi
 for full_pedigree in ${pedigrees}; do
     pedigree=`basename ${full_pedigree}`
     echo "`date`  --  Executing on ${pedigree}"
@@ -93,3 +109,5 @@ for full_pedigree in ${pedigrees}; do
         ${ZRHC_partial} \
         -p ${full_pedigree} -h ${dest_dir}/hap-${pedigree} > ${dest_dir}/log-${pedigree}
 done
+echo "`date`  --  Experimentation ended"
+echo "`date`  --  Experimentation ended" >> execution.log
