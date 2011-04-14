@@ -102,11 +102,15 @@ public:
   typedef std::vector<pedvar_t> varvec_t;
   typedef std::vector<bool> valvec_t;
   typedef std::set<lit_t> clause_t;
+#ifndef AVOID_XOR_CLAUSES
   typedef std::set<lit_t> xor_clause_t;
+#endif
 
 #ifndef ONLY_INTERNAL_SAT_SOLVER
   typedef std::set< clause_t > clauses_t;
+#ifndef AVOID_XOR_CLAUSES
   typedef std::set< xor_clause_t > xor_clauses_t;
+#endif
 #endif // ONLY_INTERNAL_SAT_SOLVER
 
 // Data members
@@ -125,11 +129,15 @@ private:
   valvec_t _vals;
 
   size_t _no_of_clauses;
+#ifndef AVOID_XOR_CLAUSES
   size_t _no_of_xor_clauses;
+#endif
 
 #ifndef ONLY_INTERNAL_SAT_SOLVER
   clauses_t _clauses;
+#ifndef AVOID_XOR_CLAUSES
   xor_clauses_t _xor_clauses;
+#endif
 #endif // ONLY_INTERNAL_SAT_SOLVER
 
 
@@ -163,7 +171,10 @@ private:
 public:
 
   pedcnf_t()
-		:_next_dummy(0), _no_of_clauses(0), _no_of_xor_clauses(0)
+		:_next_dummy(0), _no_of_clauses(0)
+#ifndef AVOID_XOR_CLAUSES
+		, _no_of_xor_clauses(0)
+#endif
   {};
 
   ~pedcnf_t() {
@@ -255,29 +266,39 @@ public:
 	 return _clauses;
   };
 
+#ifndef AVOID_XOR_CLAUSES
   const xor_clauses_t& xor_clauses() const {
 	 return _xor_clauses;
   };
+#endif
 
 #endif // ONLY_INTERNAL_SAT_SOLVER
 
   size_t no_of_clauses() const {
+#ifndef AVOID_XOR_CLAUSES
 	 return _no_of_clauses + _no_of_xor_clauses;
+#else
+	 return _no_of_clauses;
+#endif
   };
 
   void add_clause(const clause_t& clause);
 
+#ifndef AVOID_XOR_CLAUSES
   void add_xor_clause(const xor_clause_t& clause);
+#endif
 
   template <int LEN>
   void add_clause(const lit_t* const clause) {
 	 add_clause(clause_t(clause, clause+LEN));
   };
 
+#ifndef AVOID_XOR_CLAUSES
   template <int LEN>
   void add_xor_clause(const lit_t* const clause) {
 	 add_xor_clause(xor_clause_t(clause, clause+LEN));
   };
+#endif
 
 #ifndef ONLY_INTERNAL_SAT_SOLVER
   bool is_satisfying_assignment() const;
@@ -315,7 +336,7 @@ public:
   bool solve() {
 	 const bool ret= _solver.solve();
 	 if (ret) {
-		for (Var var = 0; var != _solver.no_of_vars(); var++) {
+		for (unsigned int var = 0; var != _solver.no_of_vars(); var++) {
 		  _vals[var]= _solver.model(var);
 		}
 	 } else {

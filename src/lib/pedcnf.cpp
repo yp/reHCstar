@@ -240,6 +240,7 @@ pedcnf_t::is_satisfying_assignment() const {
 	 L_DEBUG("The assignment does not satisfy all the or-clauses.");
   } else {
 	 L_DEBUG("The assignment satisfies all the or-clauses.");
+#ifndef AVOID_XOR_CLAUSES
 	 L_DEBUG("Checking if value assignment satisfies the xor-clauses...");
 	 BOOST_FOREACH(const xor_clause_t& clause, _xor_clauses) {
 		if (ris) {
@@ -262,6 +263,7 @@ pedcnf_t::is_satisfying_assignment() const {
 	 } else {
 		L_DEBUG("The assignment does not satisfy the xor-clauses.");
 	 }
+#endif
   }
   return ris;
 };
@@ -367,6 +369,7 @@ pedcnf_t::add_clause(const clause_t& clause) {
   ++_no_of_clauses;
 };
 
+#ifndef AVOID_XOR_CLAUSES
 void
 pedcnf_t::add_xor_clause(const xor_clause_t& clause) {
 #ifndef ONLY_INTERNAL_SAT_SOLVER
@@ -377,5 +380,5 @@ pedcnf_t::add_xor_clause(const xor_clause_t& clause) {
 #endif
   ++_no_of_xor_clauses;
 };
-
+#endif
 
