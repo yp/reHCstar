@@ -188,7 +188,7 @@ public:
   };
 };
 
-class recombination_handler_t {
+class global_recombination_handler_t {
 private:
 
   typedef constraint_handler_t::individuals_variables_t individuals_variables_t;
@@ -197,7 +197,44 @@ private:
   const constraint_handler_t& _handler;
 
 public:
-  recombination_handler_t(const constraint_handler_t& handler)
+  global_recombination_handler_t(const constraint_handler_t& handler)
+		:_handler(handler)
+  {};
+
+  void handle_recombinations(pedcnf_t& cnf,
+									  const size_t pedigree_size,
+									  const size_t genotype_length) const {
+	 individuals_variables_t variables;
+// Recombinations in both haplotypes
+	 for (size_t i= 0; i<pedigree_size; ++i) {
+		{
+		  individual_variables_t ivs;
+		  variables.push_back(ivs);
+		}
+		individual_variables_t& ivs= variables.back();
+		for (size_t l= 1; l<genotype_length; ++l) {
+		  if (cnf.has_rp(i, l)) {
+			 ivs.push_back(cnf.get_rp(i, l));
+		  }
+		  if (cnf.has_rm(i, l)) {
+			 ivs.push_back(cnf.get_rm(i, l));
+		  }
+		}
+	 }
+	 _handler.handle_constraints(cnf, variables);
+  };
+};
+
+class separated_recombination_handler_t {
+private:
+
+  typedef constraint_handler_t::individuals_variables_t individuals_variables_t;
+  typedef constraint_handler_t::individual_variables_t individual_variables_t;
+
+  const constraint_handler_t& _handler;
+
+public:
+  separated_recombination_handler_t(const constraint_handler_t& handler)
 		:_handler(handler)
   {};
 

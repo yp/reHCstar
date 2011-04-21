@@ -55,8 +55,11 @@ public:
 private:
 
   composite_constraints_t err_constraints;
-  composite_constraints_t recomb_constraints;
+  composite_constraints_t global_recomb_constraints;
+  composite_constraints_t separated_recomb_constraints;
   bool has_errors;
+  bool has_global_recombinations;
+  bool has_separated_recombinations;
   bool has_recombinations;
 
 public:
@@ -92,20 +95,22 @@ public:
 		err_constraints.add(new all_false_constraints_t());
 	 }
 // Analyze recombination-related program options
-	 has_recombinations= false;
+	 has_global_recombinations=
+		has_separated_recombinations=
+		has_recombinations= false;
 	 if (vm["global-recomb"].as<bool>()) {
 		const double recomb_rate= vm["global-recomb-rate"].as<double>();
 		L_INFO("Enabling *GLOBAL* recombination handling ("
 				 "recomb-rate=" << recomb_rate << ")");
-		recomb_constraints.add(new at_most_global_constraints_t(recomb_rate));
-		has_recombinations= true;
+		global_recomb_constraints.add(new at_most_global_constraints_t(recomb_rate));
+		has_global_recombinations= true;
 	 }
 	 if (vm["individual-recomb"].as<bool>()) {
 		const double recomb_rate= vm["individual-recomb-rate"].as<double>();
 		L_INFO("Enabling *INDIVIDUAL* recombination handling ("
 				 "recomb-rate=" << recomb_rate << ")");
-		recomb_constraints.add(new at_most_individual_constraints_t(recomb_rate));
-		has_recombinations= true;
+		global_recomb_constraints.add(new at_most_individual_constraints_t(recomb_rate));
+		has_global_recombinations= true;
 	 }
 	 if (vm["uniform-recomb"].as<bool>()) {
 		const unsigned int winrecomb= vm["max-recombs-in-window"].as<unsigned int>();
@@ -113,12 +118,13 @@ public:
 		L_INFO("Enabling *WINDOWED* recombination handling ("
 				 "max-recombs-in-windows=" << winrecomb << ", "
 				 "recomb-window-length=" << winlen << ")");
-		recomb_constraints.add(new at_most_windowed_constraints_t(winrecomb, winlen));
-		has_recombinations= true;
+		separated_recomb_constraints.add(new at_most_windowed_constraints_t(winrecomb, winlen));
+		has_separated_recombinations= true;
 	 }
+	 has_recombinations= has_global_recombinations || has_separated_recombinations;
 	 if (!has_recombinations) {
 		L_INFO("*DISABLING* recombinations");
-		recomb_constraints.add(new all_false_constraints_t());
+		global_recomb_constraints.add(new all_false_constraints_t());
 	 }
   };
 
@@ -154,9 +160,12 @@ public:
 				std::setw(8) << cnf.vars().size() << " variables and " <<
 				std::setw(8) << cnf.no_of_clauses() << " clauses");
 	 L_INFO("Adding clauses for managing recombination events...");
-	 recombination_handler_t recomb_handler(recomb_constraints);
-	 recomb_handler.handle_recombinations(cnf, mped.families().front().size(),
-													  mped.families().front().genotype_length());
+	 global_recombination_handler_t global_recomb_handler(global_recomb_constraints);
+	 global_recomb_handler.handle_recombinations(cnf, mped.families().front().size(),
+																mped.families().front().genotype_length());
+	 separated_recombination_handler_t separated_recomb_handler(separated_recomb_constraints);
+	 separated_recomb_handler.handle_recombinations(cnf, mped.families().front().size(),
+																	mped.families().front().genotype_length());
 	 L_INFO("SAT instance successfully prepared.");
 	 L_INFO("The SAT instance is composed by " <<
 			  std::setw(8) << cnf.vars().size() << " variables and " <<
