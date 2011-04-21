@@ -6,7 +6,7 @@
 #                               ZRHC-*
 #  Zero-Recombinant Haplotype Configuration with missing genotypes
 #
-#  Copyright (C) 2010  Yuri Pirola <yuri.pirola(-at-)gmail.com>
+#  Copyright (C) 2010,2011  Yuri Pirola <yuri.pirola(-at-)gmail.com>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
 #
@@ -73,10 +73,6 @@ def parse_command_line():
                       default=False,
                       help="swap founders' haplotypes such that the minimum amount of "
                       "phase error is obtained")
-    parser.add_option("-c", "--expensive-checks",
-                      action="store_true", dest="checks",
-                      default=False,
-                      help="perform additional computational-expensive consistency checks")
     parser.add_option("-v", "--verbose",
                       action="store_true", dest="verbose",
                       default=False,
@@ -89,8 +85,8 @@ def parse_command_line():
 def compute_errors(genotype, orig_hp, orig_hm, res_hp, res_hm):
     orig_gen= [ encoding[str(hp) + ' ' + str(hm)] for hp,hm in zip(orig_hp, orig_hm) ]
     res_gen= [ encoding[str(hp) + ' ' + str(hm)] for hp,hm in zip(res_hp, res_hm) ]
-    gen_dif= [ 0 if orig == res else 1
-               for orig,res in zip(orig_gen, res_gen) ]
+    gen_dif= [ 0 if (g != 0 or orig == res) else 1
+               for g,orig,res in zip(genotype, orig_gen, res_gen) ]
     pat_dif= [ 0 if orig == res else 1
                for orig,res in zip(orig_hp, res_hp) ]
     mat_dif= [ 0 if orig == res else 1
@@ -119,6 +115,25 @@ def compute_errors_with_swap(genotype, orig_hp, orig_hm, res_hp, res_hm, can_swa
     else:
         return compute_errors(genotype, orig_hp, orig_hm, res_hp, res_hm)
 
+def compute_recombinations(ind_id, p_id, h, ph1, ph2):
+    rec1= []
+    rec2= []
+    (phase1, phase2)= (0, 1)
+    ph= (ph1, ph2)
+    for l in range(len(h)):
+        if h[l] != ph[phase1][l]:
+            phase1= 1-phase1
+            assert(h[l] == ph[phase1][l])
+            rec1.append((ind_id, p_id, l))
+        if h[l] != ph[phase2][l]:
+            phase2= 1-phase2
+            assert(h[l] == ph[phase2][l])
+            rec2.append((ind_id, p_id, l))
+    if len(rec1) <= len(rec2):
+        return rec1
+    else:
+        return rec2
+
 
 
 options = parse_command_line()
@@ -128,7 +143,7 @@ log_level= logging.DEBUG if options.verbose else logging.INFO
 logging.basicConfig(level=log_level,
                     format='%(levelname)-6s [%(asctime)s]  %(message)s')
 
-logging.info("EVALUATION OF ZRHC-* RESULTS")
+logging.info("EVALUATION OF (r,e)-HC-* RESULTS")
 
 if ( not options.original or
      not os.path.isfile(options.original) or
@@ -186,9 +201,9 @@ for r in orig_ped_str:
     comb_hap= split_r[6].split("\t")
     pat_hap= [ int(single.split('|')[0]) for single in comb_hap ]
     mat_hap= [ int(single.split('|')[1]) for single in comb_hap ]
-    orig_ped[split_r[1]]= (split_r[1], split_r[2], split_r[3], pat_hap, mat_hap)
+    orig_gen= [ encoding[str(hp) + ' ' + str(hm)] for hp,hm in zip(pat_hap, mat_hap) ]
+    orig_ped[split_r[1]]= (split_r[1], split_r[2], split_r[3], pat_hap, mat_hap, orig_gen)
 del orig_ped_str;
-
 
 # Read the computed haplotype configuration
 logging.info("Reading result file '%s'...", options.result)
@@ -205,55 +220,67 @@ for r in res_ped_str:
     comb_hap= split_r[6].split("\t")
     pat_hap= [ int(single.split('|')[0]) for single in comb_hap ]
     mat_hap= [ int(single.split('|')[1]) for single in comb_hap ]
-    res_ped[split_r[1]]= (split_r[1], split_r[2], split_r[3], pat_hap, mat_hap)
+    res_gen= [ encoding[str(hp) + ' ' + str(hm)] for hp,hm in zip(pat_hap, mat_hap) ]
+    res_ped[split_r[1]]= (split_r[1], split_r[2], split_r[3], pat_hap, mat_hap, res_gen)
 
-logging.info("Checking (basic) consistency...")
+logging.info("Checking basic consistency...")
 if ( orig_ped.keys() != res_ped.keys() or
      orig_ped.keys() != genotypes.keys() or
      res_ped.keys() != genotypes.keys() ):
     logging.fatal("The two pedigrees refer to different individuals.")
     sys.exit(1)
-for individual in iter(orig_ped):
-    if orig_ped[individual][0:3] != res_ped[individual][0:3]:
+
+logging.info("Computing recombinations...")
+# Compute recombinations in the original pedigree
+orig_rec= []
+for ind_id in orig_ped:
+    ind= orig_ped[ind_id]
+    if ind[1] != '0':
+        orig_rec.extend(compute_recombinations(ind_id, ind[1],
+                                               ind[3], orig_ped[ind[1]][3], orig_ped[ind[1]][4]))
+    if ind[2] != '0':
+        orig_rec.extend(compute_recombinations(ind_id, ind[2],
+                                               ind[4], orig_ped[ind[2]][3], orig_ped[ind[2]][4]))
+orig_rec=frozenset(orig_rec)
+# Compute recombinations in the resulting haplotype configuration
+res_rec= []
+for ind_id in res_ped:
+    ind= res_ped[ind_id]
+    if ind[1] != '0':
+        res_rec.extend(compute_recombinations(ind_id, ind[1],
+                                              ind[3], res_ped[ind[1]][3], res_ped[ind[1]][4]))
+    if ind[2] != '0':
+        res_rec.extend(compute_recombinations(ind_id, ind[2],
+                                              ind[4], res_ped[ind[2]][3], res_ped[ind[2]][4]))
+res_rec=frozenset(res_rec)
+logging.info("Computing errors...")
+orig_err= []
+for ind_id in orig_ped:
+    ind= orig_ped[ind_id]
+    orig_err.extend([ (ind_id, l)
+                      for l,g1,g2 in zip(range(len(genotypes[ind_id])), genotypes[ind_id], ind[5])
+                      if g1 != 0 and g1 != g2 ])
+orig_err=frozenset(orig_err)
+res_err= []
+for ind_id in res_ped:
+    ind= res_ped[ind_id]
+    res_err.extend([ (ind_id, l)
+                     for l,g1,g2 in zip(range(len(genotypes[ind_id])), genotypes[ind_id], ind[5])
+                      if g1 != 0 and g1 != g2 ])
+res_err=frozenset(res_err)
+
+
+logging.info("Checking pedigree structure consistency...")
+for ind_id in orig_ped:
+    ind_orig= orig_ped[ind_id]
+    ind_res= res_ped[ind_id]
+    if ind_orig[0:3] != ind_res[0:3]:
         logging.fatal("The parents of '%s' are different in the two pedigrees. "
                       "Original: (%s) - Result: (%s).",
-                      individual,
-                      ",".join(orig_ped[individual][0:3]),
-                      ",".join(res_ped[individual][0:3]) )
+                      ind_id,
+                      ",".join(ind_orig[0:3]),
+                      ",".join(ind_res[0:3]) )
         sys.exit(1)
-    if options.checks:
-        pat_hap= orig_ped[individual][3]
-        mat_hap= orig_ped[individual][4]
-        if ( (orig_ped[individual][1] != '0') and
-             (pat_hap != orig_ped[orig_ped[individual][1]][3]) and
-             (pat_hap != orig_ped[orig_ped[individual][1]][4]) ):
-            logging.fatal("The paternal haplotype of individual '%s' has not been "
-                          "inherited from father '%s' in the original haplotype configuration.",
-                          individual, orig_ped[individual][1])
-            sys.exit(1)
-            if ( (orig_ped[individual][2] != '0') and
-                 (mat_hap != orig_ped[orig_ped[individual][2]][3]) and
-                 (mat_hap != orig_ped[orig_ped[individual][2]][4]) ):
-                logging.fatal("The maternal haplotype of individual '%s' has not been "
-                              "inherited from mother '%s' in the original haplotype configuration.",
-                              individual, orig_ped[individual][2])
-                sys.exit(1)
-                pat_hap= res_ped[individual][3]
-                mat_hap= res_ped[individual][4]
-                if ( (res_ped[individual][1] != '0') and
-                     (pat_hap != res_ped[res_ped[individual][1]][3]) and
-                     (pat_hap != res_ped[res_ped[individual][1]][4]) ):
-                    logging.fatal("The paternal haplotype of individual '%s' has not been "
-                                  "inherited from father '%s' in the computed haplotype configuration.",
-                                  individual, res_ped[individual][1])
-                    sys.exit(1)
-                    if ( (res_ped[individual][2] != '0') and
-                         (mat_hap != res_ped[res_ped[individual][2]][3]) and
-                         (mat_hap != res_ped[res_ped[individual][2]][4]) ):
-                        logging.fatal("The maternal haplotype of individual '%s' has not been "
-                                      "inherited from mother '%s' in the computed haplotype configuration.",
-                                      individual, res_ped[individual][2])
-                        sys.exit(1)
 
 logging.info("Computing differences...")
 
@@ -346,7 +373,7 @@ if not options.full:
         print('"input file"',
               '"result file"',
               '"pedigree size"',
-              '"tot genotype length"',
+              '"genotype length"',
               '"tot heterozygous loci"',
               '"tot homozygous loci"',
               '"tot missing genotypes"',
@@ -360,12 +387,22 @@ if not options.full:
               '"avg maternal haplotype errors"',
               '"avg paternal haplotype errors wo missing"',
               '"avg maternal haplotype errors wo missing"',
+              '"orig recomb"',
+              '"computed recomb"',
+              '"TP recomb"',
+              '"FN recomb"',
+              '"FP recomb"',
+              '"orig errors"',
+              '"computed errors"',
+              '"TP errors"',
+              '"FN errors"',
+              '"FP errors"',
               sep="\t")
 
     print(options.original,
           options.result,
           n_indiv,
-          tot_gen,
+          tot_gen/n_indiv,
           tot_het,
           tot_hom,
           tot_mis,
@@ -379,4 +416,14 @@ if not options.full:
           tot_err_mat_hap,
           tot_err_mask_pat_hap,
           tot_err_mask_mat_hap,
+          len(orig_rec),
+          len(res_rec),
+          len(orig_rec & res_rec),
+          len(orig_rec - res_rec),
+          len(res_rec - orig_rec),
+          len(orig_err),
+          len(res_err),
+          len(orig_err & res_err),
+          len(orig_err - res_err),
+          len(res_err - orig_err),
           sep="\t")
