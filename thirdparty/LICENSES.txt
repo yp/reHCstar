@@ -9,3 +9,8 @@ ZRHC-* incorporates the following SAT solvers:
   version 3;
 - [MiniSat](http://www.minisat.se/MiniSat.html) version 2.2.0 by Niklas
   Een and Niklas Sorensson, which is distributed under the MIT license.
+
+ZRHC-* includes the program suite "JPSGCS" version 03/14/2011 by Alun
+Thomas for the generation of zero-loop pedigree structures.
+[JPSGCS](http://balance.med.utah.edu/wiki) is distributed under the GNU
+General Public License version 3.
