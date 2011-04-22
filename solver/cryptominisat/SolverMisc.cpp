@@ -21,19 +21,27 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "XorSubsumer.h"
 #include "time_mem.h"
 #include "DimacsParser.h"
+#include "FailedLitSearcher.h"
+#include "DataSync.h"
+#include "SCCFinder.h"
 #include <iomanip>
 
 #ifdef USE_GAUSS
 #include "Gaussian.h"
 #endif
 
+#ifndef _MSC_VER
+#include <sys/time.h>
+#include <sys/resource.h>
+#endif
+
 static const int space = 10;
 
-void Solver::dumpSortedLearnts(const char* fileName, const uint32_t maxSize)
+void Solver::dumpSortedLearnts(const std::string& fileName, const uint32_t maxSize)
 {
-    FILE* outfile = fopen(fileName, "w");
+    FILE* outfile = fopen(fileName.c_str(), "w");
     if (!outfile) {
-        printf("Error: Cannot open file '%s' to write learnt clauses!\n", fileName);
+        std::cout << "Error: Cannot open file '" << fileName << "' to write learnt clauses!" << std::endl;;
         exit(-1);
     }
 
@@ -52,13 +60,9 @@ void Solver::dumpSortedLearnts(const char* fileName, const uint32_t maxSize)
     if (maxSize == 1) goto end;
 
     fprintf(outfile, "c \nc ---------------------------------\n");
-    fprintf(outfile, "c learnt clauses from binaryClauses\n");
+    fprintf(outfile, "c learnt binary clauses (extracted from watchlists)\n");
     fprintf(outfile, "c ---------------------------------\n");
-    for (uint32_t i = 0; i != binaryClauses.size(); i++) {
-        if (binaryClauses[i]->learnt()) {
-            binaryClauses[i]->print(outfile);
-        }
-    }
+    dumpBinClauses(true, false, outfile);
 
     fprintf(outfile, "c \nc ---------------------------------------\n");
     fprintf(outfile, "c clauses representing 2-long XOR clauses\n");
@@ -96,40 +100,146 @@ void Solver::dumpSortedLearnts(const char* fileName, const uint32_t maxSize)
     fclose(outfile);
 }
 
-void Solver::dumpOrigClauses(const char* fileName, const bool alsoLearntBin) const
+void Solver::printStrangeBinLit(const Lit lit) const
 {
-    FILE* outfile = fopen(fileName, "w");
-    if (!outfile) {
-        printf("Error: Cannot open file '%s' to write learnt clauses!\n", fileName);
-        exit(-1);
+    const vec2<Watched>& ws = watches[(~lit).toInt()];
+    for (vec2<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
+        if (it2->isBinary()) {
+            std::cout << "bin: " << lit << " , " << it2->getOtherLit() << " learnt : " <<  (it2->getLearnt()) << std::endl;
+        } else if (it2->isTriClause()) {
+            std::cout << "tri: " << lit << " , " << it2->getOtherLit() << " , " <<  (it2->getOtherLit2()) << std::endl;
+        } else if (it2->isClause()) {
+            std::cout << "cla:" << it2->getNormOffset() << std::endl;
+        } else {
+            assert(it2->isXorClause());
+            std::cout << "xor:" << it2->getXorOffset() << std::endl;
+        }
+    }
+}
+
+const uint32_t Solver::countNumBinClauses(const bool alsoLearnt, const bool alsoNonLearnt) const
+{
+    uint32_t num = 0;
+
+    uint32_t wsLit = 0;
+    for (const vec2<Watched> *it = watches.getData(), *end = watches.getDataEnd(); it != end; it++, wsLit++) {
+        Lit lit = ~Lit::toLit(wsLit);
+        const vec2<Watched>& ws = *it;
+        for (vec2<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
+            if (it2->isBinary()) {
+                if (it2->getLearnt()) num += alsoLearnt;
+                else num+= alsoNonLearnt;
+            }
+        }
+    }
+
+    assert(num % 2 == 0);
+    return num/2;
+}
+
+void Solver::dumpBinClauses(const bool alsoLearnt, const bool alsoNonLearnt, FILE* outfile) const
+{
+    uint32_t wsLit = 0;
+    for (const vec2<Watched> *it = watches.getData(), *end = watches.getDataEnd(); it != end; it++, wsLit++) {
+        Lit lit = ~Lit::toLit(wsLit);
+        const vec2<Watched>& ws = *it;
+        for (vec2<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
+            if (it2->isBinary() && lit.toInt() < it2->getOtherLit().toInt()) {
+                bool toDump = false;
+                if (it2->getLearnt() && alsoLearnt) toDump = true;
+                if (!it2->getLearnt() && alsoNonLearnt) toDump = true;
+
+                if (toDump) it2->dump(outfile, lit);
+            }
+        }
+    }
+}
+
+const uint32_t Solver::getBinWatchSize(const bool alsoLearnt, const Lit lit)
+{
+    uint32_t num = 0;
+    const vec2<Watched>& ws = watches[lit.toInt()];
+    for (vec2<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
+        if (it2->isBinary() && (alsoLearnt || !it2->getLearnt())) {
+            num++;
+        }
+    }
+
+    return num;
+}
+
+void Solver::printBinClause(const Lit litP1, const Lit litP2, FILE* outfile) const
+{
+    if (value(litP1) == l_True) {
+        litP1.printFull(outfile);
+    } else if (value(litP1) == l_False) {
+        litP2.printFull(outfile);
+    } else if (value(litP2) == l_True) {
+        litP2.printFull(outfile);
+    } else if (value(litP2) == l_False) {
+        litP1.printFull(outfile);
+    } else {
+        litP1.print(outfile);
+        litP2.printFull(outfile);
+    }
+}
+
+void Solver::dumpOrigClauses(const std::string& fileName) const
+{
+    FILE* outfile;
+    if (fileName != std::string("stdout")) {
+        outfile = fopen(fileName.c_str(), "w");
+        if (!outfile) {
+            std::cout << "Error: Cannot open file '" << fileName << "' to write learnt clauses!" << std::endl;
+            exit(-1);
+        }
+    } else  {
+        outfile = stdout;
     }
 
     uint32_t numClauses = 0;
     //unitary clauses
     for (uint32_t i = 0, end = (trail_lim.size() > 0) ? trail_lim[0] : trail.size() ; i < end; i++)
-      numClauses++;
+        numClauses++;
+
     //binary XOR clauses
     const vector<Lit>& table = varReplacer->getReplaceTable();
     for (Var var = 0; var != table.size(); var++) {
         Lit lit = table[var];
         if (lit.var() == var)
             continue;
-        numClauses+=2;
+        numClauses += 2;
     }
+
     //binary normal clauses
-    for (Clause *const *i = binaryClauses.getData(); i != binaryClauses.getDataEnd(); i++) {
-        if (!alsoLearntBin && (*i)->learnt()) continue;
-        numClauses++;
-    }
+    numClauses += countNumBinClauses(false, true);
+
     //normal clauses
     numClauses += clauses.size();
+
+    //xor clauses
+    numClauses += xorclauses.size();
+
     //previously eliminated clauses
-    const map<Var, vector<Clause*> >& elimedOutVar = subsumer->getElimedOutVar();
-    for (map<Var, vector<Clause*> >::const_iterator it = elimedOutVar.begin(); it != elimedOutVar.end(); it++) {
-        const vector<Clause*>& cs = it->second;
+    const map<Var, vector<vector<Lit> > >& elimedOutVar = subsumer->getElimedOutVar();
+    for (map<Var, vector<vector<Lit> > >::const_iterator it = elimedOutVar.begin(); it != elimedOutVar.end(); it++) {
+        const vector<vector<Lit> >& cs = it->second;
         numClauses += cs.size();
     }
+    const map<Var, vector<std::pair<Lit, Lit> > >& elimedOutVarBin = subsumer->getElimedOutVarBin();
+    for (map<Var, vector<std::pair<Lit, Lit> > >::const_iterator it = elimedOutVarBin.begin(); it != elimedOutVarBin.end(); it++) {
+        numClauses += it->second.size();
+    }
+
+    const map<Var, vector<XorSubsumer::XorElimedClause> >& xorElimedOutVar = xorSubsumer->getElimedOutVar();
+    for (map<Var, vector<XorSubsumer::XorElimedClause> >::const_iterator it = xorElimedOutVar.begin(); it != xorElimedOutVar.end(); it++) {
+        const vector<XorSubsumer::XorElimedClause>& cs = it->second;
+        numClauses += cs.size();
+    }
+
     fprintf(outfile, "p cnf %d %d\n", nVars(), numClauses);
+
+    ////////////////////////////////////////////////////////////////////
 
     fprintf(outfile, "c \nc ---------\n");
     fprintf(outfile, "c unitaries\n");
@@ -150,8 +260,10 @@ void Solver::dumpOrigClauses(const char* fileName, const bool alsoLearntBin) con
         if (lit.var() == var)
             continue;
 
-        fprintf(outfile, "%s%d %d 0\n", (!lit.sign() ? "-" : ""), lit.var()+1, var+1);
-        fprintf(outfile, "%s%d -%d 0\n", (lit.sign() ? "-" : ""), lit.var()+1, var+1);
+        Lit litP1 = ~lit;
+        Lit litP2 = Lit(var, false);
+        printBinClause(litP1, litP2, outfile);
+        printBinClause(~litP1, ~litP2, outfile);
         #ifdef STATS_NEEDED
         if (dynamic_behaviour_analysis)
             fprintf(outfile, "c name of two vars that are anti/equivalent: '%s' and '%s'\n", logger.get_var_name(lit.var()).c_str(), logger.get_var_name(var).c_str());
@@ -161,10 +273,7 @@ void Solver::dumpOrigClauses(const char* fileName, const bool alsoLearntBin) con
     fprintf(outfile, "c \nc ------------\n");
     fprintf(outfile, "c binary clauses\n");
     fprintf(outfile, "c ---------------\n");
-    for (Clause *const *i = binaryClauses.getData(); i != binaryClauses.getDataEnd(); i++) {
-        if (!alsoLearntBin && (*i)->learnt()) continue;
-        (*i)->print(outfile);
-    }
+    dumpBinClauses(false, true, outfile);
 
     fprintf(outfile, "c \nc ------------\n");
     fprintf(outfile, "c normal clauses\n");
@@ -174,18 +283,42 @@ void Solver::dumpOrigClauses(const char* fileName, const bool alsoLearntBin) con
         (*i)->print(outfile);
     }
 
-    //map<Var, vector<Clause*> > elimedOutVar
+    fprintf(outfile, "c \nc ------------\n");
+    fprintf(outfile, "c xor clauses\n");
+    fprintf(outfile, "c ---------------\n");
+    for (XorClause *const *i = xorclauses.getData(); i != xorclauses.getDataEnd(); i++) {
+        assert(!(*i)->learnt());
+        (*i)->print(outfile);
+    }
+
     fprintf(outfile, "c -------------------------------\n");
     fprintf(outfile, "c previously eliminated variables\n");
     fprintf(outfile, "c -------------------------------\n");
-    for (map<Var, vector<Clause*> >::const_iterator it = elimedOutVar.begin(); it != elimedOutVar.end(); it++) {
-        const vector<Clause*>& cs = it->second;
-        for (vector<Clause*>::const_iterator it2 = cs.begin(); it2 != cs.end(); it2++) {
-            (*it2)->print(outfile);
+    for (map<Var, vector<vector<Lit> > >::const_iterator it = elimedOutVar.begin(); it != elimedOutVar.end(); it++) {
+        fprintf(outfile, "c ########### cls for eliminated var %d ### start\n", it->first + 1);
+        const vector<vector<Lit> >& cs = it->second;
+        for (vector<vector<Lit> >::const_iterator it2 = cs.begin(); it2 != cs.end(); it2++) {
+            printClause(outfile, *it2);
+        }
+        fprintf(outfile, "c ########### cls for eliminated var %d ### finish\n", it->first + 1);
+    }
+    for (map<Var, vector<std::pair<Lit, Lit> > >::const_iterator it = elimedOutVarBin.begin(); it != elimedOutVarBin.end(); it++) {
+        for (uint32_t i = 0; i < it->second.size(); i++) {
+            it->second[i].first.print(outfile);
+            it->second[i].second.printFull(outfile);
         }
     }
 
-    fclose(outfile);
+    fprintf(outfile, "c -------------------------------\n");
+    fprintf(outfile, "c previously xor-eliminated variables\n");
+    fprintf(outfile, "c -------------------------------\n");
+    for (map<Var, vector<XorSubsumer::XorElimedClause> >::const_iterator it = xorElimedOutVar.begin(); it != xorElimedOutVar.end(); it++) {
+        for (vector<XorSubsumer::XorElimedClause>::const_iterator it2 = it->second.begin(), end2 = it->second.end(); it2 != end2; it2++) {
+            it2->plainPrint(outfile);
+        }
+    }
+
+    if (fileName != "stdout") fclose(outfile);
 }
 
 const vector<Lit> Solver::get_unitary_learnts() const
@@ -239,23 +372,27 @@ const double Solver::getTotalTimeSubsumer() const
     return subsumer->getTotalTime();
 }
 
+const double Solver::getTotalTimeFailedLitSearcher() const
+{
+    return failedLitSearcher->getTotalTime();
+}
+
 const double Solver::getTotalTimeXorSubsumer() const
 {
     return xorSubsumer->getTotalTime();
 }
 
-
-void Solver::setMaxRestarts(const uint32_t num)
+const double Solver::getTotalTimeSCC() const
 {
-    maxRestarts = num;
+    return  sCCFinder->getTotalTime();
 }
 
 void Solver::printStatHeader() const
 {
     #ifdef STATS_NEEDED
-    if (verbosity >= 1 && !(dynamic_behaviour_analysis && logger.statistics_on)) {
+    if (conf.verbosity >= 2 && !(dynamic_behaviour_analysis && logger.statistics_on)) {
     #else
-    if (verbosity >= 1) {
+    if (conf.verbosity >= 2) {
     #endif
         std::cout << "c "
         << "========================================================================================="
@@ -274,6 +411,7 @@ void Solver::printStatHeader() const
         << std::setw(space) << "Confl"
         << std::setw(space) << "Vars"
         << std::setw(space) << "NormCls"
+        << std::setw(space) << "XorCls"
         << std::setw(space) << "BinCls"
         << std::setw(space) << "Learnts"
         << std::setw(space) << "ClLits"
@@ -284,7 +422,7 @@ void Solver::printStatHeader() const
 
 void Solver::printRestartStat(const char* type)
 {
-    if (verbosity >= 2) {
+    if (conf.verbosity >= 2) {
         //printf("c | %9d | %7d %8d %8d | %8d %8d %6.0f |", (int)conflicts, (int)order_heap.size(), (int)(nClauses()-nbBin), (int)clauses_literals, (int)(nbclausesbeforereduce*curRestart+nbCompensateSubsumer), (int)(nLearnts()+nbBin), (double)learnts_literals/(double)(nLearnts()+nbBin));
 
         std::cout << "c "
@@ -294,10 +432,31 @@ void Solver::printRestartStat(const char* type)
         << std::setw(space) << conflicts
         << std::setw(space) << order_heap.size()
         << std::setw(space) << clauses.size()
-        << std::setw(space) << binaryClauses.size()
+        << std::setw(space) << xorclauses.size()
+        << std::setw(space) << numBins
         << std::setw(space) << learnts.size()
         << std::setw(space) << clauses_literals
         << std::setw(space) << learnts_literals;
+
+        if (glueHistory.getTotalNumeElems() > 0) {
+            std::cout << std::setw(space) << std::fixed << std::setprecision(2) << glueHistory.getAvgAllDouble();
+        } else {
+            std::cout << std::setw(space) << "no data";
+        }
+        if (glueHistory.isvalid()) {
+            std::cout << std::setw(space) << std::fixed << std::setprecision(2) << glueHistory.getAvgDouble();
+        } else {
+            std::cout << std::setw(space) << "no data";
+        }
+
+        #ifdef RANDOM_LOOKAROUND_SEARCHSPACE
+        if (conf.doPrintAvgBranch) {
+            if (avgBranchDepth.isvalid())
+                std::cout << std::setw(space) << avgBranchDepth.getAvgUInt();
+            else
+                std::cout << std::setw(space) << "no data";
+        }
+        #endif //RANDOM_LOOKAROUND_SEARCHSPACE
 
         #ifdef USE_GAUSS
         print_gauss_sum_stats();
@@ -310,9 +469,9 @@ void Solver::printRestartStat(const char* type)
 void Solver::printEndSearchStat()
 {
     #ifdef STATS_NEEDED
-    if (verbosity >= 1 && !(dynamic_behaviour_analysis && logger.statistics_on)) {
+    if (conf.verbosity >= 1 && !(dynamic_behaviour_analysis && logger.statistics_on)) {
     #else
-    if (verbosity >= 1) {
+    if (conf.verbosity >= 1) {
     #endif //STATS_NEEDED
         printRestartStat("E");
     }
@@ -321,8 +480,8 @@ void Solver::printEndSearchStat()
 #ifdef USE_GAUSS
 void Solver::print_gauss_sum_stats()
 {
-    if (gauss_matrixes.size() == 0 && verbosity >= 2) {
-        std::cout << "  no matrixes";
+    if (gauss_matrixes.size() == 0 && conf.verbosity >= 2) {
+        std::cout << "  --";
         return;
     }
 
@@ -343,13 +502,17 @@ void Solver::print_gauss_sum_stats()
     sum_gauss_confl += useful_confl;
     sum_gauss_prop += useful_prop;
 
-    if (verbosity >= 2) {
+    if (conf.verbosity >= 2) {
         if (called == 0) {
-            printf("      disabled      |\n");
+            std::cout << " --";
         } else {
-            printf(" %3.0lf%% |", (double)useful_prop/(double)called*100.0);
-            printf(" %3.0lf%% |", (double)useful_confl/(double)called*100.0);
-            printf(" %3.0lf%% |\n", 100.0-(double)disabled/(double)gauss_matrixes.size()*100.0);
+            std::cout << " "
+            << std::fixed << std::setprecision(1) << std::setw(5)
+            << ((double)useful_prop/(double)called*100.0) << "% "
+            << std::fixed << std::setprecision(1) << std::setw(5)
+            << ((double)useful_confl/(double)called*100.0) << "% "
+            << std::fixed << std::setprecision(1) << std::setw(5)
+            << (100.0-(double)disabled/(double)gauss_matrixes.size()*100.0) << "%";
         }
     }
 }
@@ -360,23 +523,28 @@ void Solver::print_gauss_sum_stats()
 */
 void Solver::sortWatched()
 {
+    #ifdef VERBOSE_DEBUG
+    std::cout << "Sorting watchlists:" << std::endl;
+    #endif
     double myTime = cpuTime();
-    for (vec<Watched> *i = watches.getData(), *end = watches.getDataEnd(); i != end; i++) {
+    for (vec2<Watched> *i = watches.getData(), *end = watches.getDataEnd(); i != end; i++) {
+        if (i->size() == 0) continue;
         #ifdef VERBOSE_DEBUG
         vec<Watched>& ws = *i;
-        std::cout << "Before:" << std::endl;
+        std::cout << "Before sorting:" << std::endl;
         for (uint32_t i2 = 0; i2 < ws.size(); i2++) {
             if (ws[i2].isBinary()) std::cout << "Binary,";
             if (ws[i2].isTriClause()) std::cout << "Tri,";
             if (ws[i2].isClause()) std::cout << "Normal,";
             if (ws[i2].isXorClause()) std::cout << "Xor,";
         }
+        std::cout << std::endl;
         #endif //VERBOSE_DEBUG
 
         std::sort(i->getData(), i->getDataEnd(), WatchedSorter());
 
         #ifdef VERBOSE_DEBUG
-        std::cout << "After:" << std::endl;
+        std::cout << "After sorting:" << std::endl;
         for (uint32_t i2 = 0; i2 < ws.size(); i2++) {
             if (ws[i2].isBinary()) std::cout << "Binary,";
             if (ws[i2].isTriClause()) std::cout << "Tri,";
@@ -387,7 +555,7 @@ void Solver::sortWatched()
         #endif //VERBOSE_DEBUG
     }
 
-    if (verbosity >= 2) {
+    if (conf.verbosity >= 3) {
         std::cout << "c watched "
         << "sorting time: " << cpuTime() - myTime
         << std::endl;
@@ -402,18 +570,21 @@ void Solver::addSymmBreakClauses()
     }
     double myTime = cpuTime();
     std::cout << "c Doing saucy" << std::endl;
-    dumpOrigClauses("origProblem.cnf", true);
-	 int rvalue;
+    dumpOrigClauses("origProblem.cnf");
+
+    int rvalue;
     rvalue= system("grep -v \"^c\" origProblem.cnf > origProblem2.cnf");
-	 if (rvalue >= 2) { // unsuccessful grep in POSIX standard
-		std::cout << "c impossible to complete saucy" << std::endl;
-		return;
-	 }
-	 rvalue= system("python saucyReader.py origProblem2.cnf > output");
-	 if (rvalue != 0) { // unsuccessful saucyReader.py
-		std::cout << "c impossible to complete saucy" << std::endl;
-		return;
-	 }
+    if (rvalue >= 2) { // unsuccessful grep in POSIX standard
+        std::cout << "c impossible to complete saucy" << std::endl;
+        return;
+    }
+    rvalue= system("python saucyReader.py origProblem2.cnf > output");
+    if (rvalue != 0) { // unsuccessful saucyReader.py
+        std::cout << "c impossible to complete saucy" << std::endl;
+        return;
+    }
+
+
     DimacsParser parser(this, false, false, false, true);
 
     #ifdef DISABLE_ZLIB
@@ -445,8 +616,96 @@ newVar() and addClause(), addXorClause() commands are logged to this CNF
 file and then can be re-read with special arguments to the main program. This
 can help simulate a segfaulting library-call
 */
-void Solver::needLibraryCNFFile(const char* fileName)
+void Solver::needLibraryCNFFile(const std::string& fileName)
 {
-    libraryCNFFile = fopen(fileName, "w");
-    assert(libraryCNFFile != NULL);
+    libraryCNFFile = fopen(fileName.c_str(), "w");
+    if (libraryCNFFile == NULL) {
+        std::cout << "Couldn't open library-call dump file "
+        << libraryCNFFile << std::endl;
+        exit(-1);
+    }
+}
+
+template<class T, class T2>
+void Solver::printStatsLine(std::string left, T value, T2 value2, std::string extra)
+{
+    std::cout << std::fixed << std::left << std::setw(27) << left << ": " << std::setw(11) << std::setprecision(2) << value << " (" << std::left << std::setw(9) << std::setprecision(2) << value2 << " " << extra << ")" << std::endl;
+}
+
+template<class T>
+void Solver::printStatsLine(std::string left, T value, std::string extra)
+{
+    std::cout << std::fixed << std::left << std::setw(27) << left << ": " << std::setw(11) << std::setprecision(2) << value << extra << std::endl;
+}
+
+/**
+@brief prints the statistics line at the end of solving
+
+Prints all sorts of statistics, like number of restarts, time spent in
+SatELite-type simplification, number of unit claues found, etc.
+*/
+void Solver::printStats()
+{
+    double   cpu_time = cpuTime();
+    uint64_t mem_used = memUsed();
+
+    //Restarts stats
+    printStatsLine("c restarts", starts);
+    printStatsLine("c dynamic restarts", dynStarts);
+    printStatsLine("c static restarts", staticStarts);
+    printStatsLine("c full restarts", fullStarts);
+    printStatsLine("c total simplify time", totalSimplifyTime);
+
+    //Learnts stats
+    printStatsLine("c learnts DL2", nbGlue2);
+    printStatsLine("c learnts size 2", numNewBin);
+    printStatsLine("c learnts size 1", get_unitary_learnts_num(), (double)get_unitary_learnts_num()/(double)nVars()*100.0, "% of vars");
+    printStatsLine("c filedLit time", getTotalTimeFailedLitSearcher(), getTotalTimeFailedLitSearcher()/cpu_time*100.0, "% time");
+
+    //Subsumer stats
+    printStatsLine("c v-elim SatELite", getNumElimSubsume(), (double)getNumElimSubsume()/(double)nVars()*100.0, "% vars");
+    printStatsLine("c SatELite time", getTotalTimeSubsumer(), getTotalTimeSubsumer()/cpu_time*100.0, "% time");
+
+    //XorSubsumer stats
+    printStatsLine("c v-elim xor", getNumElimXorSubsume(), (double)getNumElimXorSubsume()/(double)nVars()*100.0, "% vars");
+    printStatsLine("c xor elim time", getTotalTimeXorSubsumer(), getTotalTimeXorSubsumer()/cpu_time*100.0, "% time");
+
+    //VarReplacer stats
+    printStatsLine("c num binary xor trees", getNumXorTrees());
+    printStatsLine("c binxor trees' crown", getNumXorTreesCrownSize(), (double)getNumXorTreesCrownSize()/(double)getNumXorTrees(), "leafs/tree");
+    printStatsLine("c bin xor find time", getTotalTimeSCC());
+
+    //OTF clause improvement stats
+    printStatsLine("c OTF clause improved", improvedClauseNo, (double)improvedClauseNo/(double)conflicts, "clauses/conflict");
+    printStatsLine("c OTF impr. size diff", improvedClauseSize, (double)improvedClauseSize/(double)improvedClauseNo, " lits/clause");
+
+    //Clause-shrinking through watchlists
+    printStatsLine("c OTF cl watch-shrink", numShrinkedClause, (double)numShrinkedClause/(double)conflicts, "clauses/conflict");
+    printStatsLine("c OTF cl watch-sh-lit", numShrinkedClauseLits, (double)numShrinkedClauseLits/(double)numShrinkedClause, " lits/clause");
+    printStatsLine("c tried to recurMin cls", moreRecurMinLDo, (double)moreRecurMinLDo/(double)conflicts*100.0, " % of conflicts");
+    printStatsLine("c updated cache", updateTransCache, updateTransCache/(double)moreRecurMinLDo, " lits/tried recurMin");
+
+    #ifdef USE_GAUSS
+    if (gaussconfig.decision_until > 0) {
+        std::cout << "c " << std::endl;
+        printStatsLine("c gauss unit truths ", get_sum_gauss_unit_truths());
+        printStatsLine("c gauss called", get_sum_gauss_called());
+        printStatsLine("c gauss conflicts ", get_sum_gauss_confl(), (double)get_sum_gauss_confl() / (double)get_sum_gauss_called() * 100.0, " %");
+        printStatsLine("c gauss propagations ", get_sum_gauss_prop(), (double)get_sum_gauss_prop() / (double)get_sum_gauss_called() * 100.0, " %");
+        printStatsLine("c gauss useful", ((double)get_sum_gauss_prop() + (double)get_sum_gauss_confl())/ (double)get_sum_gauss_called() * 100.0, " %");
+        std::cout << "c " << std::endl;
+    }
+    #endif
+
+    printStatsLine("c clauses over max glue", nbClOverMaxGlue, (double)nbClOverMaxGlue/(double)conflicts*100.0, "% of all clauses");
+
+    //Search stats
+    printStatsLine("c conflicts", conflicts, (double)conflicts/cpu_time, "/ sec");
+    printStatsLine("c decisions", decisions, (double)rnd_decisions*100.0/(double)decisions, "% random");
+    printStatsLine("c bogo-props", propagations, (double)propagations/cpu_time, "/ sec");
+    printStatsLine("c conflict literals", tot_literals, (double)(max_literals - tot_literals)*100.0/ (double)max_literals, "% deleted");
+
+    //General stats
+    printStatsLine("c Memory used", (double)mem_used / 1048576.0, " MB");
+	 printStatsLine("c CPU time", cpu_time, " s");
 }

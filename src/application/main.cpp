@@ -97,11 +97,6 @@ protected:
 		 "%%INPUT%% and %%OUTPUT%% are markers used to represent the input and the output file "
 		 "of the solver and they are automatically substituted by the program into the "
 		 "corresponding filenames.")
-		("generate-XORs,x", po::bool_switch()->default_value(false),
-		 "Use also xor-clauses for the description of the SAT instance. "
-		 "WARNING: The SAT solver **MUST** be able to understand rows such as "
-		 "'x1 2 -3 0' that corresponds to the formula "
-		 "'var1 XOR var2 XOR NOT var3'.")
 		("compress,z", po::bool_switch()->default_value(false),
 		 "Use compressed input and output files.")
 		("compress-input", po::bool_switch()->default_value(false),
@@ -111,6 +106,53 @@ protected:
 		("keep,k", po::bool_switch()->default_value(false),
 		 "Keep temporary files (such as 'cnf-instance-*' and 'res-cnf-instance-*' "
 		 "files for '--create-read'/'-3' mode) after the execution.")
+		("global-error", po::bool_switch()->default_value(false),
+		 "Enable GLOABL error handling (i.e., the global error rate in the whole pedigree is "
+		 "less than or equal to the specified error rate, computed over genotyped loci).")
+		("global-error-rate", po::value< double >()->default_value(0.03),
+		 "Maximum error rate in all the genotypes, computed only over genotyped loci "
+		 "(used only if '--global-error' is specified).")
+		("individual-error", po::bool_switch()->default_value(false),
+		 "Enable INDIVIDUAL error handling (i.e., the error rate in each genotype is less than "
+		 "or equal to the specified error rate, computed over genotyped loci).")
+		("individual-error-rate", po::value< double >()->default_value(0.03),
+		 "Maximum error rate in each genotype, computed only over genotyped loci "
+		 "(used only if '--individual-error' is specified).")
+		("uniform-error", po::bool_switch()->default_value(false),
+		 "Enable UNIFORM error handling (i.e., the number of errors in each window is less than "
+		 "or equal to the maximum number of errors).")
+		("max-errors-in-window", po::value< unsigned int >()->default_value(4),
+		 "Maximum number of errors in each window "
+		 "(used only if '--uniform-error' is specified).\n"
+		 "*MUST* be less than or equal to half window size.")
+		("error-window-length", po::value< unsigned int >()->default_value(16),
+		 "number of typed loci that compose a window "
+		 "(used only if '--uniform-error' is specified).\n"
+		 "*MUST* be a power of 2 and *MUST* be greater than 2.\n"
+		 "Windows overlap each other by half their length.")
+		("global-recomb", po::bool_switch()->default_value(false),
+		 "Enable GLOABL recombination handling (i.e., the global recombination rate in the whole "
+		 "pedigree is less than or equal to the specified recombination rate, computed over *ALL* loci).")
+		("global-recomb-rate", po::value< double >()->default_value(0.03),
+		 "Maximum recombination rate in all the genotypes (used only if '--global-recomb' is specified).")
+		("individual-recomb", po::bool_switch()->default_value(false),
+		 "Enable INDIVIDUAL recombination handling (i.e., the recombination rate in each genotype is "
+		 "less than or equal to the specified recombination rate, computed over *ALL* loci).")
+		("individual-recomb-rate", po::value< double >()->default_value(0.03),
+		 "Maximum recombination rate in each genotype "
+		 "(used only if '--individual-recomb' is specified).")
+		("uniform-recomb", po::bool_switch()->default_value(false),
+		 "Enable UNIFORM recombination handling (i.e., the number of recombinations in each window is "
+		 "less than or equal to the specified maximum number of recombinations).")
+		("max-recombs-in-window", po::value< unsigned int >()->default_value(4),
+		 "Maximum number of recombinations in each window "
+		 "(used only if '--uniform-recomb' is specified).\n"
+		 "*MUST* be less than or equal to half window size.")
+		("recomb-window-length", po::value< unsigned int >()->default_value(16),
+		 "number of loci that compose a window "
+		 "(used only if '--uniform-recomb' is specified).\n"
+		 "*MUST* be a power of 2 and *MUST* be greater than 2.\n"
+		 "Windows overlap each other by half their length.")
 		;
 	 return desc;
   };
@@ -147,6 +189,40 @@ protected:
 	 option_dependency(vm, "solve-internal", "pedigree");
 	 option_dependency(vm, "solve-internal", "haplotypes");
 #endif
+	 option_dependency(vm, "global-error-rate", "global-error");
+	 option_dependency(vm, "individual-error-rate", "individual-error");
+	 option_dependency(vm, "max-errors-in-window", "uniform-error");
+	 option_dependency(vm, "error-window-length", "uniform-error");
+	 option_dependency(vm, "global-recomb-rate", "global-recomb");
+	 option_dependency(vm, "individual-recomb-rate", "individual-recomb");
+	 option_dependency(vm, "max-recombs-in-window", "uniform-recomb");
+	 option_dependency(vm, "recomb-window-length", "uniform-recomb");
+	 if (vm["uniform-error"].as<bool>()) {
+		const unsigned int wlen= vm["error-window-length"].as<unsigned int>();
+		const unsigned int merr= vm["max-errors-in-window"].as<unsigned int>();
+		if (wlen != pow2_of_floor_log2(wlen)) {
+		  throw std::logic_error(std::string("The window length must be a power of 2."));
+		}
+		if (wlen < 4) {
+		  throw std::logic_error(std::string("The window length must be greater than 2."));
+		}
+		if (merr >= wlen) {
+		  throw std::logic_error(std::string("The maximum number of errors in a single window must be less than the window length."));
+		}
+	 }
+	 if (vm["uniform-recomb"].as<bool>()) {
+		const unsigned int wlen= vm["recomb-window-length"].as<unsigned int>();
+		const unsigned int merr= vm["max-recombs-in-window"].as<unsigned int>();
+		if (wlen != pow2_of_floor_log2(wlen)) {
+		  throw std::logic_error(std::string("The window length must be a power of 2."));
+		}
+		if (wlen < 4) {
+		  throw std::logic_error(std::string("The window length must be greater than 2."));
+		}
+		if (merr >= wlen) {
+		  throw std::logic_error(std::string("The maximum number of recombinations in a single window must be less than the window length."));
+		}
+	 }
 	 return true;
   }
 
@@ -163,13 +239,8 @@ protected:
 		vm["compress"].as<bool>() ||
 		vm["compress-output"].as<bool>();
 
-	 zrhcstar_t zrhcstar(vm["generate-XORs"].as<bool>());
-
-	 if (vm["generate-XORs"].as<bool>()) {
-		INFO("Use of XOR-clauses allowed.");
-	 } else {
-		INFO("Use of XOR-clauses NOT allowed.");
-	 }
+	 zrhcstar_t zrhcstar;
+	 zrhcstar.prepare_program_options(vm);
 
 // Dispatch the work depending on the program parameters
 #ifndef ONLY_INTERNAL_SAT_SOLVER
@@ -223,7 +294,7 @@ protected:
 				 "computed and saved.");
 		  main_ris= EXIT_SUCCESS;
 		} else {
-		  INFO("No Zero-Recombinant Haplotype Configuration can exist. "
+		  WARN("No Zero-Recombinant Haplotype Configuration can exist. "
 				 "Exiting without haplotype configuration.");
 		  main_ris= EXIT_NO_ZRHC;
 		}
@@ -234,7 +305,7 @@ protected:
 			  << vm["pedigree"].as<string>() << "' by direct invocation of the SAT solver...");
 		string sat_name;
 		zrhcstar_t::pedigree_t ped;
-		pedcnf_t* cnf;
+		pedcnf_t cnf;
 // Block for reading the pedigree and writing the SAT instance
 // The block is needed to close the SAT instance stream before executing
 // the solver
@@ -298,14 +369,13 @@ protected:
 				DEBUG("Temporary files removed.");
 			 }
 		  }
-		  delete cnf;
 
 		  if (is_zrhc) {
 			 INFO("Zero-Recombinant Haplotype Configuration successfully "
 					"computed and saved.");
 			 main_ris= EXIT_SUCCESS;
 		  } else {
-			 INFO("No Zero-Recombinant Haplotype Configuration can exist. "
+			 WARN("No Zero-Recombinant Haplotype Configuration can exist. "
 					"Exiting without haplotype configuration.");
 			 main_ris= EXIT_NO_ZRHC;
 		  }
@@ -319,7 +389,7 @@ protected:
 			  "pedigree of file '"
 			  << vm["pedigree"].as<string>() << "' by using the internal SAT solver...");
 		zrhcstar_t::pedigree_t ped;
-		pedcnf_t* cnf;
+		pedcnf_t cnf;
 // Block for reading the pedigree and writing the SAT instance
 // The block is needed to close the SAT instance stream before executing
 // the solver
@@ -333,23 +403,26 @@ protected:
 
 // Execute the SAT solver
 		INFO("Execution of the internal SAT solver...");
-		const bool ret_value= cnf->solve();
+		const bool ret_value= cnf.solve();
 // We have to trust the return value
 		DEBUG("The SAT solver returned: '" << ret_value << "'.");
 
-		file_utility::postream hap_os=
-		  file_utility::get_file_utility().
-		  get_ofstream(vm["haplotypes"].as<string>(), out_compress);
-		bool is_zrhc= zrhcstar.compute_HC_from_model_and_save(ped, cnf,
-																				*hap_os);
-		delete cnf;
-
-		if (is_zrhc) {
-		  INFO("Zero-Recombinant Haplotype Configuration successfully "
-				 "computed and saved.");
-		  main_ris= EXIT_SUCCESS;
+		if (ret_value) {
+		  file_utility::postream hap_os=
+			 file_utility::get_file_utility().
+			 get_ofstream(vm["haplotypes"].as<string>(), out_compress);
+		  bool is_zrhc= zrhcstar.compute_HC_from_model_and_save(ped, cnf,
+																				  *hap_os);
+		  if (is_zrhc) {
+			 INFO("Zero-Recombinant Haplotype Configuration successfully "
+					"computed and saved.");
+			 main_ris= EXIT_SUCCESS;
+		  } else {
+			 WARN("A Haplotype Configuration has been computed but it is not valid!!");
+			 main_ris= EXIT_NO_ZRHC;
+		  }
 		} else {
-		  INFO("No Zero-Recombinant Haplotype Configuration can exist. "
+		  WARN("No Zero-Recombinant Haplotype Configuration can exist. "
 				 "Exiting without haplotype configuration.");
 		  main_ris= EXIT_NO_ZRHC;
 		}

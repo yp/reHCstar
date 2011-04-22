@@ -34,9 +34,11 @@
 
 #include "io-pedigree.hpp"
 #include "ped2cnf.hpp"
+#include "ped2cnf-constraints.hpp"
 #include "pedcnf2hc.hpp"
 
 #include <iostream>
+#include <boost/program_options.hpp>
 
 using namespace std;
 
@@ -52,13 +54,83 @@ public:
 
 private:
 
-  const bool _extended;
+  composite_constraints_t err_constraints;
+  composite_constraints_t global_recomb_constraints;
+  composite_constraints_t separated_recomb_constraints;
+  bool has_errors;
+  bool has_global_recombinations;
+  bool has_separated_recombinations;
+  bool has_recombinations;
 
 public:
 
+  void prepare_program_options(const boost::program_options::variables_map& vm) {
+// Analyze error-related program options
+	 has_errors= false;
+	 if (vm["global-error"].as<bool>()) {
+		const double err_rate= vm["global-error-rate"].as<double>();
+		L_INFO("Enabling *GLOBAL* error handling ("
+				 "error-rate=" << err_rate << ")");
+		err_constraints.add(new at_most_global_constraints_t(err_rate));
+		has_errors= true;
+	 }
+	 if (vm["individual-error"].as<bool>()) {
+		const double err_rate= vm["individual-error-rate"].as<double>();
+		L_INFO("Enabling *INDIVIDUAL* error handling ("
+				 "error-rate=" << err_rate << ")");
+		err_constraints.add(new at_most_individual_constraints_t(err_rate));
+		has_errors= true;
+	 }
+	 if (vm["uniform-error"].as<bool>()) {
+		const unsigned int winerr= vm["max-errors-in-window"].as<unsigned int>();
+		const unsigned int winlen= vm["error-window-length"].as<unsigned int>();
+		L_INFO("Enabling *WINDOWED* error handling ("
+				 "max-errors-in-windows=" << winerr << ", "
+				 "error-window-length=" << winlen << ")");
+		err_constraints.add(new at_most_windowed_constraints_t(winerr, winlen));
+		has_errors= true;
+	 }
+	 if (!has_errors) {
+		L_INFO("*DISABLING* genotyping errors");
+		err_constraints.add(new all_false_constraints_t());
+	 }
+// Analyze recombination-related program options
+	 has_global_recombinations=
+		has_separated_recombinations=
+		has_recombinations= false;
+	 if (vm["global-recomb"].as<bool>()) {
+		const double recomb_rate= vm["global-recomb-rate"].as<double>();
+		L_INFO("Enabling *GLOBAL* recombination handling ("
+				 "recomb-rate=" << recomb_rate << ")");
+		global_recomb_constraints.add(new at_most_global_constraints_t(recomb_rate));
+		has_global_recombinations= true;
+	 }
+	 if (vm["individual-recomb"].as<bool>()) {
+		const double recomb_rate= vm["individual-recomb-rate"].as<double>();
+		L_INFO("Enabling *INDIVIDUAL* recombination handling ("
+				 "recomb-rate=" << recomb_rate << ")");
+		global_recomb_constraints.add(new at_most_individual_constraints_t(recomb_rate));
+		has_global_recombinations= true;
+	 }
+	 if (vm["uniform-recomb"].as<bool>()) {
+		const unsigned int winrecomb= vm["max-recombs-in-window"].as<unsigned int>();
+		const unsigned int winlen= vm["recomb-window-length"].as<unsigned int>();
+		L_INFO("Enabling *WINDOWED* recombination handling ("
+				 "max-recombs-in-windows=" << winrecomb << ", "
+				 "recomb-window-length=" << winlen << ")");
+		separated_recomb_constraints.add(new at_most_windowed_constraints_t(winrecomb, winlen));
+		has_separated_recombinations= true;
+	 }
+	 has_recombinations= has_global_recombinations || has_separated_recombinations;
+	 if (!has_recombinations) {
+		L_INFO("*DISABLING* recombinations");
+		global_recomb_constraints.add(new all_false_constraints_t());
+	 }
+  };
+
   void prepare_pedigree_and_sat(std::istream& ped_is,
 										  pedigree_t& mped,
-										  pedcnf_t*& cnf) const {
+										  pedcnf_t& cnf) const {
 	 L_INFO("Reading pedigree...");
 	 biallelic_genotype_reader_t<> gr;
 	 plink_reader_t<> reader(gr);
@@ -76,21 +148,38 @@ public:
 
 // Prepare the SAT instance
 	 L_INFO("Preparing SAT instance from pedigree...");
-	 if (!_extended) {
-		cnf= ped2cnf(mped.families().front());
-	 } else {
-		cnf= ped2cnf_ext(mped.families().front());
-	 }
+	 ped2cnf(mped.families().front(), cnf);
+	 L_DEBUG("So far the SAT instance is composed by " <<
+				std::setw(8) << cnf.vars().size() << " variables and " <<
+				std::setw(8) << cnf.no_of_clauses() << " clauses");
+	 L_INFO("Adding clauses for managing genotyping errors...");
+	 error_handler_t err_handler(err_constraints);
+	 err_handler.handle_errors(cnf, mped.families().front().size(),
+										mped.families().front().genotype_length());
+	 L_DEBUG("So far the SAT instance is composed by " <<
+				std::setw(8) << cnf.vars().size() << " variables and " <<
+				std::setw(8) << cnf.no_of_clauses() << " clauses");
+	 L_INFO("Adding clauses for managing recombination events...");
+	 global_recombination_handler_t global_recomb_handler(global_recomb_constraints);
+	 global_recomb_handler.handle_recombinations(cnf, mped.families().front().size(),
+																mped.families().front().genotype_length());
+	 separated_recombination_handler_t separated_recomb_handler(separated_recomb_constraints);
+	 separated_recomb_handler.handle_recombinations(cnf, mped.families().front().size(),
+																	mped.families().front().genotype_length());
 	 L_INFO("SAT instance successfully prepared.");
+	 L_INFO("The SAT instance is composed by " <<
+			  std::setw(8) << cnf.vars().size() << " variables and " <<
+			  std::setw(8) << cnf.no_of_clauses() << " clauses");
   }
 
 
 
 public:
 
-  explicit zrhcstar_t(const bool extended=false)
-		:_extended(extended)
-  {};
+  explicit zrhcstar_t()
+		:has_errors(false), has_recombinations(false)
+  {
+  };
 
   void save_ZRHC(pedigree_t& ped,
 					  std::ostream& hap_os) const {
@@ -116,21 +205,20 @@ public:
 													  std::ostream& sat_os,
 													  const std::vector<std::string>& headers) const {
 	 pedigree_t ped;
-	 pedcnf_t* cnf;
+	 pedcnf_t cnf;
 	 create_SAT_instance_from_pedigree(ped_is, sat_os, headers,
 												  ped, cnf);
-	 delete cnf;
   }
 
   void create_SAT_instance_from_pedigree(std::istream& ped_is,
 													  std::ostream& sat_os,
 													  const std::vector<std::string>& headers,
 													  pedigree_t& ped,
-													  pedcnf_t*& cnf) const {
+													  pedcnf_t& cnf) const {
 	 prepare_pedigree_and_sat(ped_is, ped, cnf);
 // Output the instance
 	 L_INFO("Saving SAT instance...");
-	 cnf->clauses_to_dimacs_format(sat_os, headers);
+	 cnf.clauses_to_dimacs_format(sat_os, headers);
 	 L_INFO("SAT instance successfully saved.");
   };
 
@@ -139,16 +227,16 @@ public:
   bool compute_HC_from_SAT_results(std::istream& ped_is,
 											  std::istream& res_is,
 											  pedigree_t& ped,
-											  pedcnf_t*& cnf) const {
+											  pedcnf_t& cnf) const {
 	 prepare_pedigree_and_sat(ped_is, ped, cnf);
 	 return compute_HC_from_SAT_results(res_is, ped, cnf);
   };
 
   bool compute_HC_from_SAT_results(std::istream& res_is,
 											  pedigree_t& ped,
-											  pedcnf_t*& cnf) const {
+											  pedcnf_t& cnf) const {
 // Open the result file and read the assignment
-	 const bool is_sat= read_SAT_results(*cnf, res_is);
+	 const bool is_sat= read_SAT_results(cnf, res_is);
 	 if (is_sat) {
 		L_INFO("The pedigree can be realized by a zero-recombinant haplotype "
 			  "configuration.");
@@ -166,15 +254,18 @@ public:
 #endif // not defined ONLY_INTERNAL_SAT_SOLVER
 
   bool compute_HC_from_model(pedigree_t& ped,
-									  pedcnf_t*& cnf) const {
+									  pedcnf_t& cnf) const {
 	 pedigree_t::pedigree_t& family= ped.families().front();
 // Compute the actual haplotype configuration
-	 compute_ZRHC_from_SAT(family, *cnf);
+	 compute_ZRHC_from_SAT(family, cnf);
 // Check the haplotype configuration
 	 const bool ok=
 		family.is_completely_haplotyped() &&
-		family.is_consistent() &&
-		family.is_zero_recombinant();
+		family.is_consistent(false);
+//&&
+//		family.is_zero_recombinant();
+	 const int n_recomb= family.is_mendelian_consistent();
+	 L_INFO("The computed haplotype configuration has " << n_recomb << " recombinations.");
 	 if (ok) {
 		L_INFO("The computed haplotype configuration is valid.");
 	 } else {
@@ -184,7 +275,7 @@ public:
   };
 
   bool compute_HC_from_model_and_save(pedigree_t& ped,
-												  pedcnf_t*& cnf,
+												  pedcnf_t& cnf,
 												  std::ostream& hap_os) const {
 	 const bool ok= compute_HC_from_model(ped, cnf);
 	 if (ok) {
@@ -201,11 +292,10 @@ public:
 											  std::istream& res_is,
 											  std::ostream& hap_os) const {
 	 pedigree_t ped;
-	 pedcnf_t* cnf;
+	 pedcnf_t cnf;
 	 const bool is_sat=
 		compute_HC_from_SAT_results(ped_is, res_is,
 											 ped, cnf);
-	 delete cnf;
 	 if (is_sat) {
 // Output the haplotype configuration
 		save_ZRHC(ped, hap_os);
@@ -214,7 +304,7 @@ public:
   }
 
   bool compute_HC_from_SAT_results(pedigree_t& ped,
-											  pedcnf_t*& cnf,
+											  pedcnf_t& cnf,
 											  std::istream& res_is,
 											  std::ostream& hap_os) const {
 	 const bool is_sat=

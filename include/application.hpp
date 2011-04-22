@@ -166,8 +166,9 @@ public:
 		desc.add(get_named_options());
 		po::positional_options_description p= get_positional_options();
 
-		po::store(po::command_line_parser(argc, argv).
-					 options(desc).positional(p).run(), vm);
+		po::command_line_parser parser(argc, argv);
+		parser.style(po::command_line_style::default_style ^ po::command_line_style::allow_guessing);
+		po::store(parser.options(desc).positional(p).run(), vm);
 
 		po::notify(vm);
 		DEBUG("Program parameters successfully parsed.");

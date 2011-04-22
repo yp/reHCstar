@@ -36,6 +36,12 @@
 #ifndef __SAT_SOLVER_INTERFACE_HPP__
 #define __SAT_SOLVER_INTERFACE_HPP__
 
+#include <boost/cstdint.hpp>
+
+typedef boost::int_fast32_t lit_t;
+typedef boost::uint_fast32_t var_t;
+
+
 // Check that the 'right' preprocessor symbols have been defined:
 // NO_INTERNAL_SAT_SOLVER
 // INTERNAL_SAT_SOLVER
@@ -68,50 +74,31 @@
 // Provide the interface only if asked to do so
 #ifdef INTERNAL_SAT_SOLVER
 
-#include "log.hpp"
-#include "utility.hpp"
+// Enable the "right" interface depending on the macro definitions
 
-#include <set>
+#if defined(USE_CRYPTOMINISAT) && defined(USE_MINISAT)
+#error "Only one SAT solver can be integrated: please choose among CryptoMiniSat and MiniSat"
+#endif
 
-#include "Solver.h"
+#if !defined(USE_CRYPTOMINISAT) && !defined(USE_MINISAT)
+#message "No SAT solver specified: enabling 'CryptoMiniSat' by default"
+#define USE_CRYPTOMINISAT
+#endif
 
 
-class SAT_solver_iface_t
-  :
-  public log_able_t<SAT_solver_iface_t>
-{
-private:
-  Solver* _solver;
+#ifdef USE_CRYPTOMINISAT
 
-  bool _solved;
-  bool _sat;
+#include "cms_sat_solver_interface.hpp"
 
-public:
-  SAT_solver_iface_t()
-		:_solver(new Solver()), _solved(false), _sat(false)
-  {};
+#endif
 
-  ~SAT_solver_iface_t() {
-	 delete _solver;
-  };
 
-  bool is_solved() const {
-	 return _solved;
-  };
+#ifdef USE_MINISAT
 
-  void add_clause(const std::set<int>& clause);
+#include "ms_sat_solver_interface.hpp"
 
-  void add_xor_clause(const std::set<int>& clause);
+#endif
 
-  bool solve();
-
-  bool model(const unsigned int var) const;
-
-  size_t no_of_vars() const {
-	 return _solver->nVars();
-  };
-
-};
 
 #endif
 

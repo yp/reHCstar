@@ -477,6 +477,41 @@ strict_multilocus_haplotype_genotype_consistent(const h_t& h1,
   return true;
 }
 
+template <typename h_t>
+int
+strict_multilocus_mendelian_consistent(const h_t& hpf,
+													const h_t& hpm,
+													const h_t& h) {
+  MY_ASSERT_DBG(hpf.size() == hpm.size());
+  MY_ASSERT_DBG(hpf.size() == h.size());
+  typename h_t::const_iterator hpfit= hpf.begin();
+  typename h_t::const_iterator hpmit= hpm.begin();
+  typename h_t::const_iterator* its[]= { &hpfit, &hpmit };
+  typename h_t::const_iterator hit= h.begin();
+  int phase1= 0; int recomb1= 0;
+  int phase2= 1; int recomb2= 0;
+  int locus= 0;
+  for (; hit != h.end(); ++hpfit, ++hpmit, ++hit, ++locus) {
+	 if (*hit != **its[phase1]) {
+		phase1= (phase1+1)%2;
+		if (*hit != **its[phase1]) {
+		  return -locus;
+		} else {
+		  ++recomb1;
+		}
+	 }
+	 if (*hit != **its[phase2]) {
+		phase2= (phase2+1)%2;
+		if (*hit != **its[phase2]) {
+		  return -locus;
+		} else {
+		  ++recomb2;
+		}
+	 }
+  }
+  return std::min(recomb1, recomb2);
+}
+
 typedef generic_fixlen_vector_t<std_single_biallelic_genotype_t> genotype_t;
 typedef generic_fixlen_vector_t<std_single_biallelic_haplotype_t> haplotype_t;
 

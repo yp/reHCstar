@@ -3,6 +3,10 @@
 # Declaration of main options.
 # Included into the main CMakeLists.txt.
 
+
+## Uncomment to disable xor-clauses
+# add_definitions("-DAVOID_XOR_CLAUSES")
+
 option(ENABLE_TESTS
   "Enable unit tests (effective only in DEBUG builds and if Google Test has been found)."
   OFF
@@ -18,3 +22,20 @@ option(DISABLE_EXTERNAL_SAT_SOLVERS
   ON
 )
 
+if (INTEGRATE_SAT_SOLVER)
+
+   # Enable ONE and ONLY ONE of the following options to
+   # choose the SAT solver
+   # (default = CRYPTOMINISAT)
+
+   option(USE_CRYPTOMINISAT
+     "Use CryptoMiniSat."
+     ON
+   )
+
+   option(USE_MINISAT
+     "Use MiniSat."
+     OFF
+   )
+
+endif()

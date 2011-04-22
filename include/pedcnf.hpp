@@ -53,11 +53,11 @@
 
 
 class ped_var_kind
-  :public enum_like_t<ped_var_kind, 4, 3>
+  :public enum_like_t<ped_var_kind, 8, 8>
 {
 private:
 
-  typedef enum_like_t<ped_var_kind, 4, 3> base;
+  typedef enum_like_t<ped_var_kind, 8, 8> base;
 
   ped_var_kind(const int val)
 		:base(val)
@@ -69,10 +69,14 @@ public:
 		:base(pvk)
   {};
 
-  static const ped_var_kind H;
-  static const ped_var_kind W;
-  static const ped_var_kind S;
-  static const ped_var_kind DUMMY;
+  static const ped_var_kind SP; // Grand-parental source (from father)
+  static const ped_var_kind SM; // Grand-parental source (from mother)
+  static const ped_var_kind P; // Paternal allele
+  static const ped_var_kind M; // Maternal allele
+  static const ped_var_kind RP; // Recombination events (from father)
+  static const ped_var_kind RM; // Recombination events (from mother)
+  static const ped_var_kind E; // Errors
+  static const ped_var_kind DUMMY; // Dummy
 
   static const int int_values[];
   static const std::string str_values[];
@@ -94,29 +98,46 @@ private:
 public:
 
   typedef boost::tuple<ped_var_kind, size_t, size_t> pedvar_t;
-  typedef std::map<index_var_t, int> varmap_t;
+  typedef std::map<index_var_t, lit_t> varmap_t;
   typedef std::vector<pedvar_t> varvec_t;
   typedef std::vector<bool> valvec_t;
-  typedef std::set<int> clause_t;
+  typedef std::set<lit_t> clause_t;
+#ifndef AVOID_XOR_CLAUSES
+  typedef std::set<lit_t> xor_clause_t;
+#endif
+
 #ifndef ONLY_INTERNAL_SAT_SOLVER
   typedef std::set< clause_t > clauses_t;
+#ifndef AVOID_XOR_CLAUSES
+  typedef std::set< xor_clause_t > xor_clauses_t;
+#endif
 #endif // ONLY_INTERNAL_SAT_SOLVER
 
 // Data members
 private:
 
-  varmap_t _h;
-  varmap_t _w;
-  varmap_t _s;
-  varmap_t _dummy;
+  varmap_t _sp; // Grand-parental source (from father)
+  varmap_t _sm; // Grand-parental source (from mother)
+  varmap_t _p; // Paternal allele
+  varmap_t _m; // Maternal allele
+  varmap_t _rp; // Recombination events (from father)
+  varmap_t _rm; // Recombination events (from mother)
+  varmap_t _e; // Errors
+  size_t _next_dummy;
 
   varvec_t _vars;
   valvec_t _vals;
 
   size_t _no_of_clauses;
+#ifndef AVOID_XOR_CLAUSES
+  size_t _no_of_xor_clauses;
+#endif
 
 #ifndef ONLY_INTERNAL_SAT_SOLVER
   clauses_t _clauses;
+#ifndef AVOID_XOR_CLAUSES
+  xor_clauses_t _xor_clauses;
+#endif
 #endif // ONLY_INTERNAL_SAT_SOLVER
 
 
@@ -133,12 +154,15 @@ public:
 // Methods
 private:
 
-  int get_var(varmap_t& map,
-				  const ped_var_kind& var_kind,
-				  const size_t i1, const size_t i2);
+  lit_t get_var(varmap_t& map,
+					 const ped_var_kind& var_kind,
+					 const size_t i1, const size_t i2);
 
-  int get_var(const varmap_t& map,
-				  const size_t i1, const size_t i2) const;
+  lit_t get_var(const varmap_t& map,
+					 const size_t i1, const size_t i2) const;
+
+  bool has_var(const varmap_t& map,
+					const size_t i1, const size_t i2) const;
 
   bool get_val(const varmap_t& map,
 					const size_t i1, const size_t i2) const;
@@ -147,58 +171,85 @@ private:
 public:
 
   pedcnf_t()
-		:_no_of_clauses(0)
+		:_next_dummy(0), _no_of_clauses(0)
+#ifndef AVOID_XOR_CLAUSES
+		, _no_of_xor_clauses(0)
+#endif
   {};
 
-  virtual ~pedcnf_t() {
+  ~pedcnf_t() {
   };
 
-  int get_h(const size_t i, const size_t l);
+  lit_t get_sp(const size_t i, const size_t l);
 
-  int get_w(const size_t i, const size_t l);
+  lit_t get_sm(const size_t i, const size_t l);
 
-  int get_s(const size_t p, const size_t i);
+  lit_t get_p(const size_t i, const size_t l);
 
-  int get_dummy(const int v1, const int v2);
+  lit_t get_m(const size_t i, const size_t l);
 
-  int get_h(const size_t i, const size_t l) const;
+  lit_t get_rp(const size_t i, const size_t l);
 
-  int get_w(const size_t i, const size_t l) const;
+  lit_t get_rm(const size_t i, const size_t l);
 
-  int get_s(const size_t p, const size_t i) const;
+  lit_t get_e(const size_t i, const size_t l);
 
-  int get_dummy(const int v1, const int v2) const;
+  bool has_sp(const size_t i, const size_t l) const;
 
-  bool h(const size_t i, const size_t l) const {
-	 return get_val(_h, i, l);
+  bool has_sm(const size_t i, const size_t l) const;
+
+  bool has_p(const size_t i, const size_t l) const;
+
+  bool has_m(const size_t i, const size_t l) const;
+
+  bool has_rp(const size_t i, const size_t l) const;
+
+  bool has_rm(const size_t i, const size_t l) const;
+
+  bool has_e(const size_t i, const size_t l) const;
+
+  lit_t generate_dummy();
+
+  lit_t get_sp(const size_t i, const size_t l) const;
+
+  lit_t get_sm(const size_t i, const size_t l) const;
+
+  lit_t get_p(const size_t i, const size_t l) const;
+
+  lit_t get_m(const size_t i, const size_t l) const;
+
+  lit_t get_rp(const size_t i, const size_t l) const;
+
+  lit_t get_rm(const size_t i, const size_t l) const;
+
+  lit_t get_e(const size_t i, const size_t l) const;
+
+  bool sp(const size_t i, const size_t l) const {
+	 return get_val(_sp, i, l);
   };
 
-  bool w(const size_t i, const size_t l) const {
-	 return get_val(_w, i, l);
+  bool sm(const size_t i, const size_t l) const {
+	 return get_val(_sp, i, l);
   };
 
-  bool s(const size_t p, const size_t i) const {
-	 return get_val(_s, p, i);
+  bool p(const size_t i, const size_t l) const {
+	 return get_val(_p, i, l);
   };
 
-  bool dummy(const int v1, const int v2) const {
-	 return get_val(_dummy, v1, v2);
+  bool m(const size_t i, const size_t l) const {
+	 return get_val(_m, i, l);
   };
 
-  const varmap_t& h() const {
-	 return _h;
+  bool rp(const size_t i, const size_t l) const {
+	 return get_val(_rp, i, l);
   };
 
-  const varmap_t& w() const {
-	 return _w;
+  bool rm(const size_t i, const size_t l) const {
+	 return get_val(_rm, i, l);
   };
 
-  const varmap_t& s() const {
-	 return _s;
-  };
-
-  const varmap_t& dummy() const {
-	 return _dummy;
+  bool e(const size_t i, const size_t l) const {
+	 return get_val(_e, i, l);
   };
 
   const varvec_t& vars() const {
@@ -210,24 +261,52 @@ public:
   };
 
 #ifndef ONLY_INTERNAL_SAT_SOLVER
+
   const clauses_t& clauses() const {
 	 return _clauses;
   };
+
+#ifndef AVOID_XOR_CLAUSES
+  const xor_clauses_t& xor_clauses() const {
+	 return _xor_clauses;
+  };
+#endif
+
 #endif // ONLY_INTERNAL_SAT_SOLVER
 
-  virtual size_t no_of_clauses() const {
+  size_t no_of_clauses() const {
+#ifndef AVOID_XOR_CLAUSES
+	 return _no_of_clauses + _no_of_xor_clauses;
+#else
 	 return _no_of_clauses;
+#endif
   };
 
   void add_clause(const clause_t& clause);
 
-#ifndef ONLY_INTERNAL_SAT_SOLVER
-  virtual bool is_satisfying_assignment() const;
+#ifndef AVOID_XOR_CLAUSES
+  void add_xor_clause(const xor_clause_t& clause);
+#endif
 
-  virtual std::ostream& clauses_to_dimacs_format(std::ostream& out) const;
-  virtual std::ostream& clauses_to_dimacs_format(std::ostream& out,
+  template <int LEN>
+  void add_clause(const lit_t* const clause) {
+	 add_clause(clause_t(clause, clause+LEN));
+  };
+
+#ifndef AVOID_XOR_CLAUSES
+  template <int LEN>
+  void add_xor_clause(const lit_t* const clause) {
+	 add_xor_clause(xor_clause_t(clause, clause+LEN));
+  };
+#endif
+
+#ifndef ONLY_INTERNAL_SAT_SOLVER
+  bool is_satisfying_assignment() const;
+
+  std::ostream& clauses_to_dimacs_format(std::ostream& out) const;
+  std::ostream& clauses_to_dimacs_format(std::ostream& out,
 																 const std::string& note) const;
-  virtual std::ostream& clauses_to_dimacs_format(std::ostream& out,
+  std::ostream& clauses_to_dimacs_format(std::ostream& out,
 																 const std::vector< std::string >& notes) const;
 
   std::string clauses_to_dimacs_format() const {
@@ -257,7 +336,7 @@ public:
   bool solve() {
 	 const bool ret= _solver.solve();
 	 if (ret) {
-		for (Var var = 0; var != _solver.no_of_vars(); var++) {
+		for (unsigned int var = 0; var != _solver.no_of_vars(); var++) {
 		  _vals[var]= _solver.model(var);
 		}
 	 } else {
@@ -276,6 +355,17 @@ operator<<(std::ostream& out, const pedcnf_t::pedvar_t& var);
 std::ostream&
 operator<<(std::ostream& out, const pedcnf_t::clause_t& clause);
 
+
+void
+add_card_constraint_less_or_equal_than(pedcnf_t& cnf,
+													const std::vector<var_t>& in_vars,
+													const size_t k);
+
+void
+add_uniform_card_constraint_less_or_equal_than(pedcnf_t& cnf,
+															  const std::vector<var_t>& in_vars,
+															  const size_t window_size,
+															  const size_t k);
 
 
 #endif // __PEDCNF_HPP__

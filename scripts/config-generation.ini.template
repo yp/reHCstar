@@ -1,0 +1,22 @@
+##
+## Configuration file for 'generate-instances.sh'
+##
+## It must be placed in the current directory 
+
+# Required parameters
+pedigree_sizes="50 100 200"
+n_ped=5
+genotype_lengths="50 100 200"
+missing_rates="0.00 0.05 0.20"
+recomb_rates="0.00 0.01 0.05"
+error_rates="0.00 0.01 0.03"
+n_hc=6
+
+# Optional parameters
+additional_ped_params=""
+additional_hg_params=""
+fmt_dl="%.3d"
+fmt_ds="%.1d"
+fmt_fl="%5.3f"
+fmt_fs="%5.3f"
+dest_dir="./instances/"

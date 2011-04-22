@@ -3,7 +3,7 @@
  *                              ZRHC-*
  * Zero-Recombinant Haplotype Configuration with missing genotypes
  *
- * Copyright (C) 2010  Yuri Pirola <yuri.pirola(-at-)gmail.com>
+ * Copyright (C) 2010,2011  Yuri Pirola <yuri.pirola(-at-)gmail.com>
  *
  * Distributed under the terms of the GNU General Public License (GPL)
  *
@@ -187,7 +187,7 @@ protected:
         }
         out << ind.gender() << _sep;
         out << ind.phenotype() << _sep;
-        _gw.encode(out, ind.g(), _sep);
+        _gw.encode(out, ind.obs_g(), _sep);
         out << std::endl;
     }
 

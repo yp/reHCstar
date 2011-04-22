@@ -3,7 +3,7 @@
  *                              ZRHC-*
  * Zero-Recombinant Haplotype Configuration with missing genotypes
  *
- * Copyright (C) 2010  Yuri Pirola <yuri.pirola(-at-)gmail.com>
+ * Copyright (C) 2010,2011  Yuri Pirola <yuri.pirola(-at-)gmail.com>
  *
  * Distributed under the terms of the GNU General Public License (GPL)
  *
@@ -235,7 +235,7 @@ protected:
           }
           ind.phenotype()= pheno;
           // Genotype
-          std::copy(g.begin(), g.end(), ind.g().begin());
+          std::copy(g.begin(), g.end(), ind.obs_g().begin());
         } catch (invalid_line_t& e) {
           L_WARN("!! Discarded invalid line starting with >" <<
                  buff.substr(0, 20) << "<. Reason: " << e.msg);

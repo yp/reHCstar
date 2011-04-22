@@ -26,9 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "time_mem.h"
 
 //#define VERBOSE_DEBUG
-#ifdef _MSC_VER
-#define __builtin_prefetch(a,b)
-#endif //_MSC_VER
 
 #ifdef VERBOSE_DEBUG
 #include <iostream>
@@ -38,9 +35,8 @@ using std::endl;
 
 using std::make_pair;
 
-XorFinder::XorFinder(Solver& _solver, vec<Clause*>& _cls, ClauseCleaner::ClauseSetType _type) :
+XorFinder::XorFinder(Solver& _solver, vec<Clause*>& _cls) :
     cls(_cls)
-    , type(_type)
     , solver(_solver)
 {
 }
@@ -51,9 +47,6 @@ const bool XorFinder::fullFindXors(const uint32_t minSize, const uint32_t maxSiz
     double time = cpuTime();
     foundXors = 0;
     solver.clauseCleaner->cleanClauses(solver.clauses, ClauseCleaner::clauses);
-    if (type == ClauseCleaner::binaryClauses) {
-        solver.clauseCleaner->cleanClauses(solver.binaryClauses, ClauseCleaner::binaryClauses);
-    }
     if (!solver.ok) return false;
 
     toRemove.clear();
@@ -64,91 +57,40 @@ const bool XorFinder::fullFindXors(const uint32_t minSize, const uint32_t maxSiz
     table.clear();
     table.reserve(cls.size());
 
-    ClauseTable unsortedTable;
-    unsortedTable.reserve(cls.size());
-    ClauseTable sortedTable;
-    sortedTable.reserve(cls.size());
-
-    for (Clause **it = cls.getData(), **end = it + cls.size(); it != end; it ++) {
-        if (it+1 != end)
-            __builtin_prefetch(*(it+1), 0);
+    for (Clause **it = cls.getData(), **end = cls.getDataEnd(); it != end; it ++) {
+        if (it+1 != end) __builtin_prefetch(*(it+1));
         Clause& c = (**it);
-        //2-long clauses only need to be sorted, no need to
-        //detach&reattach
-        if ((*it)->size() > 2) {
-            bool sorted = true;
-            for (uint32_t i = 0, size = c.size(); i+1 < size ; i++) {
-                sorted = (c[i].var() <= c[i+1].var());
-                if (!sorted) break;
-            }
-            if (!sorted) {
-                solver.detachClause(c);
-                std::sort(c.getData(), c.getDataEnd());
-                solver.attachClause(c);
-            }
-        } else {
-            std::sort(c.getData(), c.getData()+c.size());
+        assert((*it)->size() > 2);
+        bool sorted = true;
+        for (uint32_t i = 0, size = c.size(); i+1 < size ; i++) {
+            sorted = (c[i].var() <= c[i+1].var());
+            if (!sorted) break;
+        }
+        if (!sorted) {
+            solver.detachClause(c);
+            std::sort(c.getData(), c.getDataEnd());
+            solver.attachClause(c);
         }
     }
 
     uint32_t i = 0;
-    for (Clause **it = cls.getData(), **end = it + cls.size(); it != end; it++, i++) {
+    for (Clause **it = cls.getData(), **end = cls.getDataEnd(); it != end; it++, i++) {
         const uint32_t size = (*it)->size();
         if ( size > maxSize || size < minSize) {
             toLeaveInPlace[i] = true;
             continue;
         }
-        if ((*it)->getSorted()) sortedTable.push_back(make_pair(*it, i));
-        else unsortedTable.push_back(make_pair(*it, i));
+        table.push_back(make_pair(*it, i));
     }
+    std::sort(table.begin(), table.end(), clause_sorter_primary());
 
-    clause_sorter_primary sorter;
-
-    std::sort(unsortedTable.begin(), unsortedTable.end(), clause_sorter_primary());
-    //std::sort(sortedTable.begin(), sortedTable.end(), clause_sorter_primary());
-    #ifdef DEBUG_XORFIND
-    for (uint32_t i = 0; i+1 < unsortedTable.size(); i++) {
-        assert(!sorter(unsortedTable[i+1], unsortedTable[i]));
-    }
-    for (uint32_t i = 0; i+1 < sortedTable.size(); i++) {
-        assert(!sorter(sortedTable[i+1], sortedTable[i]));
-    }
-    #endif //DEBUG_XORFIND
-
-    for (uint32_t i = 0, j = 0; i < unsortedTable.size() || j <  sortedTable.size();) {
-        if (j == sortedTable.size()) {
-            table.push_back(unsortedTable[i++]);
-            continue;
-        }
-        if (i == unsortedTable.size()) {
-            table.push_back(sortedTable[j++]);
-            continue;
-        }
-        if (sorter(unsortedTable[i], sortedTable[j])) {
-            table.push_back(unsortedTable[i++]);
-        } else {
-            table.push_back(sortedTable[j++]);
-        }
-    }
-    #ifdef DEBUG_XORFIND
-    for (uint32_t i = 0; i+1 < table.size(); i++) {
-        assert(!sorter(table[i+1], table[i]));
-        //table[i].first->plainPrint();
-    }
-    #endif //DEBUG_XORFIND
-
-    if (findXors(sumLengths) == false) goto end;
-    solver.ok = (solver.propagate().isNULL());
+    if (!findXors(sumLengths)) goto end;
+    solver.ok = (solver.propagate<true>().isNULL());
 
 end:
-    if (minSize == maxSize && minSize == 2) {
-        if (solver.verbosity >= 3 || (solver.conflicts == 0 && solver.verbosity >= 1)) {
-            printf("c Finding binary XORs:        %5.2lf s (found: %7d, avg size: %3.1lf)\n", cpuTime()-time, foundXors, (double)sumLengths/(double)foundXors);
-        }
-    } else {
-        if (solver.verbosity >= 1 || (solver.verbosity >= 1 && foundXors > 0)) {
-            printf("c Finding non-binary XORs:    %5.2lf s (found: %7d, avg size: %3.1lf)\n", cpuTime()-time, foundXors, (double)sumLengths/(double)foundXors);
-        }
+
+    if (solver.conf.verbosity >= 1 || (solver.conf.verbosity >= 1 && foundXors > 0)) {
+        printf("c Finding non-binary XORs:    %5.2lf s (found: %7d, avg size: %3.1lf)\n", cpuTime()-time, foundXors, (double)sumLengths/(double)foundXors);
     }
 
     i = 0;
@@ -162,7 +104,6 @@ end:
             continue;
         }
         if (!toRemove[table[i-toSkip].second]) {
-            table[i-toSkip].first->setSorted();
             cls[j] = table[i-toSkip].first;
             j++;
         }
@@ -215,27 +156,14 @@ const bool XorFinder::findXors(uint32_t& sumLengths)
             }
         }
 
-        switch(lits.size()) {
-        case 2: {
-            solver.varReplacer->replace(lits, impair, old_group);
+        assert(lits.size() > 2);
+        XorClause* x = solver.addXorClauseInt(lits, impair, old_group);
+        if (x != NULL) solver.xorclauses.push(x);
+        if (!solver.ok) return false;
 
-            #ifdef VERBOSE_DEBUG
-            cout << "- Final 2-long xor-clause: ";
-            printXorClause(lits, impair);
-            #endif
-            break;
-        }
-        default: {
-            XorClause* x = solver.clauseAllocator.XorClause_new(lits, impair, old_group);
-            solver.xorclauses.push(x);
-            solver.attachClause(*x);
-
-            #ifdef VERBOSE_DEBUG
-            cout << "- Final xor-clause: ";
-            x->plainPrint();
-            #endif
-        }
-        }
+        #ifdef VERBOSE_DEBUG
+        cout << "- Final xor-clause: " << x << std::endl;;
+        #endif
 
         foundXors++;
         sumLengths += lits.size();
@@ -269,6 +197,12 @@ bool XorFinder::getNextXor(ClauseTable::iterator& begin, ClauseTable::iterator& 
     return false;
 }
 
+/**
+@brief Returns if the two clauses are equal
+
+NOTE: assumes that the clauses are of equal lenght AND contain the same
+variables (but the invertedness of the literals might differ)
+*/
 bool XorFinder::clauseEqual(const Clause& c1, const Clause& c2) const
 {
     assert(c1.size() == c2.size());
@@ -278,6 +212,9 @@ bool XorFinder::clauseEqual(const Clause& c1, const Clause& c2) const
     return true;
 }
 
+/**
+@brief Returns whether the number of inverted literals in the clause is pair or impair
+*/
 bool XorFinder::impairSigns(const Clause& c) const
 {
     uint32_t num = 0;
@@ -287,12 +224,21 @@ bool XorFinder::impairSigns(const Clause& c) const
     return num % 2;
 }
 
+/**
+@brief Gets as input a set of clauses of equal size and variable content, decides if there is an XOR in them
+
+@param impair If there is an XOR, this tells if that XOR contains an impair
+number of inverted literal or not
+@return True, if ther is an XOR, and False if not
+*/
 bool XorFinder::isXor(const uint32_t size, const ClauseTable::iterator& begin, const ClauseTable::iterator& end, bool& impair)
 {
     const uint32_t requiredSize = 1 << (begin->first->size()-1);
 
-    if (size < requiredSize)
-        return false;
+    //Note: "size" can be larger than requiredSize, since there might be
+    //a mix of imparied and paired num. inverted literals, and furthermore,
+    //clauses might be repeated
+    if (size < requiredSize) return false;
 
     #ifdef DEBUG_XORFIND2
     {
@@ -316,11 +262,20 @@ bool XorFinder::isXor(const uint32_t size, const ClauseTable::iterator& begin, c
     }
     #endif //DEBUG_XORFIND
 
+    //We now sort them according to literal content
     std::sort(begin, end, clause_sorter_secondary());
 
     uint32_t numPair = 0;
     uint32_t numImpair = 0;
     countImpairs(begin, end, numImpair, numPair);
+
+    //if there are two XORs with equal variable sets, but different invertedness
+    //that leads to direct UNSAT result.
+    if (numImpair == requiredSize && numPair == requiredSize) {
+        solver.ok = false;
+        impair = true;
+        return true;
+    }
 
     if (numImpair == requiredSize) {
         impair = true;
@@ -387,7 +342,7 @@ void XorFinder::addAllXorAsNorm()
         solver.removeClause(**i);
     }
     solver.xorclauses.shrink(i-j);
-    if (solver.verbosity >= 1) {
+    if (solver.conf.verbosity >= 1) {
         std::cout << "c Added XOR as norm:" << added << std::endl;
     }
 }

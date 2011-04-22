@@ -1,22 +1,10 @@
-/******************************************************************************************[Main.C]
+/*****************************************************************************
 MiniSat -- Copyright (c) 2003-2006, Niklas Een, Niklas Sorensson
 CryptoMiniSat -- Copyright (c) 2009 Mate Soos
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-associated documentation files (the "Software"), to deal in the Software without restriction,
-including without limitation the rights to use, copy, modify, merge, publish, distribute,
-sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or
-substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
-NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
-OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-**************************************************************************************************/
+Original code by MiniSat authors are under an MIT licence.
+Modifications for CryptoMiniSat are under GPLv3 licence.
+******************************************************************************/
 
 #include "DimacsParser.h"
 #include <sstream>
@@ -82,10 +70,10 @@ std::string DimacsParser::untilEnd(StreamBuffer& in)
 /**
 @brief Parses in an integer
 */
-int DimacsParser::parseInt(StreamBuffer& in, uint32_t& lenParsed)
+int32_t DimacsParser::parseInt(StreamBuffer& in, uint32_t& lenParsed)
 {
     lenParsed = 0;
-    int     val = 0;
+    int32_t val = 0;
     bool    neg = false;
     skipWhitespace(in);
     if      (*in == '-') neg = true, ++in;
@@ -144,7 +132,7 @@ void DimacsParser::parseString(StreamBuffer& in, std::string& str)
 */
 void DimacsParser::readClause(StreamBuffer& in, vec<Lit>& lits)
 {
-    int     parsed_lit;
+    int32_t parsed_lit;
     Var     var;
     uint32_t len;
     lits.clear();
@@ -153,6 +141,10 @@ void DimacsParser::readClause(StreamBuffer& in, vec<Lit>& lits)
         if (parsed_lit == 0) break;
         var = abs(parsed_lit)-1;
         if (!debugNewVar) {
+            if (var >= ((uint32_t)1)<<25) {
+                std::cout << "ERROR! Variable requested is far too large: " << var << std::endl;
+                exit(-1);
+            }
             while (var >= solver->nVars()) solver->newVar();
         }
         lits.push( (parsed_lit > 0) ? Lit(var, false) : Lit(var, true) );
@@ -187,7 +179,7 @@ void DimacsParser::printHeader(StreamBuffer& in)
     if (match(in, "p cnf")) {
         int vars    = parseInt(in, len);
         int clauses = parseInt(in, len);
-        if (solver->verbosity >= 1) {
+        if (solver->conf.verbosity >= 1) {
             std::cout << "c -- header says num vars:   " << std::setw(12) << vars << std::endl;
             std::cout << "c -- header says num clauses:" <<  std::setw(12) << clauses << std::endl;
         }
@@ -386,7 +378,7 @@ void DimacsParser::readFullClause(StreamBuffer& in)
         numXorClauses++;
     } else {
         if (addAsLearnt || learnt) {
-            solver->addLearntClause(lits, glue, miniSatAct, groupId);
+            solver->addLearntClause(lits, groupId, NULL, glue, miniSatAct);
             numLearntClauses++;
         } else {
             solver->addClause(lits, groupId, name.c_str());
@@ -399,6 +391,22 @@ void DimacsParser::readFullClause(StreamBuffer& in)
         std::cout << "Need to parse comments:" << str << std::endl;
         #endif //DEBUG_COMMENT_PARSING
         parseComments(in, str);
+    }
+}
+
+void DimacsParser::readBranchingOrder(StreamBuffer& in)
+{
+    skipWhitespace(in);
+
+    while (1) {
+        int parsed_var;
+        uint32_t len;
+
+        parsed_var = parseInt(in, len);
+        if (parsed_var == 0)
+            break;
+
+        solver->addBranchingVariable(parsed_var - 1);
     }
 }
 
@@ -427,6 +435,10 @@ void DimacsParser::parse_DIMACS_main(StreamBuffer& in)
             parseString(in, str);
             parseComments(in, str);
             break;
+        case 'b':
+            ++in;
+            readBranchingOrder(in);
+            break;
         default:
             readFullClause(in);
             break;
@@ -434,11 +446,8 @@ void DimacsParser::parse_DIMACS_main(StreamBuffer& in)
     }
 }
 
-#ifdef DISABLE_ZLIB
-void DimacsParser::parse_DIMACS(FILE * input_stream)
-#else
-void DimacsParser::parse_DIMACS(gzFile input_stream)
-#endif // DISABLE_ZLIB
+template <class T>
+void DimacsParser::parse_DIMACS(T input_stream)
 {
     debugLibPart = 1;
     numLearntClauses = 0;
@@ -449,15 +458,22 @@ void DimacsParser::parse_DIMACS(gzFile input_stream)
     StreamBuffer in(input_stream);
     parse_DIMACS_main(in);
 
-    std::cout << "c -- clauses added: "
-    << std::setw(12) << numLearntClauses
-    << " learnts, "
-    << std::setw(12) << numNormClauses
-    << " normals, "
-    << std::setw(12) << numXorClauses
-    << " xors"
-    << std::endl;
+    if (solver->conf.verbosity >= 1) {
+        std::cout << "c -- clauses added: "
+        << std::setw(12) << numLearntClauses
+        << " learnts, "
+        << std::setw(12) << numNormClauses
+        << " normals, "
+        << std::setw(12) << numXorClauses
+        << " xors"
+        << std::endl;
 
-    std::cout << "c -- vars added " << std::setw(10) << (solver->nVars() - origNumVars)
-    << std::endl;
+        std::cout << "c -- vars added " << std::setw(10) << (solver->nVars() - origNumVars)
+        << std::endl;
+    }
 }
+
+#ifndef DISABLE_ZLIB
+template void DimacsParser::parse_DIMACS(gzFile input_stream);
+#endif
+template void DimacsParser::parse_DIMACS(FILE* input_stream);

@@ -3,6 +3,14 @@
 The basic project template is based on: "cpp-project-template" by
 Michael Aaron Safyan (http://code.google.com/p/cpp-project-template/)
 
-The project incorporates "CryptoMiniSat" version 2.7.1 by Mate Soos
-(http://gitorious.org/cryptominisat) which is distributed under the
-GPL license version 3.
+ZRHC-* incorporates the following SAT solvers:
+- [CryptoMiniSat](http://gitorious.org/cryptominisat) version 2.7.1 by
+  Mate Soos, which is distributed under the GNU General Public License
+  version 3;
+- [MiniSat](http://www.minisat.se/MiniSat.html) version 2.2.0 by Niklas
+  Een and Niklas Sorensson, which is distributed under the MIT license.
+
+ZRHC-* includes the program suite "JPSGCS" version 03/14/2011 by Alun
+Thomas for the generation of zero-loop pedigree structures.
+[JPSGCS](http://balance.med.utah.edu/wiki) is distributed under the GNU
+General Public License version 3.

@@ -26,15 +26,19 @@
  **/
 /**
  *
- * sat_solver_interface.cpp
+ * cms_sat_solver_interface.cpp
  *
  * Structures to represent a light-weight interface to an internal SAT solver.
  * It only wants to narrow down the interface to the SAT solver.
  *
+ * This file is specific for CryptoMiniSat (>=2.7)
+ *
  **/
+// Please include "sat_solver_interface.hpp" and not "xxx_sat_solver_interface.hpp"
 #include "sat_solver_interface.hpp"
 
 #ifdef INTERNAL_SAT_SOLVER
+#ifdef USE_CRYPTOMINISAT
 
 #include "Vec.h"
 #include "SolverTypes.h"
@@ -42,7 +46,7 @@
 #include <boost/foreach.hpp>
 
 void
-SAT_solver_iface_t::add_clause(const std::set<int>& clause) {
+SAT_solver_iface_t::add_clause(const std::set<lit_t>& clause) {
   L_TRACE("Adding a clause to the solver...");
   if (_solved) {
 	 L_ERROR("Impossible to add a clause to an already solved instance! Abort.");
@@ -50,7 +54,7 @@ SAT_solver_iface_t::add_clause(const std::set<int>& clause) {
 	 return;
   }
   vec<Lit> sc;
-  BOOST_FOREACH( int lit, clause ) {
+  BOOST_FOREACH( lit_t lit, clause ) {
 	 unsigned int var= std::abs(lit)-1;
 	 while (var >= _solver->nVars()) _solver->newVar();
 	 sc.push( Lit( var, lit<0 ) );
@@ -58,8 +62,9 @@ SAT_solver_iface_t::add_clause(const std::set<int>& clause) {
   _solver->addClause(sc);
 };
 
+#ifndef AVOID_XOR_CLAUSES
 void
-SAT_solver_iface_t::add_xor_clause(const std::set<int>& clause) {
+SAT_solver_iface_t::add_xor_clause(const std::set<lit_t>& clause) {
   L_TRACE("Adding a xor-clause to the solver...");
   if (_solved) {
 	 L_ERROR("Impossible to add a xor-clause to an already solved instance! Abort.");
@@ -68,7 +73,7 @@ SAT_solver_iface_t::add_xor_clause(const std::set<int>& clause) {
   }
   vec<Lit> sc;
   bool sign= false;
-  BOOST_FOREACH( int lit, clause ) {
+  BOOST_FOREACH( lit_t lit, clause ) {
 	 unsigned int var= std::abs(lit)-1;
 	 while (var >= _solver->nVars()) _solver->newVar();
 	 sc.push( Lit( var, false ) );
@@ -76,6 +81,7 @@ SAT_solver_iface_t::add_xor_clause(const std::set<int>& clause) {
   }
   _solver->addXorClause(sc, sign);
 };
+#endif
 
 bool
 SAT_solver_iface_t::solve() {
@@ -106,7 +112,7 @@ SAT_solver_iface_t::solve() {
 
 
 bool
-SAT_solver_iface_t::model(const unsigned int var) const {
+SAT_solver_iface_t::model(const var_t var) const {
   if (!_solved || !_sat) {
 	 L_ERROR("The instance has not yet solved or it is not satisfiable!");
 	 MY_FAIL;
@@ -120,4 +126,5 @@ SAT_solver_iface_t::model(const unsigned int var) const {
   return _solver->model[var] == l_True;
 };
 
+#endif
 #endif

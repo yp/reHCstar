@@ -87,6 +87,7 @@ if (INTEGRATE_SAT_SOLVER)
   foreach(DEFINITION ${sat_DEFINITIONS})
     add_definitions(-D${DEFINITION})
   endforeach()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${sat_FLAGS}")
 
 else()
 

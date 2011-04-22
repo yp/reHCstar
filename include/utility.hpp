@@ -3,7 +3,7 @@
  *                              ZRHC-*
  * Zero-Recombinant Haplotype Configuration with missing genotypes
  *
- * Copyright (C) 2010  Yuri Pirola <yuri.pirola(-at-)gmail.com>
+ * Copyright (C) 2010,2011  Yuri Pirola <yuri.pirola(-at-)gmail.com>
  *
  * Distributed under the terms of the GNU General Public License (GPL)
  *
@@ -181,6 +181,14 @@ public:
 	 return e1.get_ordinal_data() != e2.get_ordinal_data();
   }
 
+  friend bool operator<=(const derived_enum& e1, const derived_enum& e2) {
+	 return e1.get_ordinal_data() <= e2.get_ordinal_data();
+  }
+
+  friend bool operator<(const derived_enum& e1, const derived_enum& e2) {
+	 return e1.get_ordinal_data() < e2.get_ordinal_data();
+  }
+
   friend std::ostream& operator<<(std::ostream& out, const derived_enum& val) {
 	 return (out << derived_enum::str_values[val.get_ordinal_data()]);
   }
@@ -320,6 +328,24 @@ public:
 
 std::ostream&
 operator<<(std::ostream& out, const percent_t& val);
+
+inline static size_t
+pow2_of_floor_log2(const size_t n) {
+  size_t p= 1;
+  while ((p << 1) <= n) {
+	 p= p << 1;
+  }
+  return p;
+};
+
+inline static size_t
+pow2_of_ceiling_log2(const size_t n) {
+  size_t p= 1;
+  while (p < n) {
+	 p= p << 1;
+  }
+  return p;
+};
 
 
 #endif // __UTILITY_HPP__

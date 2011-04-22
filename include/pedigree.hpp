@@ -3,7 +3,7 @@
  *                              ZRHC-*
  * Zero-Recombinant Haplotype Configuration with missing genotypes
  *
- * Copyright (C) 2010  Yuri Pirola <yuri.pirola(-at-)gmail.com>
+ * Copyright (C) 2010,2011  Yuri Pirola <yuri.pirola(-at-)gmail.com>
  *
  * Distributed under the terms of the GNU General Public License (GPL)
  *
@@ -218,17 +218,29 @@ public:
 	 typename hap_t::base& hm(const size_t pos) {
 		return hm()[pos];
 	 }
-	 const gen_t& g() const {
-		return _p._g[_progr_id];
+	 const gen_t& obs_g() const {
+		return _p._obs_g[_progr_id];
 	 }
-	 gen_t& g() {
-		return _p._g[_progr_id];
+	 gen_t& obs_g() {
+		return _p._obs_g[_progr_id];
 	 }
-	 const typename gen_t::base& g(const size_t pos) const {
-		return g()[pos];
+	 const typename gen_t::base& obs_g(const size_t pos) const {
+		return obs_g()[pos];
 	 }
-	 typename gen_t::base& g(const size_t pos) {
-		return g()[pos];
+	 typename gen_t::base& obs_g(const size_t pos) {
+		return obs_g()[pos];
+	 }
+	 const gen_t& real_g() const {
+		return _p._real_g[_progr_id];
+	 }
+	 gen_t& real_g() {
+		return _p._real_g[_progr_id];
+	 }
+	 const typename gen_t::base& real_g(const size_t pos) const {
+		return real_g()[pos];
+	 }
+	 typename gen_t::base& real_g(const size_t pos) {
+		return real_g()[pos];
 	 }
 
 	 const phen_t& phenotype() const {
@@ -293,7 +305,8 @@ private:
 
   boost::ptr_vector<haplotype_t> _hp;
   boost::ptr_vector<haplotype_t> _hm;
-  boost::ptr_vector<genotype_t> _g;
+  boost::ptr_vector<genotype_t> _obs_g;
+  boost::ptr_vector<genotype_t> _real_g;
   std::vector<phen_t> _pheno;
 
   std::vector<size_t> _fathers;
@@ -342,7 +355,8 @@ public:
 	 _genders.push_back(gender_t::UNSPEC);
 	 _hp.push_back(new haplotype_t(_len));
 	 _hm.push_back(new haplotype_t(_len));
-	 _g.push_back(new genotype_t(_len));
+	 _obs_g.push_back(new genotype_t(_len));
+	 _real_g.push_back(new genotype_t(_len));
 	 _pheno.push_back(phen_t());
 	 _fathers.push_back(not_existent_progr);
 	 _mothers.push_back(not_existent_progr);
@@ -501,35 +515,41 @@ public:
   };
 
 // Check if the haplotypes realize the genotypes
-  bool is_consistent() const {
-	 DEBUG("Checking if the haplotype configuration is consistent with the observed genotypes...");
+  bool is_consistent(const bool with_obs= true) const {
+	 DEBUG("Checking if the haplotype configuration is consistent with the genotypes...");
+	 if (with_obs) {
+		DEBUG("  checking with respect to: *observed* genotypes");
+	 } else {
+		DEBUG("  checking with respect to: *imputed* genotypes");
+	 }
 	 bool consistent= true;
 	 BOOST_FOREACH( const individual_t& ind,
 						 individuals() ) {
 		TRACE("Checking individual " << ind.progr_id());
+		const gen_t* const indg= (with_obs) ? &(ind.obs_g()) : &(ind.real_g());
 		consistent= consistent &&
 		  multilocus_haplotype_genotype_consistent( ind.hp(),
 																  ind.hm(),
-																  ind.g() );
+																  *indg );
 		if (!consistent) {
 		  DEBUG("Genotype of individual " << ind.progr_id()
 				  << " is not consistent with the"
 				  << " corresponding haplotypes."
-				  << " g=" << ind.g()
+				  << " g=" << *indg
 				  << " hp=" << ind.hp()
 				  << " hm=" << ind.hm() );
 		  break;
 		}
 	 }
 	 if (consistent) {
-		DEBUG("The haplotype configuration is consistent with the observed genotypes.")
+		DEBUG("The haplotype configuration is consistent with the genotypes.")
 	 } else {
-		DEBUG("The haplotype configuration is NOT consistent with the observed genotypes.")
+		DEBUG("The haplotype configuration is NOT consistent with the genotypes.")
 	 }
 	 return consistent;
   };
 
-// Check if the haplotypes realize the genotypes
+// Check if the haplotype configuration has no recombinations
   bool is_zero_recombinant() const {
 	 DEBUG("Checking if the haplotype configuration is zero-recombinant...");
 	 bool zr= true;
@@ -567,7 +587,51 @@ public:
 	 return zr;
   }
 
-  void print_stats() const {
+// Check if the haplotype configuration is consistent with the Mendel's laws
+// Return the total number of recombination events or -1 if it is not consistent
+  int is_mendelian_consistent() const {
+	 DEBUG("Checking if the haplotype configuration is consistent with the Mendel's laws...");
+	 int n_recomb_p= 0;
+	 int n_recomb_m= 0;
+	 BOOST_FOREACH( const individual_t& ind,
+						 individuals() ) {
+		TRACE("Checking individual " << ind.progr_id());
+		if (ind.has_father()) {
+		  TRACE(" --> father " << ind.father().progr_id());
+		  int tmp_recomb= strict_multilocus_mendelian_consistent(ind.father().hp(),
+																					ind.father().hm(),
+																					ind.hp());
+		  if (tmp_recomb < 0) {
+			 DEBUG("Individual " << ind.progr_id() <<
+					 " has not inherited his paternal allele at locus " << -tmp_recomb <<
+					 " from his father " << ind.father().progr_id());
+			 return -1;
+		  } else {
+			 n_recomb_p= n_recomb_p+tmp_recomb;
+		  }
+		}
+		if (ind.has_mother()) {
+		  TRACE(" --> mother " << ind.mother().progr_id());
+		  int tmp_recomb= strict_multilocus_mendelian_consistent(ind.mother().hp(),
+																					ind.mother().hm(),
+																					ind.hm());
+		  if (tmp_recomb < 0) {
+			 DEBUG("Individual " << ind.progr_id() <<
+					 " has not inherited his maternal allele at locus " << -tmp_recomb <<
+					 " from his mother " << ind.mother().progr_id());
+			 return -1;
+		  } else {
+			 n_recomb_m= n_recomb_m+tmp_recomb;
+		  }
+		}
+	 }
+	 const int n_recomb= n_recomb_p + n_recomb_m;
+	 DEBUG("The haplotype configuration has " << n_recomb << " (" << n_recomb_p << " + "
+			 << n_recomb_m << ") recombinations.");
+	 return n_recomb;
+  };
+
+  void print_stats(const bool of_obs_g= true) const {
 	 using namespace boost::accumulators;
 	 INFO("No. of individuals: " << std::setw(10) << size());
 	 INFO("Genotype length:    " << std::setw(10) << genotype_length());
@@ -577,10 +641,18 @@ public:
 	 accumulator_set<double, stats<tag::sum, tag::min, tag::max, tag::mean> > acc_hom;
 	 BOOST_FOREACH(const individual_t& ind,
 						individuals() ) {
-		const size_t typed= std::count_if(ind.g().begin(), ind.g().end(),
-													 is_genotyped<typename gen_t::base>);
-		const size_t homoz= std::count_if(ind.g().begin(), ind.g().end(),
-													 is_homozygous<typename gen_t::base>);
+		size_t typed, homoz;
+		if (of_obs_g) {
+		  typed= std::count_if(ind.obs_g().begin(), ind.obs_g().end(),
+									  is_genotyped<typename gen_t::base>);
+		  homoz= std::count_if(ind.obs_g().begin(), ind.obs_g().end(),
+									  is_homozygous<typename gen_t::base>);
+		} else {
+		  typed= std::count_if(ind.real_g().begin(), ind.real_g().end(),
+									  is_genotyped<typename gen_t::base>);
+		  homoz= std::count_if(ind.real_g().begin(), ind.real_g().end(),
+									  is_homozygous<typename gen_t::base>);
+		}
 		acc_g_miss(genotype_length() - typed);
 		acc_hom(homoz);
 		acc_hom_d(((double)homoz)/ typed);

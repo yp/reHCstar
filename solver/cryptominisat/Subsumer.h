@@ -1,7 +1,10 @@
-/**************************************************************************************************
-Originally From: Solver.C -- (C) Niklas Een, Niklas Sorensson, 2004
-Substantially modified by: Mate Soos (2010)
-**************************************************************************************************/
+/*****************************************************************************
+SatELite -- (C) Niklas Een, Niklas Sorensson, 2004
+CryptoMiniSat -- Copyright (c) 2009 Mate Soos
+
+Original code by SatELite authors are under an MIT licence.
+Modifications for CryptoMiniSat are under GPLv3.
+******************************************************************************/
 
 #ifndef SIMPLIFIER_H
 #define SIMPLIFIER_H
@@ -12,13 +15,69 @@ Substantially modified by: Mate Soos (2010)
 #include "BitArray.h"
 #include <map>
 #include <vector>
+#include <list>
 #include <queue>
 using std::vector;
+using std::list;
 using std::map;
 using std::priority_queue;
 
 class ClauseCleaner;
 class OnlyNonLearntBins;
+
+class TouchList
+{
+    public:
+        void resize(uint32_t size)
+        {
+            touched.resize(size, 0);
+        }
+
+        void addOne(Var var)
+        {
+            assert(touched.size() == var);
+            touched.push_back(1);
+            touchedList.push_back(var);
+        }
+
+        void touch(Lit lit, const bool learnt)
+        {
+            if (!learnt) touch(lit.var());
+        }
+
+        void touch(Var var)
+        {
+            if (!touched[var]) {
+                touchedList.push_back(var);
+                touched[var]= 1;
+            }
+        }
+
+        void clear()
+        {
+            touchedList.clear();
+            std::fill(touched.begin(), touched.end(), 0);
+        }
+
+        const uint32_t size() const
+        {
+            return touchedList.size();
+        }
+
+        vector<Var>::const_iterator begin() const
+        {
+            return touchedList.begin();
+        }
+
+        vector<Var>::const_iterator end() const
+        {
+            return touchedList.end();
+        }
+
+    private:
+        vector<Var> touchedList;
+        vector<char> touched;
+};
 
 /**
 @brief Handles subsumption, self-subsuming resolution, variable elimination, and related algorithms
@@ -37,13 +96,8 @@ public:
     Subsumer(Solver& S2);
 
     //Called from main
-    const bool simplifyBySubsumption(const bool alsoLearnt = false);
-    const bool subsumeWithBinaries(OnlyNonLearntBins* onlyNonLearntBins);
+    const bool simplifyBySubsumption();
     void newVar();
-
-    //Used by cleaner
-    void unlinkClause(ClauseSimp cc, const Var elim = var_Undef);
-    ClauseSimp linkInClause(Clause& cl);
 
     //UnElimination
     void extendModel(Solver& solver2);
@@ -54,9 +108,12 @@ public:
     const uint32_t getNumElimed() const;
     const bool checkElimedUnassigned() const;
     const double getTotalTime() const;
-    const map<Var, vector<Clause*> >& getElimedOutVar() const;
+    const map<Var, vector<vector<Lit> > >& getElimedOutVar() const;
+    const map<Var, vector<std::pair<Lit, Lit> > >& getElimedOutVarBin() const;
 
 private:
+
+    const bool subsumeWithBinaries();
 
     friend class ClauseCleaner;
     friend class ClauseAllocator;
@@ -66,8 +123,7 @@ private:
     @brief Clauses to be treated are moved here ClauseSimp::index refers to the index of the clause here
     */
     vec<ClauseSimp>        clauses;
-    vec<char>              touched;        ///<Is set to true when a variable is part of a removed clause. Also true initially (upon variable creation).
-    vec<Var>               touched_list;   ///<A list of the true elements in 'touched'.
+    TouchList              touchedVars;        ///<Is set to true when a variable is part of a removed clause. Also true initially (upon variable creation).
     CSet                   cl_touched;     ///<Clauses strengthened/added
     vec<vec<ClauseSimp> >  occur;          ///<occur[index(lit)]' is a list of constraints containing 'lit'.
     vec<CSet* >            iter_sets;      ///<Sets currently used in iterations.
@@ -79,36 +135,42 @@ private:
     vec<char> var_elimed;                  ///<Contains TRUE if var has been eliminated
     double totalTime;                      ///<Total time spent in this class
     uint32_t numElimed;                    ///<Total number of variables eliminated
-    map<Var, vector<Clause*> > elimedOutVar; ///<Contains the clauses to use to uneliminate a variable
+    map<Var, vector<vector<Lit> > > elimedOutVar; ///<Contains the clauses to use to uneliminate a variable
+    map<Var, vector<std::pair<Lit, Lit> > > elimedOutVarBin; ///<Contains the clauses to use to uneliminate a variable
 
     //Limits
+    uint64_t addedClauseLits;
     uint32_t numVarsElimed;               ///<Number of variables elimed in this run
-    uint32_t numMaxSubsume1;              ///<Max. number self-subsuming resolution tries to do this run
-    uint32_t numMaxSubsume0;              ///<Max. number backward-subsumption tries to do this run
-    uint32_t numMaxElim;                  ///<Max. number of variable elimination tries to do this run
+    int64_t numMaxSubsume1;              ///<Max. number self-subsuming resolution tries to do this run
+    int64_t numMaxSubsume0;              ///<Max. number backward-subsumption tries to do this run
+    int64_t numMaxElim;                  ///<Max. number of variable elimination tries to do this run
+    int32_t numMaxElimVars;
     int64_t numMaxBlockToVisit;           ///<Max. number variable-blocking clauses to visit to do this run
     uint32_t numMaxBlockVars;             ///<Max. number variable-blocking tries to do this run
 
     //Start-up
-    void addFromSolver(vec<Clause*>& cs, bool alsoLearnt = false, const bool addBinAndAddToCL = true);
+    const uint64_t addFromSolver(vec<Clause*>& cs);
     void fillCannotEliminate();
     void clearAll();
-    void setLimits(const bool alsoLearnt);
-    void subsume0AndSubsume1();
+    void setLimits();
+    const bool subsume0AndSubsume1();
+    vec<char> ol_seenPos;
+    vec<char> ol_seenNeg;
 
     //Finish-up
     void freeMemory();
     void addBackToSolver();
     void removeWrong(vec<Clause*>& cs);
+    void removeWrongBinsAndAllTris();
     void removeAssignedVarsFromEliminated();
 
     //Iterations
     void registerIteration  (CSet& iter_set) { iter_sets.push(&iter_set); }
     void unregisterIteration(CSet& iter_set) { remove(iter_sets, &iter_set); }
 
-    //Touching
-    void touch(const Var x);
-    void touch(const Lit p);
+    //Used by cleaner
+    void unlinkClause(ClauseSimp cc, const Var elim = var_Undef);
+    ClauseSimp linkInClause(Clause& cl);
 
     //Findsubsumed
     template<class T>
@@ -123,21 +185,69 @@ private:
     const Lit subset1(const T1& A, const T2& B);
     bool subsetAbst(uint32_t A, uint32_t B);
 
+    //binary clause-subsumption
+    struct BinSorter {
+        const bool operator()(const Watched& first, const Watched& second)
+        {
+            assert(first.isBinary() || first.isTriClause());
+            assert(second.isBinary() || second.isTriClause());
+
+            if (first.isTriClause() && second.isTriClause()) return false;
+            if (first.isBinary() && second.isTriClause()) return true;
+            if (second.isBinary() && first.isTriClause()) return false;
+
+            assert(first.isBinary() && second.isBinary());
+            if (first.getOtherLit().toInt() < second.getOtherLit().toInt()) return true;
+            if (first.getOtherLit().toInt() > second.getOtherLit().toInt()) return false;
+            if (first.getLearnt() == second.getLearnt()) return false;
+            if (!first.getLearnt()) return true;
+            return false;
+        };
+    };
+    void subsumeBinsWithBins();
+
     //subsume0
     struct subsume0Happened {
         bool subsumedNonLearnt;
-        uint32_t activity;
-        float oldActivity;
+        uint32_t glue;
+        float act;
+    };
+    /**
+    @brief Sort clauses according to size
+    */
+    struct sortBySize
+    {
+        const bool operator () (const Clause* x, const Clause* y)
+        {
+            return (x->size() < y->size());
+        }
     };
     void subsume0(Clause& ps);
     template<class T>
     subsume0Happened subsume0Orig(const T& ps, uint32_t abs);
     void subsume0Touched();
+    void makeNonLearntBin(const Lit lit1, const Lit lit2, const bool learnt);
 
     //subsume1
+    class NewBinaryClause
+    {
+        public:
+            NewBinaryClause(const Lit _lit1, const Lit _lit2, const bool _learnt) :
+                lit1(_lit1), lit2(_lit2), learnt(_learnt)
+            {};
+
+            const Lit lit1;
+            const Lit lit2;
+            const bool learnt;
+    };
+    list<NewBinaryClause> clBinTouched; ///<Binary clauses strengthened/added
+    const bool handleClBinTouched();
+
     void subsume1(Clause& ps);
+    const bool subsume1(vec<Lit>& ps, const bool wasLearnt);
     void strenghten(ClauseSimp& c, const Lit toRemoveLit);
-    const bool cleanClause(Clause& c);
+    const bool cleanClause(Clause& ps);
+    const bool cleanClause(vec<Lit>& ps) const;
     void handleSize1Clause(const Lit lit);
 
     //Variable elimination
@@ -149,19 +259,60 @@ private:
     */
     struct myComp {
         bool operator () (const std::pair<int, Var>& x, const std::pair<int, Var>& y) {
-            return x.first < y.first ||
-                (!(y.first < x.first) && x.second < y.second);
+            return x.first < y.first;
         }
     };
+    class ClAndBin {
+        public:
+            ClAndBin(ClauseSimp& cl) :
+                clsimp(cl)
+                , lit1(lit_Undef)
+                , lit2(lit_Undef)
+                , isBin(false)
+            {}
+
+            ClAndBin(const Lit _lit1, const Lit _lit2) :
+                clsimp(NULL, 0)
+                , lit1(_lit1)
+                , lit2(_lit2)
+                , isBin(true)
+            {}
+
+            ClauseSimp clsimp;
+            Lit lit1;
+            Lit lit2;
+            bool isBin;
+    };
     void orderVarsForElim(vec<Var>& order);
+    const uint32_t numNonLearntBins(const Lit lit) const;
     bool maybeEliminate(Var x);
-    void MigrateToPsNs(vec<ClauseSimp>& poss, vec<ClauseSimp>& negs, vec<ClauseSimp>& ps, vec<ClauseSimp>& ns, const Var x);
-    bool merge(const Clause& ps, const Clause& qs, const Lit without_p, const Lit without_q, vec<Lit>& out_clause);
+    void removeClauses(vec<ClAndBin>& posAll, vec<ClAndBin>& negAll, const Var var);
+    void removeClausesHelper(vec<ClAndBin>& todo, const Var var, std::pair<uint32_t, uint32_t>& removed);
+    bool merge(const ClAndBin& ps, const ClAndBin& qs, const Lit without_p, const Lit without_q, vec<Lit>& out_clause);
+    const bool eliminateVars();
+    void fillClAndBin(vec<ClAndBin>& all, vec<ClauseSimp>& cs, const Lit lit);
 
     //Subsume with Nonexistent Bins
-    const bool subsWNonExistBinsFull(OnlyNonLearntBins* onlyNonLearntBins);
-    const bool subsWNonExistBins(const Lit& lit, OnlyNonLearntBins* onlyNonLearntBins);
-    void subsume0BIN(const Lit lit, const vec<char>& lits);
+    struct BinSorter2 {
+        const bool operator()(const Watched& first, const Watched& second)
+        {
+            assert(first.isBinary() || first.isTriClause());
+            assert(second.isBinary() || second.isTriClause());
+
+            if (first.isTriClause() && second.isTriClause()) return false;
+            if (first.isBinary() && second.isTriClause()) return true;
+            if (second.isBinary() && first.isTriClause()) return false;
+
+            assert(first.isBinary() && second.isBinary());
+            if (first.getLearnt() && !second.getLearnt()) return true;
+            if (!first.getLearnt() && second.getLearnt()) return false;
+            return false;
+        };
+    };
+    const bool subsWNonExitsBinsFullFull();
+    const bool subsWNonExistBinsFull();
+    const bool subsWNonExistBins(const Lit& lit, OnlyNonLearntBins* OnlyNonLearntBins);
+    void subsume0BIN(const Lit lit, const vec<char>& lits, const uint32_t abst);
     bool subsNonExistentFinish;
     uint32_t doneNum;
     uint64_t extraTimeNonExist;
@@ -184,13 +335,14 @@ private:
         }
     };
     void blockedClauseRemoval();
-    const bool allTautology(const vec<Lit>& ps, const Lit lit);
+    template<class T>
+    const bool allTautology(const T& ps, const Lit lit);
     uint32_t numblockedClauseRemoved;
-    const bool tryOneSetting(const Lit lit, const Lit negLit);
+    const bool tryOneSetting(const Lit lit);
     priority_queue<VarOcc, vector<VarOcc>, MyComp> touchedBlockedVars;
-    vec<bool> touchedBlockedVarsBool;
+    vec<char> touchedBlockedVarsBool;
     void touchBlockedVar(const Var x);
-    double blockTime;
+    void blockedClauseElimAll(const Lit lit);
 
 
     //validity checking
@@ -200,7 +352,6 @@ private:
     uint32_t literals_removed; ///<Number of literals removed from clauses through self-subsuming resolution in this run
     uint32_t numCalls;         ///<Number of times simplifyBySubsumption() has been called
     uint32_t clauseID;         ///<We need to have clauseIDs since clauses don't natively have them. The ClauseID is stored by ClauseSimp, which also stores a pointer to the clause
-    bool subsWithBins;         ///<Are we currently subsuming with binaries only?
 };
 
 template <class T, class T2>
@@ -208,21 +359,6 @@ void maybeRemove(vec<T>& ws, const T2& elem)
 {
     if (ws.size() > 0)
         removeW(ws, elem);
-}
-
-/**
-@brief Put varible in touched_list
-
-call it when the number of occurrences of this variable changed.
-
-@param[in] x The varible that must be put into touched_list
-*/
-inline void Subsumer::touch(const Var x)
-{
-    if (!touched[x]) {
-        touched[x] = 1;
-        touched_list.push(x);
-    }
 }
 
 /**
@@ -236,16 +372,6 @@ inline void Subsumer::touchBlockedVar(const Var x)
         touchedBlockedVars.push(VarOcc(x, occur[Lit(x, false).toInt()].size()*occur[Lit(x, true).toInt()].size()));
         touchedBlockedVarsBool[x] = 1;
     }
-}
-
-/**
-@brief Put variable of literal in touched_list
-
-call it when the number of occurrences of this variable changed
-*/
-inline void Subsumer::touch(const Lit p)
-{
-    touch(p.var());
 }
 
 /**
@@ -324,15 +450,24 @@ inline void Subsumer::newVar()
     occur       .push();
     seen_tmp    .push(0);       // (one for each polarity)
     seen_tmp    .push(0);
-    touched     .push(1);
+    touchedVars .addOne(solver.nVars()-1);
     var_elimed  .push(0);
     touchedBlockedVarsBool.push(0);
     cannot_eliminate.push(0);
+    ol_seenPos.push(1);
+    ol_seenPos.push(1);
+    ol_seenNeg.push(1);
+    ol_seenNeg.push(1);
 }
 
-inline const map<Var, vector<Clause*> >& Subsumer::getElimedOutVar() const
+inline const map<Var, vector<vector<Lit> > >& Subsumer::getElimedOutVar() const
 {
     return elimedOutVar;
+}
+
+inline const map<Var, vector<std::pair<Lit, Lit> > >& Subsumer::getElimedOutVarBin() const
+{
+    return elimedOutVarBin;
 }
 
 inline const vec<char>& Subsumer::getVarElimed() const
