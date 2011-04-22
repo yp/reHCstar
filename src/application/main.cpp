@@ -206,8 +206,8 @@ protected:
 		if (wlen < 4) {
 		  throw std::logic_error(std::string("The window length must be greater than 2."));
 		}
-		if (merr > (wlen>>1)) {
-		  throw std::logic_error(std::string("The maximum number of errors in a single window must be less than or equal to the half the window length."));
+		if (merr >= wlen) {
+		  throw std::logic_error(std::string("The maximum number of errors in a single window must be less than the window length."));
 		}
 	 }
 	 if (vm["uniform-recomb"].as<bool>()) {
@@ -219,8 +219,8 @@ protected:
 		if (wlen < 4) {
 		  throw std::logic_error(std::string("The window length must be greater than 2."));
 		}
-		if (merr > (wlen>>1)) {
-		  throw std::logic_error(std::string("The maximum number of recombinations in a single window must be less than or equal to the half the window length."));
+		if (merr >= wlen) {
+		  throw std::logic_error(std::string("The maximum number of recombinations in a single window must be less than the window length."));
 		}
 	 }
 	 return true;

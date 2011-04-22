@@ -509,7 +509,7 @@ add_uniform_card_constraint_less_or_equal_than(pedcnf_t& cnf,
 															  const size_t window_size,
 															  const size_t k) {
   MY_ASSERT( window_size == pow2_of_floor_log2(window_size) );
-  MY_ASSERT( k <= (window_size>>1) );
+  MY_ASSERT( k < window_size );
   std::vector<var_t> all_vars= in_vars;
   while (all_vars.size() % window_size != 0) {
 	 var_t v= cnf.generate_dummy();
