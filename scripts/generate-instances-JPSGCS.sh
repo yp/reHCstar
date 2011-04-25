@@ -122,7 +122,7 @@ for size in ${pedigree_sizes}; do
             echo "Generating pedigree structure: pedigree-${prefix_id}.txt"
             echo "Generating pedigree structure: pedigree-${prefix_id}.txt" >&2
             java -cp ${jpsgcs_dir}/JPSGCS.jar ZeroLoopPed \
-                ${fam} ${size} ${additional_JPSGCS_params} \
+                ${mat_nod} ${size} ${additional_JPSGCS_params} \
                 | awk '{print "1", $0}'  >  ${dest_dir}/pedigree-${prefix_id}.txt
             for length in ${genotype_lengths}; do
                 length_str=`printf "${fmt_dl}" ${length}`
