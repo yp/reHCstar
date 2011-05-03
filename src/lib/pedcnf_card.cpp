@@ -508,14 +508,24 @@ add_uniform_card_constraint_less_or_equal_than(pedcnf_t& cnf,
 															  const std::vector<var_t>& in_vars,
 															  const size_t window_size,
 															  const size_t k) {
-  MY_ASSERT( window_size == pow2_of_floor_log2(window_size) );
-  MY_ASSERT( k < window_size );
-  std::vector<var_t> all_vars= in_vars;
-  while (all_vars.size() % window_size != 0) {
-	 var_t v= cnf.generate_dummy();
-	 all_vars.push_back(v);
-	 cnf.add_clause<1>((lit_t[]){ -v });
+  my_logger logger(get_my_logger("card_constraints"));
+  if (k==0) {
+	 eq_zero(cnf, in_vars);
+  } else if (k >= in_vars.size()) {
+	 INFO("The number of variables (" << in_vars.size() << ") "
+			"is not greater than the numeric upper bound (" << k << "). "
+			"No clauses have been added.");
+  } else {
+	 MY_ASSERT( window_size == pow2_of_floor_log2(window_size) );
+	 MY_ASSERT( k < window_size );
+	 std::vector<var_t> all_vars= in_vars;
+	 while (all_vars.size() % window_size != 0) {
+		var_t v= cnf.generate_dummy();
+		all_vars.push_back(v);
+		cnf.add_clause<1>((lit_t[]){ -v });
+	 }
+	 add_uniform_card_constraint_less_or_equal_than_int(cnf, all_vars,
+																		 window_size, k);
   }
-  add_uniform_card_constraint_less_or_equal_than_int(cnf, all_vars, window_size, k);
 
 }
