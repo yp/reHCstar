@@ -636,6 +636,7 @@ public:
 	 INFO("No. of individuals: " << std::setw(10) << size());
 	 INFO("Genotype length:    " << std::setw(10) << genotype_length());
 	 const double tot_len= size() * genotype_length();
+	 unsigned int typed_ind= 0;
 	 accumulator_set<size_t, stats<tag::sum, tag::min, tag::max, tag::mean> > acc_g_miss;
 	 accumulator_set<double, stats<tag::sum, tag::min, tag::max, tag::mean> > acc_hom_d;
 	 accumulator_set<double, stats<tag::sum, tag::min, tag::max, tag::mean> > acc_hom;
@@ -655,7 +656,10 @@ public:
 		}
 		acc_g_miss(genotype_length() - typed);
 		acc_hom(homoz);
-		acc_hom_d(((double)homoz)/ typed);
+		if (typed>0) {
+		  acc_hom_d(((double)homoz)/ typed);
+		  typed_ind++;
+		}
 	 }
 	 INFO("MISSING GENOTYPES:");
 	 INFO("   Total:                 " << std::setw(10) << sum(acc_g_miss) <<
@@ -669,7 +673,9 @@ public:
 	 const size_t typed_g= tot_len-sum(acc_g_miss);
 	 INFO("TOTAL TYPED GENOTYPES:    " << std::setw(10) << typed_g <<
 			" (" << percent_t(typed_g, tot_len) << "%)");
-	 INFO("HOMOZYGOSITY: (percentage over typed loci of each individual)");
+	 INFO("TYPED INDIVIDUALS:        " << std::setw(10) << typed_ind <<
+			" (" << percent_t(typed_ind, size()) << "%)");
+	 INFO("HOMOZYGOSITY: (percentage over typed loci of each typed individual)");
 	 INFO("   Total   (absolute):    " << std::setw(10) << sum(acc_hom) <<
 			" (" << percent_t(sum(acc_hom), typed_g) << "%)");
 	 INFO("   Minimum (% per indiv.):  " <<
