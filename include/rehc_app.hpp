@@ -44,8 +44,8 @@
 using namespace std;
 
 
-class zrhcstar_t:
-  public log_able_t< zrhcstar_t >
+class rehcstar_t:
+  public log_able_t< rehcstar_t >
 {
 
 public:
@@ -177,7 +177,7 @@ public:
 
 public:
 
-  explicit zrhcstar_t()
+  explicit rehcstar_t()
 		:has_errors(false), has_recombinations(false)
   {
   };
@@ -239,14 +239,14 @@ public:
 // Open the result file and read the assignment
 	 const bool is_sat= read_SAT_results(cnf, res_is);
 	 if (is_sat) {
-		L_INFO("The pedigree can be realized by a zero-recombinant haplotype "
-			  "configuration.");
+		L_INFO("The pedigree can be realized by a (r,e)-haplotype "
+				 "configuration.");
 		const bool ok= compute_HC_from_model(ped, cnf);
 		if (!ok) {
 		  MY_FAIL;
 		}
 	 } else {
-		L_INFO("The pedigree CANNOT be realized by a zero-recombinant haplotype "
+		L_INFO("The pedigree CANNOT be realized by a (r,e)-haplotype "
 			  "configuration.");
 // Do nothing
 	 }
@@ -263,8 +263,6 @@ public:
 	 const bool ok=
 		family.is_completely_haplotyped() &&
 		family.is_consistent(false);
-//&&
-//		family.is_zero_recombinant();
 	 const int n_recomb= family.is_mendelian_consistent();
 	 L_INFO("The computed haplotype configuration has " << n_recomb << " recombinations.");
 	 if (ok) {

@@ -98,7 +98,7 @@ random.seed(seed)
 logging.basicConfig(level=log_level,
                     format='%(levelname)-6s [%(asctime)s]  %(message)s')
 
-logging.info("ZERO-RECOMBINANT GENOTYPED PEDIGREE GENERATION WITH MISSING DATA")
+logging.info("GENOTYPED PEDIGREE GENERATION WITH RECOMBINATIONS, ERRORS, AND MISSING GENOTYPES")
 
 logging.info("Haplotype encoding: "
              "allele1= '%s', allele2= '%s'",
@@ -108,6 +108,8 @@ logging.info("Genotype encoding:  "
              homo1, homo2, heter, missing)
 logging.info("Genotype length: %d", length)
 logging.info("Missing genotype probability: %f", missing_genotype_prob)
+logging.info("Genotyping error probability: %f", error_prob)
+logging.info("Recombination probability:    %f", recomb_prob)
 logging.info("Seed: %d", seed)
 
 

@@ -27,7 +27,7 @@
  **/
 #include <gtest/gtest.h>
 
-#include "zrhc_app.hpp"
+#include "rehc_app.hpp"
 
 #include <iostream>
 #include <sstream>
@@ -72,16 +72,16 @@ using namespace std;
   "0	3	1	2	2	phenotype	1|1	1|1	1|1\n"
 
 #ifndef ONLY_INTERNAL_SAT_SOLVER
-TEST(zrhc, ext_pedtocnf) {
+TEST(rehc, ext_pedtocnf) {
   string pedigree(PEDIGREE_STR);
   string sat_instance(SAT_INSTANCE_STR);
 
   istringstream is(pedigree);
   ostringstream os;
 
-  zrhcstar_t zrhcstar;
+  rehcstar_t rehcstar;
 
-  zrhcstar.create_SAT_instance_from_pedigree(is,
+  rehcstar.create_SAT_instance_from_pedigree(is,
 															os,
 															vector<string>(1,
 																				"SAT instance"));
@@ -90,7 +90,7 @@ TEST(zrhc, ext_pedtocnf) {
 
 }
 
-TEST(zrhc, ext_sattohc) {
+TEST(rehc, ext_sattohc) {
   string pedigree(PEDIGREE_STR);
   string sat_results(SAT_RESULTS_STR);
   string hc(HC_STR);
@@ -99,21 +99,21 @@ TEST(zrhc, ext_sattohc) {
   istringstream is_res(sat_results);
   ostringstream os;
 
-  zrhcstar_t zrhcstar;
+  rehcstar_t rehcstar;
 
-  zrhcstar_t::pedigree_t ped;
+  rehcstar_t::pedigree_t ped;
   pedcnf_t* cnf;
   const bool is_sat=
-	 zrhcstar.compute_HC_from_SAT_results(is_ped, is_res, ped, cnf);
+	 rehcstar.compute_HC_from_SAT_results(is_ped, is_res, ped, cnf);
   delete cnf;
 
   ASSERT_TRUE( is_sat );
-  zrhcstar_t::pedigree_t::pedigree_t& fam= ped.families().front();
+  rehcstar_t::pedigree_t::pedigree_t& fam= ped.families().front();
   ASSERT_TRUE( fam.is_completely_haplotyped() );
   ASSERT_TRUE( fam.is_consistent() );
   ASSERT_TRUE( fam.is_zero_recombinant() );
 
-  zrhcstar.save_reHC(ped, os);
+  rehcstar.save_reHC(ped, os);
 
   ASSERT_EQ( hc, os.str());
 

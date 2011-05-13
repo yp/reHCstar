@@ -30,7 +30,7 @@
  *
  * pedcnf2hc.hpp
  *
- * Functions to convert a satisfying assignment to a zero-recombinant haplotype
+ * Functions to convert a satisfying assignment to a (r,e)-haplotype
  * configuration.
  *
  **/
@@ -55,7 +55,7 @@ void compute_reHC_from_SAT(basic_pedigree_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE
 									const pedcnf_t& cnf) {
   log4cxx::LoggerPtr logger(log4cxx::Logger::getLogger("pedcnf2hc"));
   typedef basic_pedigree_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE, T_ID> family_t;
-  INFO("Computing the zero-recombinant haplotype configuration...");
+  INFO("Computing the (r,e)-haplotype configuration...");
   size_t no_of_errors= 0;
   size_t no_of_imputation= 0;
 // For each locus in each individual:
@@ -122,7 +122,7 @@ void compute_reHC_from_SAT(basic_pedigree_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE
   }
   INFO("Number of imputed genotypes: " << no_of_imputation);
   INFO("Number of corrected errors:  " << no_of_errors);
-  INFO("Zero-recombinant haplotype configuration successfully computed.");
+  INFO("(r,e)-haplotype configuration successfully computed.");
 };
 
 

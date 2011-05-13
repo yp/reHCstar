@@ -25,7 +25,7 @@
  * along with reHC-*.  If not, see <http://www.gnu.org/licenses/>.
  *
  **/
-#include "zrhc_app.hpp"
+#include "rehc_app.hpp"
 
 #include "configuration.h"
 
@@ -50,11 +50,11 @@ BOOST_STATIC_ASSERT(EXIT_FAILURE != EXIT_NO_reHC);
 using namespace std;
 
 
-class zrhcstar_application_t: public application_t {
+class rehcstar_application_t: public application_t {
 
 public:
 
-  zrhcstar_application_t()
+  rehcstar_application_t()
 		:application_t(APPLICATION_CODENAME " " APPLICATION_VERSION_STRING
 							" " BOOST_PP_STRINGIZE(SAT_SOLVER))
   {}
@@ -240,8 +240,8 @@ protected:
 		vm["compress"].as<bool>() ||
 		vm["compress-output"].as<bool>();
 
-	 zrhcstar_t zrhcstar;
-	 zrhcstar.prepare_program_options(vm);
+	 rehcstar_t rehcstar;
+	 rehcstar.prepare_program_options(vm);
 
 // Dispatch the work depending on the program parameters
 #ifndef ONLY_INTERNAL_SAT_SOLVER
@@ -262,7 +262,7 @@ protected:
 		  std::string("sat: ") + vm["sat"].as<string>(),
 		  std::string("source version: ") + APPLICATION_SOURCE_VERSION
 		};
-		zrhcstar.create_SAT_instance_from_pedigree(*ped_is,
+		rehcstar.create_SAT_instance_from_pedigree(*ped_is,
 																 *sat_os,
 																 vector<string>(headers,
 																					 headers+4));
@@ -287,15 +287,15 @@ protected:
 		file_utility::postream hap_os=
 		  file_utility::get_file_utility().
 		  get_ofstream(vm["haplotypes"].as<string>(), out_compress);
-		bool is_zrhc=
-		  zrhcstar.compute_HC_from_SAT_results(*ped_is, *res_is, *hap_os);
+		bool is_rehc=
+		  rehcstar.compute_HC_from_SAT_results(*ped_is, *res_is, *hap_os);
 
-		if (is_zrhc) {
-		  INFO("Zero-Recombinant Haplotype Configuration successfully "
+		if (is_rehc) {
+		  INFO("(r,e)-Haplotype Configuration successfully "
 				 "computed and saved.");
 		  main_ris= EXIT_SUCCESS;
 		} else {
-		  WARN("No Zero-Recombinant Haplotype Configuration can exist. "
+		  WARN("No (r,e)-Haplotype Configuration can exist. "
 				 "Exiting without haplotype configuration.");
 		  main_ris= EXIT_NO_reHC;
 		}
@@ -305,7 +305,7 @@ protected:
 			  "pedigree of file '"
 			  << vm["pedigree"].as<string>() << "' by direct invocation of the SAT solver...");
 		string sat_name;
-		zrhcstar_t::pedigree_t ped;
+		rehcstar_t::pedigree_t ped;
 		pedcnf_t cnf;
 // Block for reading the pedigree and writing the SAT instance
 // The block is needed to close the SAT instance stream before executing
@@ -323,7 +323,7 @@ protected:
 			 std::string("sat: ") + sat_name,
 			 std::string("source version: ") + APPLICATION_SOURCE_VERSION
 		  };
-		  zrhcstar.create_SAT_instance_from_pedigree(*ped_is, *sat_os,
+		  rehcstar.create_SAT_instance_from_pedigree(*ped_is, *sat_os,
 																	vector<string>(headers,
 																						headers+4),
 																	ped, cnf);
@@ -356,7 +356,7 @@ protected:
 		  file_utility::postream hap_os=
 			 file_utility::get_file_utility().
 			 get_ofstream(vm["haplotypes"].as<string>(), out_compress);
-		  bool is_zrhc= zrhcstar.compute_HC_from_SAT_results(ped, cnf,
+		  bool is_rehc= rehcstar.compute_HC_from_SAT_results(ped, cnf,
 																			  *res_is, *hap_os);
 
 		  if (!vm["keep"].as<bool>()) {
@@ -371,12 +371,12 @@ protected:
 			 }
 		  }
 
-		  if (is_zrhc) {
-			 INFO("Zero-Recombinant Haplotype Configuration successfully "
+		  if (is_rehc) {
+			 INFO("(r,e)-Haplotype Configuration successfully "
 					"computed and saved.");
 			 main_ris= EXIT_SUCCESS;
 		  } else {
-			 WARN("No Zero-Recombinant Haplotype Configuration can exist. "
+			 WARN("No (r,e)-Haplotype Configuration can exist. "
 					"Exiting without haplotype configuration.");
 			 main_ris= EXIT_NO_reHC;
 		  }
@@ -389,7 +389,7 @@ protected:
 		INFO("Computation of the haplotype configuration from the "
 			  "pedigree of file '"
 			  << vm["pedigree"].as<string>() << "' by using the internal SAT solver...");
-		zrhcstar_t::pedigree_t ped;
+		rehcstar_t::pedigree_t ped;
 		pedcnf_t cnf;
 // Block for reading the pedigree and writing the SAT instance
 // The block is needed to close the SAT instance stream before executing
@@ -398,7 +398,7 @@ protected:
 		  file_utility::pistream ped_is=
 			 file_utility::get_file_utility().
 			 get_ifstream(vm["pedigree"].as<string>(), in_compress);
-		  zrhcstar.prepare_pedigree_and_sat(*ped_is,
+		  rehcstar.prepare_pedigree_and_sat(*ped_is,
 														ped, cnf);
 		}
 
@@ -412,10 +412,10 @@ protected:
 		  file_utility::postream hap_os=
 			 file_utility::get_file_utility().
 			 get_ofstream(vm["haplotypes"].as<string>(), out_compress);
-		  bool is_zrhc= zrhcstar.compute_HC_from_model_and_save(ped, cnf,
+		  bool is_rehc= rehcstar.compute_HC_from_model_and_save(ped, cnf,
 																				  *hap_os);
-		  if (is_zrhc) {
-			 INFO("Zero-Recombinant Haplotype Configuration successfully "
+		  if (is_rehc) {
+			 INFO("(r,e)-Haplotype Configuration successfully "
 					"computed and saved.");
 			 main_ris= EXIT_SUCCESS;
 		  } else {
@@ -423,7 +423,7 @@ protected:
 			 main_ris= EXIT_NO_reHC;
 		  }
 		} else {
-		  WARN("No Zero-Recombinant Haplotype Configuration can exist. "
+		  WARN("No (r,e)-Haplotype Configuration can exist. "
 				 "Exiting without haplotype configuration.");
 		  main_ris= EXIT_NO_reHC;
 		}
@@ -444,6 +444,6 @@ protected:
 
 
 int main(int argc, char** argv) {
-  zrhcstar_application_t app;
+  rehcstar_application_t app;
   return app.execute(argc, argv);
 }

@@ -27,7 +27,7 @@
  **/
 #include <gtest/gtest.h>
 
-#include "zrhc_app.hpp"
+#include "rehc_app.hpp"
 
 #include <iostream>
 #include <sstream>
@@ -123,16 +123,16 @@ using namespace std;
   "0	5	4	3	1	phenotype	1|2	2|1	1|1	1|1	2|1\n"
 
 #ifndef ONLY_INTERNAL_SAT_SOLVER
-TEST(zrhc, pedtocnf) {
+TEST(rehc, pedtocnf) {
   string pedigree(PEDIGREE_STR);
   string sat_instance(SAT_INSTANCE_STR);
 
   istringstream is(pedigree);
   ostringstream os;
 
-  zrhcstar_t zrhcstar;
+  rehcstar_t rehcstar;
 
-  zrhcstar.create_SAT_instance_from_pedigree(is,
+  rehcstar.create_SAT_instance_from_pedigree(is,
 															os,
 															vector<string>(1,
 																				"SAT instance"));
@@ -142,7 +142,7 @@ TEST(zrhc, pedtocnf) {
 }
 
 
-TEST(zrhc, sattohc) {
+TEST(rehc, sattohc) {
   string pedigree(PEDIGREE_STR);
   string sat_results(SAT_RESULTS_STR);
   string hc(HC_STR);
@@ -151,10 +151,10 @@ TEST(zrhc, sattohc) {
   istringstream is_res(sat_results);
   ostringstream os;
 
-  zrhcstar_t zrhcstar;
+  rehcstar_t rehcstar;
 
   const bool is_sat=
-	 zrhcstar.compute_HC_from_SAT_results(is_ped, is_res, os);
+	 rehcstar.compute_HC_from_SAT_results(is_ped, is_res, os);
 
   ASSERT_TRUE( is_sat );
   ASSERT_EQ( hc, os.str());

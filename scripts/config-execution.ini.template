@@ -30,7 +30,7 @@ recomb_handler=""   # recombinations = off
 ## Input pedigrees
 pedigrees=gen-ped-*.txt
 
-dest_dir="./zrhcstar-out/"
+dest_dir="./rehcstar-out/"
 
 ## Running time limit (in minutes, 0 = no limit)
 ##   common values: 60 (1h), 360 (6h), 1440 (1day)

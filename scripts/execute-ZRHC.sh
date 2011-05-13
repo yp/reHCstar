@@ -53,7 +53,7 @@ reHC_sat_mode=""
 error_handler=""
 recomb_handler=""
 pedigrees=gen-ped-*.txt
-dest_dir="./zrhcstar-out/"
+dest_dir="./rehcstar-out/"
 time_limit=0   # no limit
 memory_limit=0   # no limit
 
