@@ -4,11 +4,11 @@
 # Project Properties
 #
 cmake_minimum_required (VERSION 2.8)
-project (ZRHCstar)
+project (reHCstar)
 
-set (APPLICATION_NAME "Zero-Recombinant Haplotyping with missing genotypes")
+set (APPLICATION_NAME "Haplotyping with Recombinations and Errors")
 set (APPLICATION_CODENAME "${PROJECT_NAME}")
-set (APPLICATION_COPYRIGHT_YEARS "2010")
+set (APPLICATION_COPYRIGHT_YEARS "2010, 2011")
 set (APPLICATION_VENDOR_ID "org.tecnoparco")
 set (APPLICATION_VENDOR_NAME "Parco Tecnologico Padano")
 set (APPLICATION_VENDOR_URL "www.tecnoparco.org")

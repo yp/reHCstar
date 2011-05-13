@@ -1,18 +1,18 @@
 ##
-## Configuration file for 'execute-ZRHC.sh'
+## Configuration file for 'execute-reHC.sh'
 ##
 ## It must be placed in the current directory 
 
 
 ## * Required parameters
 
-ZRHC_exe="./ZRHCstar"
+reHC_exe="./reHCstar"
 
 ## Invocation of the SAT solver
 ## Uncomment the following line for the invocation of an external solver
-#ZRHC_sat_mode="-3 --sat-cmdline './bin/cryptominisat %%INPUT%% %%OUTPUT%%' --compress-output"
+#reHC_sat_mode="-3 --sat-cmdline './bin/cryptominisat %%INPUT%% %%OUTPUT%%' --compress-output"
 ## Uncomment the following line for the invocation of the internal solver
-ZRHC_sat_mode="-4"
+reHC_sat_mode="-4"
 
 
 ## * Optional parameters

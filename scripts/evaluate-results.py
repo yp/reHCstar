@@ -3,28 +3,28 @@
 
 ##########
 #
-#                               ZRHC-*
-#  Zero-Recombinant Haplotype Configuration with missing genotypes
+#                               reHC-*
+#  Haplotype Configuration with Recombinations and Errors
 #
 #  Copyright (C) 2010,2011  Yuri Pirola <yuri.pirola(-at-)gmail.com>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
 #
 #
-#  This file is part of ZRHC-* (ZRHCstar).
+#  This file is part of reHC-* (reHCstar).
 #
-#  ZRHC-* is free software: you can redistribute it and/or modify
+#  reHC-* is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation, either version 3 of the License, or
 #  (at your option) any later version.
 #
-#  ZRHC-* is distributed in the hope that it will be useful,
+#  reHC-* is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
-#  along with ZRHC-*.  If not, see <http://www.gnu.org/licenses/>.
+#  along with reHC-*.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##########
 
@@ -32,7 +32,7 @@
 #
 #  evaluate-results.py
 #
-#  A program that evaluates the quality of the results computed by ZRHC-*
+#  A program that evaluates the quality of the results computed by reHC-*
 #  compared to the generated haplotype configuration.
 #
 ##########
@@ -58,7 +58,7 @@ def parse_command_line():
                       action="store", dest="result",
                       type="string", default=None,
                       help="the file containing the haplotype configuration computed "
-                      "by ZRHC-*",
+                      "by reHC-*",
                       metavar="FILE")
     parser.add_option("-f", "--full-stats",
                       action="store_true", dest="full",
