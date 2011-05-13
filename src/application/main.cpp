@@ -1,27 +1,28 @@
 /**
  *
- *                              ZRHC-*
- * Zero-Recombinant Haplotype Configuration with missing genotypes
+ *                              reHC-*
+ * Haplotype Configuration with Recombinations and Errors
  *
  * Copyright (C) 2010,2011  Yuri Pirola <yuri.pirola(-at-)gmail.com>
  *
  * Distributed under the terms of the GNU General Public License (GPL)
  *
  *
- * This file is part of ZRHC-* (ZRHCstar).
+ * This file is part of reHC-* (reHCstar),
+ * previously known as ZRHC-* (ZRHCstar).
  *
- * ZRHC-* is free software: you can redistribute it and/or modify
+ * reHC-* is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * ZRHC-* is distributed in the hope that it will be useful,
+ * reHC-* is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with ZRHC-*.  If not, see <http://www.gnu.org/licenses/>.
+ * along with reHC-*.  If not, see <http://www.gnu.org/licenses/>.
  *
  **/
 #include "zrhc_app.hpp"
@@ -40,11 +41,11 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 
-#ifndef EXIT_NO_ZRHC
-#define EXIT_NO_ZRHC (2)
+#ifndef EXIT_NO_reHC
+#define EXIT_NO_reHC (2)
 #endif
 
-BOOST_STATIC_ASSERT(EXIT_FAILURE != EXIT_NO_ZRHC);
+BOOST_STATIC_ASSERT(EXIT_FAILURE != EXIT_NO_reHC);
 
 using namespace std;
 
@@ -296,7 +297,7 @@ protected:
 		} else {
 		  WARN("No Zero-Recombinant Haplotype Configuration can exist. "
 				 "Exiting without haplotype configuration.");
-		  main_ris= EXIT_NO_ZRHC;
+		  main_ris= EXIT_NO_reHC;
 		}
 
 	 } else if (vm["create-read"].as<bool>()) {
@@ -346,7 +347,7 @@ protected:
 		if (!boost::filesystem::exists(res_name)) {
 		  WARN("Impossible to find SAT result file '" << res_name << "'. "
 				 "Assuming that the SAT instance is not satisfiable.");
-		  main_ris= EXIT_NO_ZRHC;
+		  main_ris= EXIT_NO_reHC;
 		} else {
 // Read the results and compute the haplotype configuration
 		  file_utility::pistream res_is=
@@ -377,7 +378,7 @@ protected:
 		  } else {
 			 WARN("No Zero-Recombinant Haplotype Configuration can exist. "
 					"Exiting without haplotype configuration.");
-			 main_ris= EXIT_NO_ZRHC;
+			 main_ris= EXIT_NO_reHC;
 		  }
 		}
 
@@ -419,12 +420,12 @@ protected:
 			 main_ris= EXIT_SUCCESS;
 		  } else {
 			 WARN("A Haplotype Configuration has been computed but it is not valid!!");
-			 main_ris= EXIT_NO_ZRHC;
+			 main_ris= EXIT_NO_reHC;
 		  }
 		} else {
 		  WARN("No Zero-Recombinant Haplotype Configuration can exist. "
 				 "Exiting without haplotype configuration.");
-		  main_ris= EXIT_NO_ZRHC;
+		  main_ris= EXIT_NO_reHC;
 		}
 
 	 } else

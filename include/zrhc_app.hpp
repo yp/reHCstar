@@ -1,27 +1,28 @@
 /**
  *
- *                              ZRHC-*
- * Zero-Recombinant Haplotype Configuration with missing genotypes
+ *                              reHC-*
+ * Haplotype Configuration with Recombinations and Errors
  *
  * Copyright (C) 2010,2011  Yuri Pirola <yuri.pirola(-at-)gmail.com>
  *
  * Distributed under the terms of the GNU General Public License (GPL)
  *
  *
- * This file is part of ZRHC-* (ZRHCstar).
+ * This file is part of reHC-* (reHCstar),
+ * previously known as ZRHC-* (ZRHCstar).
  *
- * ZRHC-* is free software: you can redistribute it and/or modify
+ * reHC-* is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * ZRHC-* is distributed in the hope that it will be useful,
+ * reHC-* is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with ZRHC-*.  If not, see <http://www.gnu.org/licenses/>.
+ * along with reHC-*.  If not, see <http://www.gnu.org/licenses/>.
  *
  **/
 #include "configuration.h"
@@ -181,7 +182,7 @@ public:
   {
   };
 
-  void save_ZRHC(pedigree_t& ped,
+  void save_reHC(pedigree_t& ped,
 					  std::ostream& hap_os) const {
 	 L_INFO("Saving haplotype configuration...");
 // FIXME: Improve template instantiation
@@ -257,7 +258,7 @@ public:
 									  pedcnf_t& cnf) const {
 	 pedigree_t::pedigree_t& family= ped.families().front();
 // Compute the actual haplotype configuration
-	 compute_ZRHC_from_SAT(family, cnf);
+	 compute_reHC_from_SAT(family, cnf);
 // Check the haplotype configuration
 	 const bool ok=
 		family.is_completely_haplotyped() &&
@@ -280,7 +281,7 @@ public:
 	 const bool ok= compute_HC_from_model(ped, cnf);
 	 if (ok) {
 // Output the haplotype configuration
-		save_ZRHC(ped, hap_os);
+		save_reHC(ped, hap_os);
 	 }
 	 return ok;
   };
@@ -298,7 +299,7 @@ public:
 											 ped, cnf);
 	 if (is_sat) {
 // Output the haplotype configuration
-		save_ZRHC(ped, hap_os);
+		save_reHC(ped, hap_os);
 	 }
 	 return is_sat;
   }
@@ -312,7 +313,7 @@ public:
 											 ped, cnf);
 	 if (is_sat) {
 // Output the haplotype configuration
-		save_ZRHC(ped, hap_os);
+		save_reHC(ped, hap_os);
 	 }
 	 return is_sat;
   }
