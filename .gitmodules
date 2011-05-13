@@ -1,6 +1,0 @@
-[submodule "docs"]
-	path = docs
-	url = git://github.com/yp/ZRHCstar.git
-[submodule "website"]
-	path = website
-	url = git://github.com/yp/ZRHCstar.git
