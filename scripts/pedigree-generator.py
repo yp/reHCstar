@@ -4,7 +4,7 @@
 ##########
 #
 #                               reHC-*
-#  Haplotype Configuration with Recombinations and Errors
+#  Haplotyping with Recombinations, Errors, and Missing Genotypes
 #
 #  Copyright (C) 2010  Yuri Pirola <yuri.pirola(-at-)gmail.com>
 #

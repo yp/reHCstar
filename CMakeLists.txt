@@ -6,7 +6,7 @@
 cmake_minimum_required (VERSION 2.8)
 project (reHCstar)
 
-set (APPLICATION_NAME "Haplotyping with Recombinations and Errors")
+set (APPLICATION_NAME "Haplotyping with Recombinations, Errors, and Missing Genotypes")
 set (APPLICATION_CODENAME "${PROJECT_NAME}")
 set (APPLICATION_COPYRIGHT_YEARS "2010, 2011")
 set (APPLICATION_VENDOR_ID "org.tecnoparco")

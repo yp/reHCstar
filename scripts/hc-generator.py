@@ -3,7 +3,7 @@
 ##########
 #
 #                               reHC-*
-#  Haplotype Configuration with Recombinations and Errors
+#  Haplotyping with Recombinations, Errors, and Missing Genotypes
 #
 #  Copyright (C) 2010,2011  Yuri Pirola <yuri.pirola(-at-)gmail.com>
 #
@@ -31,8 +31,9 @@
 #
 #  hc-generator.py
 #
-#  A program that generates a random zero-recombinant set of (partially
-#  missing) genotypes given a pedigree structure.
+#  A program that generates a random set of genotypes with
+#  recombinations, errors and missing genotypes given a pedigree
+#  structure.
 #
 ##########
 
