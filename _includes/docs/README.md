@@ -9,7 +9,7 @@ by [Yuri Pirola](http://bimib.disco.unimib.it/index.php/Pirola_Yuri)
 
 
 Started: September 27, 2010  
-Current release: **1.0.0** (May 13, 2011)
+Current release: **1.0.1** (May 31, 2011)
 
 
 ------------------------------------------------------------------------
@@ -379,7 +379,7 @@ by Michael Aaron Safyan.
 reHC-* incorporates the following SAT solvers:
 
 - [CryptoMiniSat](http://gitorious.org/cryptominisat) version 2.9.1
-  (commit bcfdd17915e3, date 7/Apr/2011) by Mate Soos, which is
+  (commit e819ab3236e, date 26/May/2011) by Mate Soos, which is
   distributed under the GNU General Public License version 3;
 - [MiniSat](http://www.minisat.se/MiniSat.html) version 2.2.0 by Niklas
   Een and Niklas Sorensson, which is distributed under the MIT license.
