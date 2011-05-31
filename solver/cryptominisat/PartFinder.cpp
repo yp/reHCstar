@@ -29,13 +29,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iomanip>
 #include <math.h>
 #include "FailedLitSearcher.h"
-using std::set;
-using std::map;
 
 //#define VERBOSE_DEBUG
 
-using std::cout;
-using std::endl;
+using namespace CMSat;
+using std::set;
+using std::map;
 
 //#define PART_FINDING
 
@@ -101,11 +100,11 @@ void PartFinder::addToPartBins()
 {
     vec<Lit> lits(2);
     uint32_t wsLit = 0;
-    for (const vec2<Watched> *it = solver.watches.getData(), *end = solver.watches.getDataEnd(); it != end; it++, wsLit++) {
+    for (const vec<Watched> *it = solver.watches.getData(), *end = solver.watches.getDataEnd(); it != end; it++, wsLit++) {
         Lit lit = ~Lit::toLit(wsLit);
         lits[0] = lit;
-        const vec2<Watched>& ws = *it;
-        for (vec2<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
+        const vec<Watched>& ws = *it;
+        for (vec<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
             if (it2->isBinary() && lit.toInt() < it2->getOtherLit().toInt()) {
                 if (it2->getLearnt()) continue;
                 lits[1] = it2->getOtherLit();
@@ -189,10 +188,10 @@ const uint32_t PartFinder::setParts()
 void PartFinder::calcInBins(vector<uint32_t>& numClauseInPart, vector<uint32_t>& sumLitsInPart)
 {
     uint32_t wsLit = 0;
-    for (const vec2<Watched> *it = solver.watches.getData(), *end = solver.watches.getDataEnd(); it != end; it++, wsLit++) {
+    for (const vec<Watched> *it = solver.watches.getData(), *end = solver.watches.getDataEnd(); it != end; it++, wsLit++) {
         Lit lit = ~Lit::toLit(wsLit);
-        const vec2<Watched>& ws = *it;
-        for (vec2<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
+        const vec<Watched>& ws = *it;
+        for (vec<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
             if (it2->isBinary() && lit.toInt() < it2->getOtherLit().toInt()) {
                 if (it2->getLearnt()) continue;
 
@@ -219,4 +218,3 @@ void PartFinder::calcIn(const vec<T*>& cs, vector<uint32_t>& numClauseInPart, ve
         sumLitsInPart[part] += x.size();
     }
 }
-

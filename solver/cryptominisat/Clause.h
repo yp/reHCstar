@@ -27,6 +27,8 @@ Modifications for CryptoMiniSat are under GPLv3 licence.
 #include "Alg.h"
 #include "constants.h"
 
+namespace CMSat {
+
 template <class T>
 uint32_t calcAbstraction(const T& ps) {
     uint32_t abstraction = 0;
@@ -34,9 +36,6 @@ uint32_t calcAbstraction(const T& ps) {
         abstraction |= 1 << (ps[i].var() & 31);
     return abstraction;
 }
-
-//=================================================================================================
-// Clause -- a simple class for representing a clause:
 
 class MatrixFinder;
 class ClauseAllocator;
@@ -75,25 +74,6 @@ protected:
 
     uint32_t abst; //Abstraction of clause
 
-    #ifdef STATS_NEEDED
-    uint32_t group;
-    #endif
-
-    #ifdef _MSC_VER
-    Lit     data[1];
-    #else
-    /**
-    @brief Stores the literals in the clause
-
-    This is the reason why we cannot have an instance of this class as it is:
-    it cannot hold any literals in that case! This is a trick so that the
-    literals are at the same place as the data of the clause, i.e. its size,
-    glue, etc. We allocate therefore the clause manually, taking care that
-    there is enough space for data[] to hold the literals
-    */
-    Lit     data[0];
-    #endif //_MSC_VER
-
 #ifdef _MSC_VER
 public:
 #endif //_MSC_VER
@@ -108,7 +88,8 @@ public:
         isRemoved = false;
         setGroup(_group);
 
-        memcpy(data, ps.getData(), ps.size()*sizeof(Lit));
+        assert(ps.size() > 0);
+        memcpy(getData(), ps.getData(), ps.size()*sizeof(Lit));
         miniSatAct = 0;
         setChanged();
     }
@@ -190,14 +171,14 @@ public:
         strenghtened = false;
     }
 
-    Lit& operator [] (uint32_t i)
+    Lit& operator [] (const uint32_t i)
     {
-        return data[i];
+        return *(getData() + i);
     }
 
-    const Lit& operator [] (uint32_t i) const
+    const Lit& operator [] (const uint32_t i) const
     {
-        return data[i];
+        return *(getData() + i);
     }
 
     void setGlue(const uint32_t newGlue)
@@ -242,22 +223,22 @@ public:
 
     const Lit* getData() const
     {
-        return data;
+        return (Lit*)((char*)this + sizeof(Clause));
     }
 
     Lit* getData()
     {
-        return data;
+        return (Lit*)((char*)this + sizeof(Clause));
     }
 
     const Lit* getDataEnd() const
     {
-        return data+size();
+        return getData()+size();
     }
 
     Lit* getDataEnd()
     {
-        return data+size();
+        return getData() + size();
     }
 
     void print(FILE* to = stdout) const
@@ -269,22 +250,12 @@ public:
     void plainPrint(FILE* to = stdout) const
     {
         for (uint32_t i = 0; i < size(); i++) {
-            if (data[i].sign()) fprintf(to, "-");
-            fprintf(to, "%d ", data[i].var() + 1);
+            if ((getData()+i)->sign()) fprintf(to, "-");
+            fprintf(to, "%d ", (getData()+i)->var() + 1);
         }
         fprintf(to, "0\n");
     }
 
-    #ifdef STATS_NEEDED
-    const uint32_t getGroup() const
-    {
-        return group;
-    }
-    void setGroup(const uint32_t _group)
-    {
-        group = _group;
-    }
-    #else
     const uint32_t getGroup() const
     {
         return 0;
@@ -293,7 +264,6 @@ public:
     {
         return;
     }
-    #endif //STATS_NEEDED
     void setRemoved()
     {
         isRemoved = true;
@@ -365,7 +335,7 @@ public:
         if (xorEqualFalse())
             fprintf(to, "-");
         for (uint32_t i = 0; i < size(); i++) {
-            fprintf(to, "%d ", data[i].var() + 1);
+            fprintf(to, "%d ", this->operator[](i).var() + 1);
         }
         fprintf(to, "0\n");
     }
@@ -393,5 +363,6 @@ inline std::ostream& operator<<(std::ostream& cout, const XorClause& cl)
     return cout;
 }
 
+}
 
 #endif //CLAUSE_H

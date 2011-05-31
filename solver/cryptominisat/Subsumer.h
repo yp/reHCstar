@@ -10,13 +10,15 @@ Modifications for CryptoMiniSat are under GPLv3.
 #define SIMPLIFIER_H
 
 #include "Solver.h"
-#include "Queue.h"
 #include "CSet.h"
 #include "BitArray.h"
 #include <map>
 #include <vector>
 #include <list>
 #include <queue>
+
+namespace CMSat {
+
 using std::vector;
 using std::list;
 using std::map;
@@ -483,6 +485,8 @@ inline const uint32_t Subsumer::getNumElimed() const
 inline const double Subsumer::getTotalTime() const
 {
     return totalTime;
+}
+
 }
 
 #endif //SIMPLIFIER_H

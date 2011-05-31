@@ -46,6 +46,8 @@
 
 #include "Solver.h"
 
+using namespace CMSat;
+
 
 class SAT_solver_iface_t
   :

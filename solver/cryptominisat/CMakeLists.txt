@@ -16,7 +16,6 @@ set(sat_FLAGS ""
 include_directories("./")
 
 add_library(cryptominisat STATIC
-    Logger.cpp
     Solver.cpp
     SolverDebug.cpp
     SolverMisc.cpp

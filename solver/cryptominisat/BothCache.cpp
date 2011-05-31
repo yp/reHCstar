@@ -23,9 +23,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "XorSubsumer.h"
 #include "PartHandler.h"
 
+namespace CMSat {
+
 BothCache::BothCache(Solver& _solver) :
     solver(_solver)
-{};
+{}
 
 const bool BothCache::tryBoth()
 {
@@ -110,4 +112,6 @@ const bool BothCache::tryBoth()
     }
 
     return solver.ok;
+}
+
 }

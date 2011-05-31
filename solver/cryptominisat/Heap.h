@@ -17,8 +17,8 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **************************************************************************************************/
 
-#ifndef Heap_h
-#define Heap_h
+#ifndef HEAP_H
+#define HEAP_H
 
 #include "Vec.h"
 #include <algorithm>
@@ -31,12 +31,10 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include <stdint.h>
 #endif //_MSC_VER
 
-//=================================================================================================
+namespace CMSat {
+
 // A heap implementation with support for decrease/increase key.
-
-
-template<class Comp>
-class Heap {
+template<class Comp> class Heap {
     Comp     lt;
     vec<uint32_t> heap;     // heap of ints
     vec<uint32_t> indices;  // int -> index in heap
@@ -88,7 +86,7 @@ class Heap {
         indices.growTo(other.indices.size());
         std::copy(other.indices.getData(), other.indices.getDataEnd(), indices.getData());
     }
-    
+
     void operator=(const Heap<Comp>& other)
     {
         if (other.heap.size() > heap.size())
@@ -96,7 +94,7 @@ class Heap {
         else
             heap.shrink(heap.size()-other.heap.size());
         std::copy(other.heap.getData(), other.heap.getDataEnd(), heap.getData());
-        
+
         if (other.indices.size() > indices.size())
             indices.growTo(other.indices.size());
         else
@@ -122,7 +120,7 @@ class Heap {
 
         indices[n] = heap.size();
         heap.push(n);
-        percolateUp(indices[n]); 
+        percolateUp(indices[n]);
     }
 
 
@@ -134,19 +132,19 @@ class Heap {
         indices[x]       = std::numeric_limits<uint32_t>::max();
         heap.pop();
         if (heap.size() > 1) percolateDown(0);
-        return x; 
+        return x;
     }
 
 
-    void clear(bool dealloc = false) 
-    { 
+    void clear(bool dealloc = false)
+    {
         for (uint32_t i = 0; i != heap.size(); i++)
             indices[heap[i]] = std::numeric_limits<uint32_t>::max();
 #ifndef NDEBUG
         for (uint32_t i = 0; i != indices.size(); i++)
             assert(indices[i] == std::numeric_limits<uint32_t>::max());
 #endif
-        heap.clear(dealloc); 
+        heap.clear(dealloc);
     }
 
 
@@ -194,6 +192,6 @@ class Heap {
 
 };
 
+}
 
-//=================================================================================================
-#endif
+#endif //__HEAP_H__

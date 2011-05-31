@@ -26,11 +26,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdlib.h>
 #include "Vec.h"
-#include "Vec2.h"
 #include <map>
 #include <vector>
-using std::map;
-using std::vector;
 
 #include "ClauseOffset.h"
 #include "Watched.h"
@@ -38,10 +35,14 @@ using std::vector;
 #define NUM_BITS_OUTER_OFFSET 4
 #define BASE_DATA_TYPE char
 
+namespace CMSat {
+
+using std::map;
+using std::vector;
+
 class Clause;
 class XorClause;
 class Solver;
-
 
 /**
 @brief Allocates memory for (xor) clauses
@@ -95,7 +96,7 @@ class ClauseAllocator {
         void updatePointers(vector<Clause*>& toUpdate);
         void updatePointers(vector<XorClause*>& toUpdate);
         void updatePointers(vector<std::pair<Clause*, uint32_t> >& toUpdate);
-        void updateOffsets(vec<vec2<Watched> >& watches);
+        void updateOffsets(vec<vec<Watched> >& watches);
         void checkGoodPropBy(const Solver* solver);
 
         void releaseClauseNum(const uint32_t num);
@@ -139,5 +140,7 @@ class ClauseAllocator {
         Clause* getClause();
         void putClausesIntoDatastruct(std::vector<Clause*>& clauses);
 };
+
+}
 
 #endif //CLAUSEALLOCATOR_H

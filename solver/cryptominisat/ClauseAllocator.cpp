@@ -48,6 +48,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define EFFECTIVELY_USEABLE_BITS 30
 #define MAXSIZE ((1 << (EFFECTIVELY_USEABLE_BITS-NUM_BITS_OUTER_OFFSET))-1)
 
+using namespace CMSat;
+
 ClauseAllocator::ClauseAllocator()
 {
     assert(MIN_LIST_SIZE < MAXSIZE);
@@ -160,7 +162,7 @@ void* ClauseAllocator::allocEnough(const uint32_t size)
         #endif //DEBUG_CLAUSEALLOCATOR
 
         BASE_DATA_TYPE *dataStart;
-        #ifdef _MSC_VER
+        #if 1
         dataStart = (BASE_DATA_TYPE *)malloc(sizeof(BASE_DATA_TYPE) * nextSize);
         #else
         int ret = posix_memalign((void**)&dataStart, getpagesize(), sizeof(BASE_DATA_TYPE) * nextSize);
@@ -168,7 +170,7 @@ void* ClauseAllocator::allocEnough(const uint32_t size)
         assert(dataStart != NULL);
         int err = madvise(dataStart, sizeof(BASE_DATA_TYPE) * nextSize, MADV_RANDOM);
         assert(err == 0);
-        #endif // _MSC_VER
+        #endif
 
         dataStarts.push(dataStart);
         sizes.push(0);
@@ -361,7 +363,7 @@ void ClauseAllocator::consolidate(Solver* solver, const bool force)
         newSizes.push(0);
         newOrigClauseSizes.push();
         BASE_DATA_TYPE* pointer;
-        #ifdef _MSC_VER
+        #if 1
         pointer = (BASE_DATA_TYPE*)malloc(sizeof(BASE_DATA_TYPE) * newMaxSizes[i]);
         #else
         int ret = posix_memalign((void**)&pointer, getpagesize(), sizeof(BASE_DATA_TYPE) * newMaxSizes[i]);
@@ -535,11 +537,11 @@ void ClauseAllocator::updateAllOffsetsAndPointers(Solver* solver)
 /**
 @brief A dumb helper function to update offsets
 */
-void ClauseAllocator::updateOffsets(vec<vec2<Watched> >& watches)
+void ClauseAllocator::updateOffsets(vec<vec<Watched> >& watches)
 {
     for (uint32_t i = 0;  i < watches.size(); i++) {
-        vec2<Watched>& list = watches[i];
-        for (vec2<Watched>::iterator it = list.getData(), end = list.getDataEnd(); it != end; it++) {
+        vec<Watched>& list = watches[i];
+        for (vec<Watched>::iterator it = list.getData(), end = list.getDataEnd(); it != end; it++) {
             if (!it->isClause() && !it->isXorClause()) continue;
             if (it->isClause()) {
                 it->setNormOffset(((NewPointerAndOffset*)(getPointer(it->getNormOffset())))->newOffset);
@@ -592,4 +594,3 @@ void ClauseAllocator::updatePointers(vector<pair<Clause*, uint32_t> >& toUpdate)
         it->first = (((NewPointerAndOffset*)(it->first))->newPointer);
     }
 }
-

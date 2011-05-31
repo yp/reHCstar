@@ -25,6 +25,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "Subsumer.h"
 #include "XorSubsumer.h"
 
+using namespace CMSat;
+
 SCCFinder::SCCFinder(Solver& _solver) :
     solver(_solver)
     , varElimed1(_solver.subsumer->getVarElimed())
@@ -78,8 +80,8 @@ void SCCFinder::tarjan(const uint32_t vertex)
 
     Var vertexVar = Lit::toLit(vertex).var();
     if (!varElimed1[vertexVar] && !varElimed2[vertexVar]) {
-        const vec2<Watched>& ws = solver.watches[vertex];
-        for (vec2<Watched>::const_iterator it = ws.getData(), end = ws.getDataEnd(); it != end; it++) {
+        const vec<Watched>& ws = solver.watches[vertex];
+        for (vec<Watched>::const_iterator it = ws.getData(), end = ws.getDataEnd(); it != end; it++) {
             if (!it->isBinary()) continue;
             const Lit lit = it->getOtherLit();
 

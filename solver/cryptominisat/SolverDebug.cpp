@@ -16,8 +16,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
 #include "Solver.h"
-
 #include "VarReplacer.h"
+
+using namespace CMSat;
 
 #ifdef DEBUG_ATTACH_FULL
 void Solver::testAllClauseAttach() const
@@ -144,11 +145,11 @@ const bool Solver::verifyXorClauses() const
 const bool Solver::verifyBinClauses() const
 {
     uint32_t wsLit = 0;
-    for (const vec2<Watched> *it = watches.getData(), *end = watches.getDataEnd(); it != end; it++, wsLit++) {
+    for (const vec<Watched> *it = watches.getData(), *end = watches.getDataEnd(); it != end; it++, wsLit++) {
         Lit lit = ~Lit::toLit(wsLit);
-        const vec2<Watched>& ws = *it;
+        const vec<Watched>& ws = *it;
 
-        for (vec2<Watched>::const_iterator i = ws.getData(), end = ws.getDataEnd() ; i != end; i++) {
+        for (vec<Watched>::const_iterator i = ws.getData(), end = ws.getDataEnd() ; i != end; i++) {
             if (i->isBinary()
                 && value(lit) != l_True
                 && value(i->getOtherLit()) != l_True
@@ -229,11 +230,11 @@ void Solver::printAllClauses()
     }
 
     uint32_t wsLit = 0;
-    for (vec2<Watched> *it = watches.getData(), *end = watches.getDataEnd(); it != end; it++, wsLit++) {
+    for (vec<Watched> *it = watches.getData(), *end = watches.getDataEnd(); it != end; it++, wsLit++) {
         Lit lit = ~Lit::toLit(wsLit);
-        const vec2<Watched>& ws = *it;
+        const vec<Watched>& ws = *it;
         std::cout << "watches[" << lit << "]" << std::endl;
-        for (vec2<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
+        for (vec<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
             if (it2->isBinary()) {
                 std::cout << "Binary clause part: " << lit << " , " << it2->getOtherLit() << std::endl;
             } else if (it2->isClause()) {

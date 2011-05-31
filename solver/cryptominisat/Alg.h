@@ -17,12 +17,11 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **************************************************************************************************/
 
-#ifndef Alg_h
-#define Alg_h
+#ifndef ALG_H
+#define ALG_H
 
 #include <iostream>
 #include "Vec.h"
-#include "Vec2.h"
 #include "SolverTypes.h"
 #include "Watched.h"
 
@@ -32,8 +31,10 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include <stdint.h>
 #endif //_MSC_VER
 
-//=================================================================================================
+
 // Useful functions on vectors
+
+namespace CMSat {
 
 template<class V, class T>
 static inline void remove(V& ts, const T& t)
@@ -88,38 +89,38 @@ static inline bool findW(V& ts, const T& t)
 
 
 //Normal clause
-static bool    findWCl(const vec2<Watched>& ws, const ClauseOffset c);
-static void    removeWCl(vec2<Watched> &ws, const ClauseOffset c);
+static bool    findWCl(const vec<Watched>& ws, const ClauseOffset c);
+static void    removeWCl(vec<Watched> &ws, const ClauseOffset c);
 
 //Binary clause
-static bool    findWBin(const vec<vec2<Watched> >& wsFull, const Lit lit1, const Lit impliedLit);
-static bool    findWBin(const vec<vec2<Watched> >& wsFull, const Lit lit1, const Lit impliedLit, const bool learnt);
-static void    removeWBin(vec2<Watched> &ws, const Lit impliedLit, const bool learnt);
-static void    removeWTri(vec2<Watched> &ws, const Lit lit1, Lit lit2);
-static const std::pair<uint32_t, uint32_t>  removeWBinAll(vec2<Watched> &ws, const Lit impliedLit);
-static Watched& findWatchedOfBin(vec<vec2<Watched> >& wsFull, const Lit lit1, const Lit lit2, const bool learnt);
-static Watched& findWatchedOfBin(vec<vec2<Watched> >& wsFull, const Lit lit1, const Lit lit2);
+static bool    findWBin(const vec<vec<Watched> >& wsFull, const Lit lit1, const Lit impliedLit);
+static bool    findWBin(const vec<vec<Watched> >& wsFull, const Lit lit1, const Lit impliedLit, const bool learnt);
+static void    removeWBin(vec<Watched> &ws, const Lit impliedLit, const bool learnt);
+static void    removeWTri(vec<Watched> &ws, const Lit lit1, Lit lit2);
+static const std::pair<uint32_t, uint32_t>  removeWBinAll(vec<Watched> &ws, const Lit impliedLit);
+static Watched& findWatchedOfBin(vec<vec<Watched> >& wsFull, const Lit lit1, const Lit lit2, const bool learnt);
+static Watched& findWatchedOfBin(vec<vec<Watched> >& wsFull, const Lit lit1, const Lit lit2);
 
 //Xor Clause
-static bool    findWXCl(const vec2<Watched>& ws, const ClauseOffset c);
-static void    removeWXCl(vec2<Watched> &ws, const ClauseOffset c);
+static bool    findWXCl(const vec<Watched>& ws, const ClauseOffset c);
+static void    removeWXCl(vec<Watched> &ws, const ClauseOffset c);
 
 //////////////////
 // NORMAL Clause
 //////////////////
-static inline bool findWCl(const vec2<Watched>& ws, const ClauseOffset c)
+static inline bool findWCl(const vec<Watched>& ws, const ClauseOffset c)
 {
-    vec2<Watched>::const_iterator i = ws.getData(), end = ws.getDataEnd();
+    vec<Watched>::const_iterator i = ws.getData(), end = ws.getDataEnd();
     for (; i != end && (!i->isClause() || i->getNormOffset() != c); i++);
     return i != end;
 }
 
-static inline void removeWCl(vec2<Watched> &ws, const ClauseOffset c)
+static inline void removeWCl(vec<Watched> &ws, const ClauseOffset c)
 {
-    vec2<Watched>::iterator i = ws.getData(), end = ws.getDataEnd();
+    vec<Watched>::iterator i = ws.getData(), end = ws.getDataEnd();
     for (; i != end && (!i->isClause() || i->getNormOffset() != c); i++);
     assert(i != end);
-    vec2<Watched>::iterator j = i;
+    vec<Watched>::iterator j = i;
     i++;
     for (; i != end; j++, i++) *j = *i;
     ws.shrink_(1);
@@ -128,19 +129,19 @@ static inline void removeWCl(vec2<Watched> &ws, const ClauseOffset c)
 //////////////////
 // XOR Clause
 //////////////////
-static inline bool findWXCl(const vec2<Watched>& ws, const ClauseOffset c)
+static inline bool findWXCl(const vec<Watched>& ws, const ClauseOffset c)
 {
-    vec2<Watched>::const_iterator i = ws.getData(), end = ws.getDataEnd();
+    vec<Watched>::const_iterator i = ws.getData(), end = ws.getDataEnd();
     for (; i != end && (!i->isXorClause() || i->getXorOffset() != c); i++);
     return i != end;
 }
 
-static inline void removeWXCl(vec2<Watched> &ws, const ClauseOffset c)
+static inline void removeWXCl(vec<Watched> &ws, const ClauseOffset c)
 {
-    vec2<Watched>::iterator i = ws.getData(), end = ws.getDataEnd();
+    vec<Watched>::iterator i = ws.getData(), end = ws.getDataEnd();
     for (; i != end && (!i->isXorClause() || i->getXorOffset() != c); i++);
     assert(i != end);
-    vec2<Watched>::iterator j = i;
+    vec<Watched>::iterator j = i;
     i++;
     for (; i != end; j++, i++) *j = *i;
     ws.shrink_(1);
@@ -150,19 +151,19 @@ static inline void removeWXCl(vec2<Watched> &ws, const ClauseOffset c)
 // TRI Clause
 //////////////////
 
-static inline const bool findWTri(const vec2<Watched> &ws, const Lit lit1, const Lit lit2)
+static inline const bool findWTri(const vec<Watched> &ws, const Lit lit1, const Lit lit2)
 {
-    vec2<Watched>::const_iterator i = ws.getData(), end = ws.getDataEnd();
+    vec<Watched>::const_iterator i = ws.getData(), end = ws.getDataEnd();
     for (; i != end && (!i->isTriClause() || i->getOtherLit() != lit1 || i->getOtherLit2() != lit2); i++);
     return i != end;
 }
 
-static inline void removeWTri(vec2<Watched> &ws, const Lit lit1, const Lit lit2)
+static inline void removeWTri(vec<Watched> &ws, const Lit lit1, const Lit lit2)
 {
-    vec2<Watched>::iterator i = ws.getData(), end = ws.getDataEnd();
+    vec<Watched>::iterator i = ws.getData(), end = ws.getDataEnd();
     for (; i != end && (!i->isTriClause() || i->getOtherLit() != lit1 || i->getOtherLit2() != lit2); i++);
     assert(i != end);
-    vec2<Watched>::iterator j = i;
+    vec<Watched>::iterator j = i;
     i++;
     for (; i != end; j++, i++) *j = *i;
     ws.shrink_(1);
@@ -171,41 +172,41 @@ static inline void removeWTri(vec2<Watched> &ws, const Lit lit1, const Lit lit2)
 //////////////////
 // BINARY Clause
 //////////////////
-static inline bool findWBin(const vec<vec2<Watched> >& wsFull, const Lit lit1, const Lit impliedLit)
+static inline bool findWBin(const vec<vec<Watched> >& wsFull, const Lit lit1, const Lit impliedLit)
 {
-    vec2<Watched>::const_iterator i = wsFull[(~lit1).toInt()].getData();
-    vec2<Watched>::const_iterator end = wsFull[(~lit1).toInt()].getDataEnd();
+    vec<Watched>::const_iterator i = wsFull[(~lit1).toInt()].getData();
+    vec<Watched>::const_iterator end = wsFull[(~lit1).toInt()].getDataEnd();
     for (; i != end && (!i->isBinary() || i->getOtherLit() != impliedLit); i++);
     return i != end;
 }
 
-static inline bool findWBin(const vec<vec2<Watched> >& wsFull, const Lit lit1, const Lit impliedLit, const bool learnt)
+static inline bool findWBin(const vec<vec<Watched> >& wsFull, const Lit lit1, const Lit impliedLit, const bool learnt)
 {
-    vec2<Watched>::const_iterator i = wsFull[(~lit1).toInt()].getData();
-    vec2<Watched>::const_iterator end = wsFull[(~lit1).toInt()].getDataEnd();
+    vec<Watched>::const_iterator i = wsFull[(~lit1).toInt()].getData();
+    vec<Watched>::const_iterator end = wsFull[(~lit1).toInt()].getDataEnd();
     for (; i != end && (!i->isBinary() || i->getOtherLit() != impliedLit || i->getLearnt() != learnt); i++);
     return i != end;
 }
 
-static inline void removeWBin(vec2<Watched> &ws, const Lit impliedLit, const bool learnt)
+static inline void removeWBin(vec<Watched> &ws, const Lit impliedLit, const bool learnt)
 {
-    vec2<Watched>::iterator i = ws.getData(), end = ws.getDataEnd();
+    vec<Watched>::iterator i = ws.getData(), end = ws.getDataEnd();
     for (; i != end && (!i->isBinary() || i->getOtherLit() != impliedLit || i->getLearnt() != learnt); i++);
     assert(i != end);
-    vec2<Watched>::iterator j = i;
+    vec<Watched>::iterator j = i;
     i++;
     for (; i != end; j++, i++) *j = *i;
     ws.shrink_(1);
 }
 
-static inline const std::pair<uint32_t, uint32_t>  removeWBinAll(vec2<Watched> &ws, const Lit impliedLit)
+static inline const std::pair<uint32_t, uint32_t>  removeWBinAll(vec<Watched> &ws, const Lit impliedLit)
 {
     uint32_t removedLearnt = 0;
     uint32_t removedNonLearnt = 0;
 
-    vec2<Watched>::iterator i = ws.getData();
-    vec2<Watched>::iterator j = i;
-    for (vec2<Watched>::iterator end = ws.getDataEnd(); i != end; i++) {
+    vec<Watched>::iterator i = ws.getData();
+    vec<Watched>::iterator j = i;
+    for (vec<Watched>::iterator end = ws.getDataEnd(); i != end; i++) {
         if (!i->isBinary() || i->getOtherLit() != impliedLit)
             *j++ = *i;
         else {
@@ -220,10 +221,10 @@ static inline const std::pair<uint32_t, uint32_t>  removeWBinAll(vec2<Watched> &
     return std::make_pair(removedLearnt, removedNonLearnt);
 }
 
-static inline Watched& findWatchedOfBin(vec<vec2<Watched> >& wsFull, const Lit lit1, const Lit lit2, const bool learnt)
+static inline Watched& findWatchedOfBin(vec<vec<Watched> >& wsFull, const Lit lit1, const Lit lit2, const bool learnt)
 {
-    vec2<Watched>& ws = wsFull[(~lit1).toInt()];
-    for (vec2<Watched>::iterator i = ws.getData(), end = ws.getDataEnd(); i != end; i++) {
+    vec<Watched>& ws = wsFull[(~lit1).toInt()];
+    for (vec<Watched>::iterator i = ws.getData(), end = ws.getDataEnd(); i != end; i++) {
         if (i->isBinary() && i->getOtherLit() == lit2 && i->getLearnt() == learnt)
             return *i;
     }
@@ -232,10 +233,10 @@ static inline Watched& findWatchedOfBin(vec<vec2<Watched> >& wsFull, const Lit l
     return *ws.getData();
 }
 
-static inline Watched& findWatchedOfBin(vec<vec2<Watched> >& wsFull, const Lit lit1, const Lit lit2)
+static inline Watched& findWatchedOfBin(vec<vec<Watched> >& wsFull, const Lit lit1, const Lit lit2)
 {
-    vec2<Watched>& ws = wsFull[(~lit1).toInt()];
-    for (vec2<Watched>::iterator i = ws.getData(), end = ws.getDataEnd(); i != end; i++) {
+    vec<Watched>& ws = wsFull[(~lit1).toInt()];
+    for (vec<Watched>::iterator i = ws.getData(), end = ws.getDataEnd(); i != end; i++) {
         if (i->isBinary() && i->getOtherLit() == lit2)
             return *i;
     }
@@ -244,4 +245,6 @@ static inline Watched& findWatchedOfBin(vec<vec2<Watched> >& wsFull, const Lit l
     return *ws.getData();
 }
 
-#endif
+}
+
+#endif //__ALG_H__

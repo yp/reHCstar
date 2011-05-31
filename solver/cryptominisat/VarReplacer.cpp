@@ -30,11 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //#define REPLACE_STATISTICS
 //#define DEBUG_BIN_REPLACER
 
-#ifdef VERBOSE_DEBUG
-#include <iostream>
-using std::cout;
-using std::endl;
-#endif
+using namespace CMSat;
 
 VarReplacer::VarReplacer(Solver& _solver) :
     replacedLits(0)
@@ -119,7 +115,7 @@ const bool VarReplacer::performReplaceInternal()
         if (wasDecisionVar && activity1 > activity2) {
             activity2 = activity1;
             solver.order_heap.update(it->var());
-            solver.polarity[it->var()] = solver.polarity[var]^it->sign();
+            solver.polarity[it->var()] = ((bool)solver.polarity[var]) ^ it->sign();
         }
 
         activity1 = 0.0;
@@ -280,13 +276,13 @@ const bool VarReplacer::replaceBins()
     uint32_t removedLearnt = 0;
     uint32_t removedNonLearnt = 0;
     uint32_t wsLit = 0;
-    for (vec2<Watched> *it = solver.watches.getData(), *end = solver.watches.getDataEnd(); it != end; it++, wsLit++) {
+    for (vec<Watched> *it = solver.watches.getData(), *end = solver.watches.getDataEnd(); it != end; it++, wsLit++) {
         Lit lit1 = ~Lit::toLit(wsLit);
-        vec2<Watched>& ws = *it;
+        vec<Watched>& ws = *it;
 
-        vec2<Watched>::iterator i = ws.getData();
-        vec2<Watched>::iterator j = i;
-        for (vec2<Watched>::iterator end2 = ws.getDataEnd(); i != end2; i++) {
+        vec<Watched>::iterator i = ws.getData();
+        vec<Watched>::iterator j = i;
+        for (vec<Watched>::iterator end2 = ws.getDataEnd(); i != end2; i++) {
             if (!i->isBinary()) {
                 *j++ = *i;
                 continue;
