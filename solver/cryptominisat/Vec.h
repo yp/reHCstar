@@ -1,5 +1,6 @@
-/*******************************************************************************************[Vec.h]
+/*******************************************************************************************
 MiniSat -- Copyright (c) 2003-2006, Niklas Een, Niklas Sorensson
+CryptoMiniSat -- Copyright (c) 2010-2011, Mate Soos (modifications to original MiniSat implementation)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -15,10 +16,10 @@ NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPO
 NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
 OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-**************************************************************************************************/
+********************************************************************************************/
 
-#ifndef Vec_h
-#define Vec_h
+#ifndef VEC_H
+#define VEC_H
 
 #include <cstdlib>
 #include <cassert>
@@ -33,14 +34,11 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include <malloc.h>
 #include <string.h>
 
+namespace CMSat {
 
-//=================================================================================================
 // Automatically resizable arrays
-//
 // NOTE! Don't use this vector on datatypes that cannot be re-located in memory (with realloc)
-
-template<class T>
-class vec {
+template<class T> class vec {
     T*  data;
     uint32_t sz;
     uint32_t cap;
@@ -166,5 +164,6 @@ void vec<T>::clear(bool dealloc) {
     }
 }
 
+}
 
-#endif
+#endif //__VEC_H__

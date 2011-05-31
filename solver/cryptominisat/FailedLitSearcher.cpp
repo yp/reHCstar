@@ -20,8 +20,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iomanip>
 #include <utility>
 #include <set>
-using std::make_pair;
-using std::set;
 
 #include "Solver.h"
 #include "ClauseCleaner.h"
@@ -32,6 +30,10 @@ using std::set;
 #include "CompleteDetachReattacher.h"
 
 //#define VERBOSE_DEUBUG
+
+using namespace CMSat;
+using std::make_pair;
+using std::set;
 
 /**
 @brief Sets up variables that are used between calls to search()
@@ -324,7 +326,9 @@ const bool FailedLitSearcher::tryBoth(const Lit lit1, const Lit lit2)
     }
 
     propagated.removeThese(propagatedBitSet);
+    #ifdef DEBUG_FAILEDLIT
     assert(propagated.isZero());
+    #endif
     propagatedBitSet.clear();
     twoLongXors.clear();
     bothSame.clear();

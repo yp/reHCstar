@@ -20,6 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "Solver.h"
 
+namespace CMSat {
+
 class StateSaver
 {
     public:
@@ -29,12 +31,14 @@ class StateSaver
     private:
         Solver& solver;
         Heap<Solver::VarOrderLt> backup_order_heap;
-        vector<bool> backup_polarities;
+        vector<char> backup_polarities;
         vec<uint32_t> backup_activity;
         uint32_t backup_var_inc;
         RestartType backup_restartType;
         uint32_t backup_random_var_freq;
         uint64_t backup_propagations;
 };
+
+}
 
 #endif //STATESAVER__H

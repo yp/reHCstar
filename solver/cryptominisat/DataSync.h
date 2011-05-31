@@ -18,6 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "SharedData.h"
 #include "Solver.h"
 
+namespace CMSat {
+
 class DataSync
 {
     public:
@@ -37,7 +39,7 @@ class DataSync
     private:
         //functions
         const bool shareUnitData();
-        const bool syncBinFromOthers(const Lit lit, const vector<Lit>& bins, uint32_t& finished, vec2<Watched>& ws);
+        const bool syncBinFromOthers(const Lit lit, const vector<Lit>& bins, uint32_t& finished, vec<Watched>& ws);
         void syncBinToOthers();
         void addOneBinToOthers(const Lit lit1, const Lit lit2);
         const bool shareBinData();
@@ -94,4 +96,6 @@ inline void DataSync::signalNewBinClause(Lit lit1, Lit lit2)
     if (sharedData == NULL) return;
     if (lit1.toInt() > lit2.toInt()) std::swap(lit1, lit2);
     newBinClauses.push_back(std::make_pair(lit1, lit2));
+}
+
 }

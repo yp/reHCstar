@@ -25,16 +25,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "VarReplacer.h"
 #include "DataSync.h"
 
-using std::ostream;
-using std::cout;
-using std::endl;
-
 //#define VERBOSE_DEBUG
 //#define DEBUG_GAUSS
 
 #ifdef VERBOSE_DEBUG
 #include <iterator>
 #endif
+
+using namespace CMSat;
+using std::ostream;
+using std::cout;
+using std::endl;
 
 static const uint16_t unassigned_col = std::numeric_limits<uint16_t>::max();
 static const Var unassigned_var = std::numeric_limits<Var>::max();
@@ -590,10 +591,6 @@ Gaussian::gaussian_ret Gaussian::handle_matrix_confl(PropBy& confl, const matrix
     }
 
     if (maxlevel != solver.decisionLevel()) {
-        #ifdef STATS_NEEDED
-        if (solver.dynamic_behaviour_analysis)
-            solver.logger.conflict(Logger::gauss_confl_type, maxlevel, confl->getGroup(), *confl);
-        #endif
         solver.cancelUntil(maxlevel);
     }
     const uint32_t curr_dec_level = solver.decisionLevel();
@@ -635,11 +632,6 @@ Gaussian::gaussian_ret Gaussian::handle_matrix_confl(PropBy& confl, const matrix
         Clause* conflPtr = (Clause*)solver.clauseAllocator.XorClause_new(tmp_clause, xorEqualFalse, solver.learnt_clause_group++);
         confl = solver.clauseAllocator.getOffset(conflPtr);
         Clause& cla = *conflPtr;
-
-        #ifdef STATS_NEEDED
-        if (solver.dynamic_behaviour_analysis)
-            solver.logger.set_group_name(cla.getGroup(), "learnt gauss clause");
-        #endif
 
         uint32_t maxsublevel_at = UINT_MAX;
         for (uint32_t i = 0, size = cla.size(); i != size; i++) if (solver.level[cla[i].var()] == (int32_t)curr_dec_level) {
@@ -863,10 +855,6 @@ Gaussian::gaussian_ret Gaussian::handle_matrix_prop(matrixset& m, const uint32_t
             assert(solver.assigns[cla[0].var()].isUndef());
 
             clauses_toclear.push_back(std::make_pair(&cla, solver.trail.size()-1));
-            #ifdef STATS_NEEDED
-            if (solver.dynamic_behaviour_analysis)
-                solver.logger.set_group_name(cla.getGroup(), "gauss prop clause");
-            #endif
             solver.uncheckedEnqueue(cla[0], solver.clauseAllocator.getOffset(&cla));
             return propagation;
     }
@@ -920,11 +908,6 @@ llbool Gaussian::find_truths(vec<Lit>& learnt_clause, uint64_t& conflictC)
             }
 
             Lit lit = confl.getOtherLit();
-            #ifdef STATS_NEEDED
-            if (solver.dynamic_behaviour_analysis)
-                solver.logger.conflict(Logger::gauss_confl_type, 0, confl->getGroup(), *confl);
-            #endif
-
             solver.cancelUntil(0);
 
             #ifdef VERBOSE_DEBUG
@@ -1163,81 +1146,3 @@ const void Gaussian::check_first_one_in_row(matrixset& m, const uint32_t j)
         }
     }
 }
-
-//old functions
-
-/*void Gaussian::update_matrix_by_row(matrixset& m) const
-{
-#ifdef VERBOSE_DEBUG
-    cout << "Updating matrix." << endl;
-    uint32_t num_updated = 0;
-#endif
-#ifdef DEBUG_GAUSS
-    assert(nothing_to_propagate(cur_matrixset));
-#endif
-
-    mpz_class toclear, tocount;
-    uint32_t last_col = 0;
-
-    for (uint32_t col = 0; col < m.num_cols; col ++) {
-        Var var = m.col_to_var[col];
-
-        if (var != UINT_MAX && !solver.assigns[var].isUndef()) {
-            toclear.setBit(col);
-            if (solver.assigns[var].getBool()) tocount.setBit(col);
-
-#ifdef DEBUG_GAUSS
-            assert(m.var_to_col[var] < UINT_MAX-1);
-#endif
-            last_col = col;
-            m.least_column_changed = std::min(m.least_column_changed, (int)col);
-
-            m.removeable_cols++;
-            m.col_to_var[col] = UINT_MAX;
-            m.var_to_col[var] = UINT_MAX-1;
-#ifdef VERBOSE_DEBUG
-            num_updated++;
-#endif
-        }
-    }
-
-    toclear.invert();
-    mpz_class tmp;
-    mpz_class* this_row = &m.matrix[0];
-    for(uint32_t i = 0, until = std::min(m.num_rows, m.last_one_in_col[last_col]+1); i < until; i++, this_row++) {
-        mpz_class& r = *this_row;
-        mpz_and(tmp.get_mp(), tocount.get_mp(), r.get_mp());
-        r.invert_is_true(tmp.popcnt() % 2);
-        r &= toclear;
-}
-
-#ifdef VERBOSE_DEBUG
-    cout << "Updated " << num_updated << " matrix cols. Could remove " << m.removeable_cols << " cols " <<endl;
-#endif
-}*/
-
-/*void Gaussian::update_matrix_by_col(matrixset& m, const uint32_t last_level) const
-{
-#ifdef VERBOSE_DEBUG
-    cout << "Updating matrix." << endl;
-    uint32_t num_updated = 0;
-#endif
-#ifdef DEBUG_GAUSS
-    assert(nothing_to_propagate(cur_matrixset));
-#endif
-
-    for (int level = solver.trail.size()-1; level >= last_level; level--){
-        Var var = solver.trail[level].var();
-        const uint32_t col = m.var_to_col[var];
-        if ( col < UINT_MAX-1) {
-            update_matrix_col(m, var, col);
-#ifdef VERBOSE_DEBUG
-            num_updated++;
-#endif
-        }
-    }
-
-#ifdef VERBOSE_DEBUG
-    cout << "Updated " << num_updated << " matrix cols. Could remove " << m.removeable_cols << " cols (out of " << m.num_cols << " )" <<endl;
-#endif
-}*/

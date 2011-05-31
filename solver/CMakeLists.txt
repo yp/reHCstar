@@ -8,7 +8,7 @@ remove_definitions(-DUSE_MINISAT)
 
 if (USE_CRYPTOMINISAT)   # CryptoMiniSat by Mate Soos (http://gitorious.org/cryptominisat)
   add_definitions(-DUSE_CRYPTOMINISAT)
-  set(SAT_SOLVER "with CryptoMiniSat 2.9.1 (commit bcfdd17915e3, date 7/Apr/2011)"
+  set(SAT_SOLVER "with CryptoMiniSat 2.9.1 (commit e819ab3236e, date 26/May/2011)"
     PARENT_SCOPE)
   set(sat_LIBS "cryptominisat"
     PARENT_SCOPE)

@@ -35,6 +35,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/resource.h>
 #endif
 
+using namespace CMSat;
+
 static const int space = 10;
 
 void Solver::dumpSortedLearnts(const std::string& fileName, const uint32_t maxSize)
@@ -50,10 +52,6 @@ void Solver::dumpSortedLearnts(const std::string& fileName, const uint32_t maxSi
     fprintf(outfile, "c ---------\n");
     for (uint32_t i = 0, end = (trail_lim.size() > 0) ? trail_lim[0] : trail.size() ; i < end; i++) {
         trail[i].printFull(outfile);
-        #ifdef STATS_NEEDED
-        if (dynamic_behaviour_analysis)
-            fprintf(outfile, "c name of var: %s\n", logger.get_var_name(trail[i].var()).c_str());
-        #endif //STATS_NEEDED
     }
 
     fprintf(outfile, "c conflicts %lu\n", (unsigned long)conflicts);
@@ -76,10 +74,6 @@ void Solver::dumpSortedLearnts(const std::string& fileName, const uint32_t maxSi
 
             fprintf(outfile, "%s%d %d 0\n", (!lit.sign() ? "-" : ""), lit.var()+1, var+1);
             fprintf(outfile, "%s%d -%d 0\n", (lit.sign() ? "-" : ""), lit.var()+1, var+1);
-            #ifdef STATS_NEEDED
-            if (dynamic_behaviour_analysis)
-                fprintf(outfile, "c name of two vars that are anti/equivalent: '%s' and '%s'\n", logger.get_var_name(lit.var()).c_str(), logger.get_var_name(var).c_str());
-            #endif //STATS_NEEDED
         }
     }
     fprintf(outfile, "c \nc --------------------\n");
@@ -102,8 +96,8 @@ void Solver::dumpSortedLearnts(const std::string& fileName, const uint32_t maxSi
 
 void Solver::printStrangeBinLit(const Lit lit) const
 {
-    const vec2<Watched>& ws = watches[(~lit).toInt()];
-    for (vec2<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
+    const vec<Watched>& ws = watches[(~lit).toInt()];
+    for (vec<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
         if (it2->isBinary()) {
             std::cout << "bin: " << lit << " , " << it2->getOtherLit() << " learnt : " <<  (it2->getLearnt()) << std::endl;
         } else if (it2->isTriClause()) {
@@ -122,10 +116,10 @@ const uint32_t Solver::countNumBinClauses(const bool alsoLearnt, const bool also
     uint32_t num = 0;
 
     uint32_t wsLit = 0;
-    for (const vec2<Watched> *it = watches.getData(), *end = watches.getDataEnd(); it != end; it++, wsLit++) {
+    for (const vec<Watched> *it = watches.getData(), *end = watches.getDataEnd(); it != end; it++, wsLit++) {
         Lit lit = ~Lit::toLit(wsLit);
-        const vec2<Watched>& ws = *it;
-        for (vec2<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
+        const vec<Watched>& ws = *it;
+        for (vec<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
             if (it2->isBinary()) {
                 if (it2->getLearnt()) num += alsoLearnt;
                 else num+= alsoNonLearnt;
@@ -140,10 +134,10 @@ const uint32_t Solver::countNumBinClauses(const bool alsoLearnt, const bool also
 void Solver::dumpBinClauses(const bool alsoLearnt, const bool alsoNonLearnt, FILE* outfile) const
 {
     uint32_t wsLit = 0;
-    for (const vec2<Watched> *it = watches.getData(), *end = watches.getDataEnd(); it != end; it++, wsLit++) {
+    for (const vec<Watched> *it = watches.getData(), *end = watches.getDataEnd(); it != end; it++, wsLit++) {
         Lit lit = ~Lit::toLit(wsLit);
-        const vec2<Watched>& ws = *it;
-        for (vec2<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
+        const vec<Watched>& ws = *it;
+        for (vec<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
             if (it2->isBinary() && lit.toInt() < it2->getOtherLit().toInt()) {
                 bool toDump = false;
                 if (it2->getLearnt() && alsoLearnt) toDump = true;
@@ -158,8 +152,8 @@ void Solver::dumpBinClauses(const bool alsoLearnt, const bool alsoNonLearnt, FIL
 const uint32_t Solver::getBinWatchSize(const bool alsoLearnt, const Lit lit)
 {
     uint32_t num = 0;
-    const vec2<Watched>& ws = watches[lit.toInt()];
-    for (vec2<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
+    const vec<Watched>& ws = watches[lit.toInt()];
+    for (vec<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
         if (it2->isBinary() && (alsoLearnt || !it2->getLearnt())) {
             num++;
         }
@@ -246,10 +240,6 @@ void Solver::dumpOrigClauses(const std::string& fileName) const
     fprintf(outfile, "c ---------\n");
     for (uint32_t i = 0, end = (trail_lim.size() > 0) ? trail_lim[0] : trail.size() ; i < end; i++) {
         trail[i].printFull(outfile);
-        #ifdef STATS_NEEDED
-        if (dynamic_behaviour_analysis)
-            fprintf(outfile, "c name of var: %s\n", logger.get_var_name(trail[i].var()).c_str());
-        #endif //STATS_NEEDED
     }
 
     fprintf(outfile, "c \nc ---------------------------------------\n");
@@ -264,10 +254,6 @@ void Solver::dumpOrigClauses(const std::string& fileName) const
         Lit litP2 = Lit(var, false);
         printBinClause(litP1, litP2, outfile);
         printBinClause(~litP1, ~litP2, outfile);
-        #ifdef STATS_NEEDED
-        if (dynamic_behaviour_analysis)
-            fprintf(outfile, "c name of two vars that are anti/equivalent: '%s' and '%s'\n", logger.get_var_name(lit.var()).c_str(), logger.get_var_name(var).c_str());
-        #endif //STATS_NEEDED
     }
 
     fprintf(outfile, "c \nc ------------\n");
@@ -389,11 +375,7 @@ const double Solver::getTotalTimeSCC() const
 
 void Solver::printStatHeader() const
 {
-    #ifdef STATS_NEEDED
-    if (conf.verbosity >= 2 && !(dynamic_behaviour_analysis && logger.statistics_on)) {
-    #else
     if (conf.verbosity >= 2) {
-    #endif
         std::cout << "c "
         << "========================================================================================="
         << std::endl;
@@ -468,11 +450,7 @@ void Solver::printRestartStat(const char* type)
 
 void Solver::printEndSearchStat()
 {
-    #ifdef STATS_NEEDED
-    if (conf.verbosity >= 1 && !(dynamic_behaviour_analysis && logger.statistics_on)) {
-    #else
     if (conf.verbosity >= 1) {
-    #endif //STATS_NEEDED
         printRestartStat("E");
     }
 }
@@ -527,7 +505,7 @@ void Solver::sortWatched()
     std::cout << "Sorting watchlists:" << std::endl;
     #endif
     double myTime = cpuTime();
-    for (vec2<Watched> *i = watches.getData(), *end = watches.getDataEnd(); i != end; i++) {
+    for (vec<Watched> *i = watches.getData(), *end = watches.getDataEnd(); i != end; i++) {
         if (i->size() == 0) continue;
         #ifdef VERBOSE_DEBUG
         vec<Watched>& ws = *i;
@@ -648,6 +626,7 @@ void Solver::printStats()
 {
     double   cpu_time = cpuTime();
     uint64_t mem_used = memUsed();
+
 
     //Restarts stats
     printStatsLine("c restarts", starts);

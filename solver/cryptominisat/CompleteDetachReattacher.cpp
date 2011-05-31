@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "VarReplacer.h"
 #include "ClauseCleaner.h"
 
+using namespace CMSat;
+
 CompleteDetachReatacher::CompleteDetachReatacher(Solver& _solver) :
     solver(_solver)
 {
@@ -32,7 +34,7 @@ void CompleteDetachReatacher::detachNonBinsNonTris(const bool removeTri)
     uint32_t oldNumBins = solver.numBins;
     ClausesStay stay;
 
-    for (vec2<Watched> *it = solver.watches.getData(), *end = solver.watches.getDataEnd(); it != end; it++) {
+    for (vec<Watched> *it = solver.watches.getData(), *end = solver.watches.getDataEnd(); it != end; it++) {
         stay += clearWatchNotBinNotTri(*it, removeTri);
     }
 
@@ -45,13 +47,13 @@ void CompleteDetachReatacher::detachNonBinsNonTris(const bool removeTri)
 /**
 @brief Helper function for detachPointerUsingClauses()
 */
-const CompleteDetachReatacher::ClausesStay CompleteDetachReatacher::clearWatchNotBinNotTri(vec2<Watched>& ws, const bool removeTri)
+const CompleteDetachReatacher::ClausesStay CompleteDetachReatacher::clearWatchNotBinNotTri(vec<Watched>& ws, const bool removeTri)
 {
     ClausesStay stay;
 
-    vec2<Watched>::iterator i = ws.getData();
-    vec2<Watched>::iterator j = i;
-    for (vec2<Watched>::iterator end = ws.getDataEnd(); i != end; i++) {
+    vec<Watched>::iterator i = ws.getData();
+    vec<Watched>::iterator j = i;
+    for (vec<Watched>::iterator end = ws.getDataEnd(); i != end; i++) {
         if (i->isBinary()) {
             if (i->getLearnt()) stay.learntBins++;
             else stay.nonLearntBins++;

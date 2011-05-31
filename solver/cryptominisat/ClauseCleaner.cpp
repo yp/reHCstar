@@ -22,6 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //#define DEBUG_CLEAN
 //#define VERBOSE_DEBUG
 
+using namespace CMSat;
+
 ClauseCleaner::ClauseCleaner(Solver& _solver) :
     solver(_solver)
 {
@@ -51,13 +53,13 @@ void ClauseCleaner::removeSatisfiedBins(const uint32_t limit)
     uint32_t numRemovedHalfNonLearnt = 0;
     uint32_t numRemovedHalfLearnt = 0;
     uint32_t wsLit = 0;
-    for (vec2<Watched> *it = solver.watches.getData(), *end = solver.watches.getDataEnd(); it != end; it++, wsLit++) {
+    for (vec<Watched> *it = solver.watches.getData(), *end = solver.watches.getDataEnd(); it != end; it++, wsLit++) {
         Lit lit = ~Lit::toLit(wsLit);
-        vec2<Watched>& ws = *it;
+        vec<Watched>& ws = *it;
 
-        vec2<Watched>::iterator i = ws.getData();
-        vec2<Watched>::iterator j = i;
-        for (vec2<Watched>::iterator end2 = ws.getDataEnd(); i != end2; i++) {
+        vec<Watched>::iterator i = ws.getData();
+        vec<Watched>::iterator j = i;
+        for (vec<Watched>::iterator end2 = ws.getDataEnd(); i != end2; i++) {
             if (i->isBinary() && satisfied(*i, lit)) {
                 if (i->getLearnt()) numRemovedHalfLearnt++;
                 else {
@@ -257,49 +259,3 @@ bool ClauseCleaner::satisfied(const XorClause& c) const
     }
     return final;
 }
-
-
-
-/*void ClauseCleaner::removeSatisfied(vec<XorClause*>& cs, ClauseSetType type, const uint32_t limit)
-{
-    #ifdef DEBUG_CLEAN
-    assert(solver.decisionLevel() == 0);
-    #endif
-
-    if (lastNumUnitarySat[type] + limit >= solver.get_unitary_learnts_num())
-        return;
-
-    uint32_t i,j;
-    for (i = j = 0; i < cs.size(); i++) {
-        if (satisfied(*cs[i]))
-            solver.removeClause(*cs[i]);
-        else
-            cs[j++] = cs[i];
-    }
-    cs.shrink(i - j);
-
-    lastNumUnitarySat[type] = solver.get_unitary_learnts_num();
-}*/
-
-/*void ClauseCleaner::removeSatisfied(vec<Clause*>& cs, ClauseSetType type, const uint32_t limit)
-{
-    #ifdef DEBUG_CLEAN
-    assert(solver.decisionLevel() == 0);
-    #endif
-
-    if (lastNumUnitarySat[type] + limit >= solver.get_unitary_learnts_num())
-        return;
-
-    Clause **i,**j, **end;
-    for (i = j = cs.getData(), end = i + cs.size(); i != end; i++) {
-        if (i+1 != end)
-            __builtin_prefetch(*(i+1), 0, 0);
-        if (satisfied(**i))
-            solver.removeClause(**i);
-        else
-            *j++ = *i;
-    }
-    cs.shrink(i - j);
-
-    lastNumUnitarySat[type] = solver.get_unitary_learnts_num();
-}*/

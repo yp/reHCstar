@@ -19,10 +19,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <utility>
 #include "Solver.h"
-using std::pair;
 
 //#define VERBOSE_DEBUG
 //#define PRINT_VARS
+
+using namespace CMSat;
+
+using std::pair;
 
 RestartTypeChooser::RestartTypeChooser(const Solver& s) :
     solver(s)
@@ -165,10 +168,10 @@ template void RestartTypeChooser::addDegrees(const vec<XorClause*>& cs, vector<u
 void RestartTypeChooser::addDegreesBin(vector<uint32_t>& degrees) const
 {
     uint32_t wsLit = 0;
-    for (const vec2<Watched> *it = solver.watches.getData(), *end = solver.watches.getDataEnd(); it != end; it++, wsLit++) {
+    for (const vec<Watched> *it = solver.watches.getData(), *end = solver.watches.getDataEnd(); it != end; it++, wsLit++) {
         Lit lit = ~Lit::toLit(wsLit);
-        const vec2<Watched>& ws = *it;
-        for (vec2<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
+        const vec<Watched>& ws = *it;
+        for (vec<Watched>::const_iterator it2 = ws.getData(), end2 = ws.getDataEnd(); it2 != end2; it2++) {
             if (it2->isBinary() && lit.toInt() < it2->getOtherLit().toInt()) {
                 degrees[lit.var()]++;
                 degrees[it2->getOtherLit().var()]++;
@@ -176,4 +179,3 @@ void RestartTypeChooser::addDegreesBin(vector<uint32_t>& degrees) const
         }
     }
 }
-
