@@ -9,7 +9,7 @@ by [Yuri Pirola](http://bimib.disco.unimib.it/index.php/Pirola_Yuri)
 
 
 Started: September 27, 2010  
-Current release: **1.0.0** (May 13, 2011)
+Current release: **development version** (do not use for production)
 
 
 ------------------------------------------------------------------------
