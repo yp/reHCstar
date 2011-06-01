@@ -85,7 +85,7 @@ void compute_reHC_from_SAT(basic_pedigree_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE
 		  } else {
 			 DEBUG("Not-genotyped individual " << ind.progr_id() <<
 					 " at locus " << locus << " is imputed as heterozygous.");
-			 ind.real_g(locus)= family_t::g::HETER;
+			 ind.real_g(locus)= family_t::g::HETER12;
 		  }
 		  ++no_of_imputation;
 		} else {
@@ -105,7 +105,7 @@ void compute_reHC_from_SAT(basic_pedigree_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE
 				real_g= family_t::g::HOMO2;
 			 }
 		  } else {
-			 real_g= family_t::g::HETER;
+			 real_g= family_t::g::HETER12;
 		  }
 		  if (real_g != ind.real_g(locus)) {
 //   Not-genotyped loci cannot have errors

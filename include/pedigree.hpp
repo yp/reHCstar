@@ -646,14 +646,14 @@ public:
 		size_t typed, homoz;
 		if (of_obs_g) {
 		  typed= std::count_if(ind.obs_g().begin(), ind.obs_g().end(),
-									  is_genotyped<typename gen_t::base>);
+									  is_genotyped);
 		  homoz= std::count_if(ind.obs_g().begin(), ind.obs_g().end(),
-									  is_homozygous<typename gen_t::base>);
+									  is_homozygous);
 		} else {
 		  typed= std::count_if(ind.real_g().begin(), ind.real_g().end(),
-									  is_genotyped<typename gen_t::base>);
+									  is_genotyped);
 		  homoz= std::count_if(ind.real_g().begin(), ind.real_g().end(),
-									  is_homozygous<typename gen_t::base>);
+									  is_homozygous);
 		}
 		acc_g_miss(genotype_length() - typed);
 		acc_hom(homoz);

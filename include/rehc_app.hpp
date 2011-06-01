@@ -133,7 +133,7 @@ public:
 										  pedigree_t& mped,
 										  pedcnf_t& cnf) const {
 	 L_INFO("Reading pedigree...");
-	 biallelic_genotype_reader_t<> gr;
+	 multiallelic_genotype_reader_t gr;
 	 plink_reader_t<> reader(gr);
 	 reader.read(ped_is, mped);
 	 L_INFO("Pedigree successfully read.");
@@ -186,7 +186,7 @@ public:
 					  std::ostream& hap_os) const {
 	 L_INFO("Saving haplotype configuration...");
 // FIXME: Improve template instantiation
-	 biallelic_haplotype_pair_writer_t<> hpw;
+	 multiallelic_haplotype_pair_writer_t hpw;
 	 plink_haplotype_writer_t<> writer(hpw, "\t", "|");
 	 writer.write(hap_os, ped);
 	 L_INFO("Haplotype configuration successfully saved.");

@@ -142,7 +142,7 @@ private:
 		  cnf.add_clause<3>((lit_t[]){-e, -p, -m});
 		  cnf.add_clause<2>((lit_t[]){ e,  p});
 		  cnf.add_clause<2>((lit_t[]){ e,      m});
-		} else if (gen == g::HETER) {
+		} else if (gen == g::HETER12) {
 #ifdef AVOID_XOR_CLAUSES
 		  cnf.add_clause<3>((lit_t[]){ e,  p,  m});
 		  cnf.add_clause<3>((lit_t[]){ e, -p, -m});
