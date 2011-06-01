@@ -7,11 +7,6 @@
 ## Uncomment to disable xor-clauses
 # add_definitions("-DAVOID_XOR_CLAUSES")
 
-option(ENABLE_TESTS
-  "Enable unit tests (effective only in DEBUG builds and if Google Test has been found)."
-  OFF
-)
-
 option(INTEGRATE_SAT_SOLVER
   "Integrate a SAT solver into ZRHCstar."
   ON

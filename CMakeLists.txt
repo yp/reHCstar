@@ -103,7 +103,6 @@ endif()
 # Add Build Targets
 #
 add_subdirectory(src)
-add_subdirectory(test)
 
 #
 # Add Install Targets
