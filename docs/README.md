@@ -65,7 +65,6 @@ Or, if you have a GitHub account, you can fork the project from the
 - Boost FileSystem, System, DateTime, ProgramOptions, IOStreams, and
   other include-only libraries (tested with 1.42)
 - Apache Log4cxx (tested with 0.10.0)
-- optional: Google C++ Testing Framework (tested with 1.30)
 
 
 ### Compilation ###
