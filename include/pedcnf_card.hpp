@@ -27,13 +27,11 @@
  **/
 /**
  *
- * pedcnf_card.cpp
+ * pedcnf_card.hpp
  *
  * Functions implementing the encoding of cardinality constraints in SAT instances.
  *
  **/
-
-#include "pedcnf.hpp"
 
 #include <boost/foreach.hpp>
 #include "utility.hpp"
