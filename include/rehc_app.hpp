@@ -72,14 +72,14 @@ public:
 		const double err_rate= vm["global-error-rate"].as<double>();
 		L_INFO("Enabling *GLOBAL* error handling ("
 				 "error-rate=" << err_rate << ")");
-		err_constraints.add(new at_most_global_constraints_t(err_rate));
+		err_constraints.add(new at_most_global_constraints_t(err_rate, "errors"));
 		has_errors= true;
 	 }
 	 if (vm["individual-error"].as<bool>()) {
 		const double err_rate= vm["individual-error-rate"].as<double>();
 		L_INFO("Enabling *INDIVIDUAL* error handling ("
 				 "error-rate=" << err_rate << ")");
-		err_constraints.add(new at_most_individual_constraints_t(err_rate));
+		err_constraints.add(new at_most_individual_constraints_t(err_rate, "errors"));
 		has_errors= true;
 	 }
 	 if (vm["uniform-error"].as<bool>()) {
@@ -88,12 +88,12 @@ public:
 		L_INFO("Enabling *WINDOWED* error handling ("
 				 "max-errors-in-windows=" << winerr << ", "
 				 "error-window-length=" << winlen << ")");
-		err_constraints.add(new at_most_windowed_constraints_t(winerr, winlen));
+		err_constraints.add(new at_most_windowed_constraints_t(winerr, winlen, "errors"));
 		has_errors= true;
 	 }
 	 if (!has_errors) {
 		L_INFO("*DISABLING* genotyping errors");
-		err_constraints.add(new all_false_constraints_t());
+		err_constraints.add(new all_false_constraints_t("errors"));
 	 }
 // Analyze recombination-related program options
 	 has_global_recombinations=
@@ -103,14 +103,14 @@ public:
 		const double recomb_rate= vm["global-recomb-rate"].as<double>();
 		L_INFO("Enabling *GLOBAL* recombination handling ("
 				 "recomb-rate=" << recomb_rate << ")");
-		global_recomb_constraints.add(new at_most_global_constraints_t(recomb_rate));
+		global_recomb_constraints.add(new at_most_global_constraints_t(recomb_rate, "recombinations"));
 		has_global_recombinations= true;
 	 }
 	 if (vm["individual-recomb"].as<bool>()) {
 		const double recomb_rate= vm["individual-recomb-rate"].as<double>();
 		L_INFO("Enabling *INDIVIDUAL* recombination handling ("
 				 "recomb-rate=" << recomb_rate << ")");
-		global_recomb_constraints.add(new at_most_individual_constraints_t(recomb_rate));
+		global_recomb_constraints.add(new at_most_individual_constraints_t(recomb_rate, "recombinations"));
 		has_global_recombinations= true;
 	 }
 	 if (vm["uniform-recomb"].as<bool>()) {
@@ -119,13 +119,13 @@ public:
 		L_INFO("Enabling *WINDOWED* recombination handling ("
 				 "max-recombs-in-windows=" << winrecomb << ", "
 				 "recomb-window-length=" << winlen << ")");
-		separated_recomb_constraints.add(new at_most_windowed_constraints_t(winrecomb, winlen));
+		separated_recomb_constraints.add(new at_most_windowed_constraints_t(winrecomb, winlen, "recombinations"));
 		has_separated_recombinations= true;
 	 }
 	 has_recombinations= has_global_recombinations || has_separated_recombinations;
 	 if (!has_recombinations) {
 		L_INFO("*DISABLING* recombinations");
-		global_recomb_constraints.add(new all_false_constraints_t());
+		global_recomb_constraints.add(new all_false_constraints_t("recombinations"));
 	 }
   };
 

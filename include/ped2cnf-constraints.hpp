@@ -62,10 +62,12 @@ private:
 protected:
   my_logger logger;
 
+  const std::string _description;
+
 public:
 
-  constraint_handler_t()
-		:logger(get_my_logger("constraint-handler"))
+  constraint_handler_t(const std::string& description="true variables")
+		:logger(get_my_logger("constraint-handler")), _description(description)
   {};
 
   virtual
@@ -86,6 +88,10 @@ private:
   virtual void
   _handle_constraints(pedcnf_t& cnf, const individuals_variables_t& variables) const;
 
+public:
+  all_false_constraints_t(const std::string& description)
+		:constraint_handler_t(description)
+  {};
 };
 
 class at_most_individual_constraints_t
@@ -98,8 +104,9 @@ private:
   _handle_constraints(pedcnf_t& cnf, const individuals_variables_t& variables) const;
 
 public:
-  at_most_individual_constraints_t(const double rate)
-		:_rate(rate)
+  at_most_individual_constraints_t(const double rate,
+											  const std::string& description="true variables")
+		:constraint_handler_t(description), _rate(rate)
   {};
 
 };
@@ -114,12 +121,12 @@ private:
   _handle_constraints(pedcnf_t& cnf, const individuals_variables_t& variables) const;
 
 public:
-  at_most_global_constraints_t(const double rate)
-		:_rate(rate)
+  at_most_global_constraints_t(const double rate,
+										 const std::string& description="true variables")
+		:constraint_handler_t(description), _rate(rate)
   {};
 
 };
-
 
 class at_most_windowed_constraints_t
   :public constraint_handler_t
@@ -133,8 +140,10 @@ private:
 
 public:
   at_most_windowed_constraints_t(const int max_true_in_window,
-											const int window_length)
-		:_max_true_in_window(max_true_in_window),
+											const int window_length,
+											const std::string& description="true variables")
+		:constraint_handler_t(description),
+		 _max_true_in_window(max_true_in_window),
 		 _window_length(window_length)
   {};
 };
@@ -150,6 +159,10 @@ private:
   _handle_constraints(pedcnf_t& cnf, const individuals_variables_t& variables) const;
 
 public:
+  composite_constraints_t()
+		:constraint_handler_t("")
+  {};
+
   void add(constraint_handler_t* handler) {
 	 _handlers.push_back(handler);
   }

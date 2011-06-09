@@ -50,6 +50,7 @@ constraint_handler_t::handle_constraints(pedcnf_t& cnf,
 void
 all_false_constraints_t::_handle_constraints(pedcnf_t& cnf,
 															const individuals_variables_t& variables) const {
+  INFO("No " << _description << " are allowed.");
   BOOST_FOREACH(const individual_variables_t& ivar, variables) {
 	 BOOST_FOREACH(const var_t& var, ivar) {
 		cnf.add_clause<1>((lit_t[]){ -var });
@@ -60,10 +61,10 @@ all_false_constraints_t::_handle_constraints(pedcnf_t& cnf,
 void
 at_most_individual_constraints_t::_handle_constraints(pedcnf_t& cnf,
 																		const individuals_variables_t& variables) const {
+  INFO("For each individual, number of " << _description << " <= "
+		 << _rate << " * no. of possible " << _description);
   BOOST_FOREACH(const individual_variables_t& ivar, variables) {
 	 const size_t k= std::ceil(_rate*ivar.size());
-	 DEBUG("Generating cardinality constraints for " << ivar.size() <<
-			 " constraint variables (<= " << k << ")...");
 	 add_card_constraint_less_or_equal_than(cnf, ivar, k);
   }
 };
@@ -76,8 +77,8 @@ at_most_global_constraints_t::_handle_constraints(pedcnf_t& cnf,
 	 all_vars.insert(all_vars.end(), ivar.begin(), ivar.end());
   }
   const size_t k= std::ceil(_rate*all_vars.size());
-  DEBUG("Generating cardinality constraints for " << all_vars.size() <<
-		  " constraint variables (<= " << k << ")...");
+  INFO("Globally, number of " << _description << " <= " << k <<
+		 " (over " << all_vars.size() << ")");
   add_card_constraint_less_or_equal_than(cnf, all_vars, k);
 };
 
@@ -85,9 +86,8 @@ void
 at_most_windowed_constraints_t::_handle_constraints(pedcnf_t& cnf,
 																	 const individuals_variables_t& variables) const {
   BOOST_FOREACH(const individual_variables_t& ivar, variables) {
-	 DEBUG("Generating uniform cardinality constraints for " << ivar.size() <<
-			 " constraint variables in windows of length " << _window_length <<
-			 " requiring at most " << _max_true_in_window << " true values...");
+	 INFO("For each window of length " << _window_length << ", "
+			<< "number of " << _description << " <= " << _max_true_in_window);
 	 add_uniform_card_constraint_less_or_equal_than(cnf, ivar,
 																	_window_length,
 																	_max_true_in_window);
