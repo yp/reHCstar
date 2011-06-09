@@ -112,7 +112,10 @@ protected:
 		 "less than or equal to the specified error rate, computed over genotyped loci).")
 		("global-error-rate", po::value< double >()->default_value(0.03),
 		 "Maximum error rate in all the genotypes, computed only over genotyped loci "
-		 "(used only if '--global-error' is specified).")
+		 "(used only if '--global-error' is specified, cannot be used with '--global-error-number').")
+		("global-error-number", po::value< unsigned int >()->default_value(1),
+		 "Maximum number of errors in the genotyped loci"
+		 "(used only if '--global-error' is specified, cannot be used with '--global-error-rate').")
 		("individual-error", po::bool_switch()->default_value(false),
 		 "Enable INDIVIDUAL error handling (i.e., the error rate in each genotype is less than "
 		 "or equal to the specified error rate, computed over genotyped loci).")
@@ -135,7 +138,11 @@ protected:
 		 "Enable GLOABL recombination handling (i.e., the global recombination rate in the whole "
 		 "pedigree is less than or equal to the specified recombination rate, computed over *ALL* loci).")
 		("global-recomb-rate", po::value< double >()->default_value(0.03),
-		 "Maximum recombination rate in all the genotypes (used only if '--global-recomb' is specified).")
+		 "Maximum recombination rate in all the genotypes "
+		 "(used only if '--global-recomb' is specified, cannot be used with '--global-recomb-number').")
+		("global-recomb-number", po::value< unsigned int >()->default_value(1),
+		 "Maximum number of recombinations in all the genotypes "
+		 "(used only if '--global-recomb' is specified, cannot be used with '--global-recomb-rate').")
 		("individual-recomb", po::bool_switch()->default_value(false),
 		 "Enable INDIVIDUAL recombination handling (i.e., the recombination rate in each genotype is "
 		 "less than or equal to the specified recombination rate, computed over *ALL* loci).")
@@ -191,10 +198,12 @@ protected:
 	 option_dependency(vm, "solve-internal", "haplotypes");
 #endif
 	 option_dependency(vm, "global-error-rate", "global-error");
+	 option_dependency(vm, "global-error-number", "global-error");
 	 option_dependency(vm, "individual-error-rate", "individual-error");
 	 option_dependency(vm, "max-errors-in-window", "uniform-error");
 	 option_dependency(vm, "error-window-length", "uniform-error");
 	 option_dependency(vm, "global-recomb-rate", "global-recomb");
+	 option_dependency(vm, "global-recomb-number", "global-recomb");
 	 option_dependency(vm, "individual-recomb-rate", "individual-recomb");
 	 option_dependency(vm, "max-recombs-in-window", "uniform-recomb");
 	 option_dependency(vm, "recomb-window-length", "uniform-recomb");

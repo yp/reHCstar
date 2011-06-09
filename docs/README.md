@@ -193,16 +193,20 @@ respectively, the input and the output files of the SAT solver.
 By default, reHC-* search for a haplotype configuration with zero
 recombinations and zero errors.
 To enable recombinations in the haplotyping process, the program options
-`--global-recomb` and `--global-recomb-rate=XX` _must be specified_,
-where `XX` is a number between `0.0` and `1.0` that represents the
+`--global-recomb` and either `--global-recomb-rate=XX` or
+`--global-recomb-number=YY` _must be specified_.
+Here `XX` is a number between `0.0` and `1.0` that represents the
 maximum number of recombinations *r* as a fraction of the total number
-of possible recombination loci.
+of possible recombination loci, while `YY` is (directly) the maximum
+number of recombinations *r*.
 
 Similarly, to enable genotyping errors in the computed haplotype
 configuration, the program options `--global-error` and
-`--global-error-rate=XX` _must be specified_, where `XX` is a number
-between `0.0` and `1.0` that represents the maximum number of errors *e*
-as a fraction of the number of non-missing genotypes.
+either `--global-error-rate=XX` or `--global-error-number=YY` _must be
+specified_.
+As before, `XX` is a number between `0.0` and `1.0` that represents the
+maximum number of errors *e* as a fraction of the number of non-missing
+genotypes, while `YY` is (directly) the maximum number of errors *e*.
 
 Other program options allow a finer control over the distribution of
 recombinations and errors.

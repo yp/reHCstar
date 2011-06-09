@@ -83,6 +83,27 @@ at_most_global_constraints_t::_handle_constraints(pedcnf_t& cnf,
 };
 
 void
+at_most_individual_constraints_abs_t::_handle_constraints(pedcnf_t& cnf,
+																			 const individuals_variables_t& variables) const {
+  INFO("For each individual, number of " << _description << " <= " << _limit);
+  BOOST_FOREACH(const individual_variables_t& ivar, variables) {
+	 add_card_constraint_less_or_equal_than(cnf, ivar, _limit);
+  }
+};
+
+void
+at_most_global_constraints_abs_t::_handle_constraints(pedcnf_t& cnf,
+																		const individuals_variables_t& variables) const {
+  individual_variables_t all_vars;
+  BOOST_FOREACH(const individual_variables_t& ivar, variables) {
+	 all_vars.insert(all_vars.end(), ivar.begin(), ivar.end());
+  }
+  INFO("Globally, number of " << _description << " <= " << _limit <<
+		 " (over " << all_vars.size() << ")");
+  add_card_constraint_less_or_equal_than(cnf, all_vars, _limit);
+};
+
+void
 at_most_windowed_constraints_t::_handle_constraints(pedcnf_t& cnf,
 																	 const individuals_variables_t& variables) const {
   BOOST_FOREACH(const individual_variables_t& ivar, variables) {

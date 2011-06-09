@@ -69,10 +69,19 @@ public:
 // Analyze error-related program options
 	 has_errors= false;
 	 if (vm["global-error"].as<bool>()) {
-		const double err_rate= vm["global-error-rate"].as<double>();
-		L_INFO("Enabling *GLOBAL* error handling ("
-				 "error-rate=" << err_rate << ")");
-		err_constraints.add(new at_most_global_constraints_t(err_rate, "errors"));
+// Use default 'global-error-rate' if 'global-error-number' nor 'global-error-rate'
+// have been specified
+		if (vm.count("global-error-number") && !vm["global-error-number"].defaulted()) {
+		  const unsigned int error_number= vm["global-error-number"].as<unsigned int>();
+		  L_INFO("Enabling *GLOBAL* error handling ("
+					"error-number=" << error_number << ")");
+		  err_constraints.add(new at_most_global_constraints_abs_t(error_number, "errors"));
+		} else {
+		  const double err_rate= vm["global-error-rate"].as<double>();
+		  L_INFO("Enabling *GLOBAL* error handling ("
+					"error-rate=" << err_rate << ")");
+		  err_constraints.add(new at_most_global_constraints_t(err_rate, "errors"));
+		}
 		has_errors= true;
 	 }
 	 if (vm["individual-error"].as<bool>()) {
@@ -100,10 +109,19 @@ public:
 		has_separated_recombinations=
 		has_recombinations= false;
 	 if (vm["global-recomb"].as<bool>()) {
-		const double recomb_rate= vm["global-recomb-rate"].as<double>();
-		L_INFO("Enabling *GLOBAL* recombination handling ("
-				 "recomb-rate=" << recomb_rate << ")");
-		global_recomb_constraints.add(new at_most_global_constraints_t(recomb_rate, "recombinations"));
+// Use default 'global-recomb-rate' if 'global-recomb-number' nor 'global-recomb-rate'
+// have been specified
+		if (vm.count("global-recomb-number") && !vm["global-recomb-number"].defaulted()) {
+		  const unsigned int recomb_number= vm["global-recomb-number"].as<unsigned int>();
+		  L_INFO("Enabling *GLOBAL* recombination handling ("
+					"recomb-number=" << recomb_number << ")");
+		  global_recomb_constraints.add(new at_most_global_constraints_abs_t(recomb_number, "recombinations"));
+		} else {
+		  const double recomb_rate= vm["global-recomb-rate"].as<double>();
+		  L_INFO("Enabling *GLOBAL* recombination handling ("
+					"recomb-rate=" << recomb_rate << ")");
+		  global_recomb_constraints.add(new at_most_global_constraints_t(recomb_rate, "recombinations"));
+		}
 		has_global_recombinations= true;
 	 }
 	 if (vm["individual-recomb"].as<bool>()) {

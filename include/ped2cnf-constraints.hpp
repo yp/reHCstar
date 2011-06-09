@@ -128,6 +128,41 @@ public:
 
 };
 
+class at_most_individual_constraints_abs_t
+  :public constraint_handler_t
+{
+private:
+  const unsigned int _limit;
+
+  virtual void
+  _handle_constraints(pedcnf_t& cnf, const individuals_variables_t& variables) const;
+
+public:
+  at_most_individual_constraints_abs_t(const unsigned int limit,
+													const std::string& description="true variables")
+		:constraint_handler_t(description), _limit(limit)
+  {};
+
+};
+
+class at_most_global_constraints_abs_t
+  :public constraint_handler_t
+{
+private:
+  const unsigned int _limit;
+
+  virtual void
+  _handle_constraints(pedcnf_t& cnf, const individuals_variables_t& variables) const;
+
+public:
+  at_most_global_constraints_abs_t(const unsigned int limit,
+											  const std::string& description="true variables")
+		:constraint_handler_t(description), _limit(limit)
+  {};
+
+};
+
+
 class at_most_windowed_constraints_t
   :public constraint_handler_t
 {
