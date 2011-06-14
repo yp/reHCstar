@@ -195,9 +195,9 @@ public:
   }
 
   friend std::istream& operator>>(std::istream& in, derived_enum& val) {
-	 char h;
+	 std::string h;
 	 if (in >> h) {
-		val= static_str_switch< n_values-1, default_index, derived_enum>::EXEC(std::string(1,h));
+		val= static_str_switch< n_values-1, default_index, derived_enum>::EXEC(h);
 	 } else {
 		MY_FAIL;
 		val= derived_enum::enum_values[default_index];
