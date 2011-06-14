@@ -103,6 +103,13 @@ protected:
 		("haplotypes,h",
 		 po::value< std::string >()->default_value("haplotypes.txt"),
 		 "File storing the computed haplotype configuration.");
+	 files.add_options()
+		("assumptions,a",
+		 po::value< std::string >(),
+		 "File storing additional assumptions/constraints that must hold in the "
+		 "reconstructed haplotype configuration.\n"
+		 "Each assumption is in a single row composed by 4 white-spaced fields:\n"
+		 "\t<kind of variable> <individual index> <locus index> <bool value (0/1)>\n");
 #ifndef ONLY_INTERNAL_SAT_SOLVER
 	 files.add_options()
 		("sat-cmdline,c",

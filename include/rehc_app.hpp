@@ -38,6 +38,8 @@
 #include "ped2cnf-constraints.hpp"
 #include "pedcnf2hc.hpp"
 
+#include "assumptions.hpp"
+
 #include <iostream>
 #include <boost/program_options.hpp>
 
@@ -62,6 +64,9 @@ private:
   bool has_global_recombinations;
   bool has_separated_recombinations;
   bool has_recombinations;
+
+  bool has_assumptions;
+  std::string assumption_file;
 
 public:
 
@@ -145,6 +150,14 @@ public:
 		L_INFO("*DISABLING* recombinations");
 		global_recomb_constraints.add(new all_false_constraints_t("recombinations"));
 	 }
+
+	 if (vm.count("assumptions")>0 && !vm["assumptions"].defaulted()) {
+		has_assumptions= true;
+		assumption_file= vm["assumptions"].as<std::string>();
+	 } else {
+		has_assumptions= false;
+		assumption_file= ".";
+	 }
   };
 
   void prepare_pedigree_and_sat(std::istream& ped_is,
@@ -185,6 +198,17 @@ public:
 	 separated_recombination_handler_t separated_recomb_handler(separated_recomb_constraints);
 	 separated_recomb_handler.handle_recombinations(cnf, mped.families().front().size(),
 																	mped.families().front().genotype_length());
+	 if (has_assumptions) {
+		std::ifstream assumptions(assumption_file);
+		if (assumptions) {
+		  add_assumptions(assumptions, cnf);
+		  assumptions.close();
+		} else {
+		  L_FATAL("Impossible to open assumption file '" << assumption_file << "'. Aborting...");
+		  MY_FAIL;
+		}
+	 }
+
 	 L_INFO("SAT instance successfully prepared.");
 	 L_INFO("The SAT instance is composed by " <<
 			  std::setw(8) << cnf.vars().size() << " variables and " <<
