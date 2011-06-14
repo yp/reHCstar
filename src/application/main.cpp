@@ -66,38 +66,53 @@ protected:
 
   virtual po::options_description
   get_named_options() const {
-	 po::options_description desc("Program options");
-	 desc.add_options()
+	 po::options_description modes("Program Modes",
+											 po::options_description::m_default_line_length,
+											 po::options_description::m_default_line_length-16);
 #ifndef ONLY_INTERNAL_SAT_SOLVER
+	 modes.add_options()
 		("create,1", po::bool_switch(),
 		 "Create the SAT instance from the pedigree file.")
 		("read,2", po::bool_switch(),
 		 "Read the results produced by the SAT solver.")
 		("create-read,3", po::bool_switch(),
-		 "Create the SAT instance from the pedigree file, execute the SAT solver, and read the results.")
+		 "Create the SAT instance from the pedigree file, execute the SAT solver, and read the results.");
 #endif // ONLY_INTERNAL_SAT_SOLVER
 #ifdef INTERNAL_SAT_SOLVER
+	 modes.add_options()
 		("solve-internal,4", po::bool_switch(),
-		 "Execute the integrated SAT solver.")
+		 "Execute the integrated SAT solver.");
 #endif // INTERNAL_SAT_SOLVER
+	 po::options_description files("Input/Output",
+											 po::options_description::m_default_line_length,
+											 po::options_description::m_default_line_length-16);
+	 files.add_options()
 		("pedigree,p",
 		 po::value< std::string >()->default_value("pedigree.ped"),
-		 "File storing the genotyped pedigree.")
+		 "File storing the genotyped pedigree.");
+#ifndef ONLY_INTERNAL_SAT_SOLVER
+	 files.add_options()
 		("sat,s",
 		 po::value< std::string >()->default_value("instance.cnf"),
 		 "File storing the SAT instance.")
 		("result,r",
 		 po::value< std::string >()->default_value("sat-result.txt"),
-		 "File storing the results produced by the SAT solver.")
+		 "File storing the results produced by the SAT solver.");
+#endif // ONLY_INTERNAL_SAT_SOLVER
+	 files.add_options()
 		("haplotypes,h",
 		 po::value< std::string >()->default_value("haplotypes.txt"),
-		 "File storing the computed haplotype configuration.")
+		 "File storing the computed haplotype configuration.");
+#ifndef ONLY_INTERNAL_SAT_SOLVER
+	 files.add_options()
 		("sat-cmdline,c",
 		 po::value< std::string >(),
 		 "The command line used to execute the SAT solver: "
 		 "%%INPUT%% and %%OUTPUT%% are markers used to represent the input and the output file "
 		 "of the solver and they are automatically substituted by the program into the "
-		 "corresponding filenames.")
+		 "corresponding filenames.");
+#endif // ONLY_INTERNAL_SAT_SOLVER
+	 files.add_options()
 		("compress,z", po::bool_switch()->default_value(false),
 		 "Use compressed input and output files.")
 		("compress-input", po::bool_switch()->default_value(false),
@@ -106,9 +121,13 @@ protected:
 		 "Use compressed output files.")
 		("keep,k", po::bool_switch()->default_value(false),
 		 "Keep temporary files (such as 'cnf-instance-*' and 'res-cnf-instance-*' "
-		 "files for '--create-read'/'-3' mode) after the execution.")
+		 "files for '--create-read'/'-3' mode) after the execution.");
+	 po::options_description errors("Error Management Options",
+											  po::options_description::m_default_line_length,
+											  po::options_description::m_default_line_length-16);
+	 errors.add_options()
 		("global-error", po::bool_switch()->default_value(false),
-		 "Enable GLOABL error handling (i.e., the global error rate in the whole pedigree is "
+		 "Enable GLOBAL error handling (i.e., the global error rate in the whole pedigree is "
 		 "less than or equal to the specified error rate, computed over genotyped loci).")
 		("global-error-rate", po::value< double >()->default_value(0.03),
 		 "Maximum error rate in all the genotypes, computed only over genotyped loci "
@@ -130,12 +149,16 @@ protected:
 		 "(used only if '--uniform-error' is specified).\n"
 		 "*MUST* be less than or equal to half window size.")
 		("error-window-length", po::value< unsigned int >()->default_value(16),
-		 "number of typed loci that compose a window "
+		 "Number of typed loci that compose a window "
 		 "(used only if '--uniform-error' is specified).\n"
 		 "*MUST* be a power of 2 and *MUST* be greater than 2.\n"
-		 "Windows overlap each other by half their length.")
+		 "Windows overlap each other by half their length.");
+	 po::options_description recombs("Recombination Management Options",
+												po::options_description::m_default_line_length,
+												po::options_description::m_default_line_length-16);
+	 recombs.add_options()
 		("global-recomb", po::bool_switch()->default_value(false),
-		 "Enable GLOABL recombination handling (i.e., the global recombination rate in the whole "
+		 "Enable GLOBAL recombination handling (i.e., the global recombination rate in the whole "
 		 "pedigree is less than or equal to the specified recombination rate, computed over *ALL* loci).")
 		("global-recomb-rate", po::value< double >()->default_value(0.03),
 		 "Maximum recombination rate in all the genotypes "
@@ -157,12 +180,16 @@ protected:
 		 "(used only if '--uniform-recomb' is specified).\n"
 		 "*MUST* be less than or equal to half window size.")
 		("recomb-window-length", po::value< unsigned int >()->default_value(16),
-		 "number of loci that compose a window "
+		 "Number of loci that compose a window "
 		 "(used only if '--uniform-recomb' is specified).\n"
 		 "*MUST* be a power of 2 and *MUST* be greater than 2.\n"
 		 "Windows overlap each other by half their length.")
 		;
-	 return desc;
+
+	 modes.add(files);
+	 modes.add(errors);
+	 modes.add(recombs);
+	 return modes;
   };
 
   virtual bool check_options(const po::variables_map& vm) {
