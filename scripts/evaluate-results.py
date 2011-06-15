@@ -202,7 +202,7 @@ for r in orig_ped_str:
     pat_hap= [ int(single.split('|')[0]) for single in comb_hap ]
     mat_hap= [ int(single.split('|')[1]) for single in comb_hap ]
     orig_gen= [ encoding[str(hp) + ' ' + str(hm)] for hp,hm in zip(pat_hap, mat_hap) ]
-    orig_ped[split_r[1]]= (split_r[1], split_r[2], split_r[3], pat_hap, mat_hap, orig_gen)
+    orig_ped[split_r[1]]= [split_r[1], split_r[2], split_r[3], pat_hap, mat_hap, orig_gen]
 del orig_ped_str;
 
 # Read the computed haplotype configuration
@@ -221,7 +221,7 @@ for r in res_ped_str:
     pat_hap= [ int(single.split('|')[0]) for single in comb_hap ]
     mat_hap= [ int(single.split('|')[1]) for single in comb_hap ]
     res_gen= [ encoding[str(hp) + ' ' + str(hm)] for hp,hm in zip(pat_hap, mat_hap) ]
-    res_ped[split_r[1]]= (split_r[1], split_r[2], split_r[3], pat_hap, mat_hap, res_gen)
+    res_ped[split_r[1]]= [split_r[1], split_r[2], split_r[3], pat_hap, mat_hap, res_gen]
 
 logging.info("Checking basic consistency...")
 if ( orig_ped.keys() != res_ped.keys() or
@@ -229,6 +229,22 @@ if ( orig_ped.keys() != res_ped.keys() or
      res_ped.keys() != genotypes.keys() ):
     logging.fatal("The two pedigrees refer to different individuals.")
     sys.exit(1)
+
+logging.info("Trimming genotypes and haplotypes...")
+for ind_id in orig_ped:
+    ind_orig= orig_ped[ind_id]
+    ind_res= res_ped[ind_id]
+    gl_orig= len(ind_orig[5])
+    gl_res= len(ind_res[5])
+    if gl_orig != gl_res:
+        gl= min(gl_orig, gl_res)
+        ind_orig[3]= ind_orig[3][0:gl]
+        ind_orig[4]= ind_orig[4][0:gl]
+        ind_orig[5]= ind_orig[5][0:gl]
+        ind_res[3]= ind_res[3][0:gl]
+        ind_res[4]= ind_res[4][0:gl]
+        ind_res[5]= ind_res[5][0:gl]
+        genotypes[ind_id]= genotypes[ind_id][0:gl]
 
 logging.info("Computing recombinations...")
 # Compute recombinations in the original pedigree
