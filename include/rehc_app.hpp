@@ -201,7 +201,7 @@ public:
 	 if (has_assumptions) {
 		std::ifstream assumptions(assumption_file);
 		if (assumptions) {
-		  add_assumptions(assumptions, cnf);
+		  add_assumptions(assumptions, mped.families().front(), cnf);
 		  assumptions.close();
 		} else {
 		  L_FATAL("Impossible to open assumption file '" << assumption_file << "'. Aborting...");

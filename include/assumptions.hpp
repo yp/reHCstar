@@ -30,12 +30,14 @@
 
 
 #include "pedcnf.hpp"
+#include "pedigree.hpp"
+#include "io-pedigree.hpp"
 
 #include <istream>
 
-
 void
 add_assumptions(std::istream& is,
+					 const plink_reader_t<>::multifamily_pedigree_t::pedigree_t& ped,
 					 pedcnf_t& cnf);
 
 #endif

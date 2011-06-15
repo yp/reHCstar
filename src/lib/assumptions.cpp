@@ -49,8 +49,12 @@ operator>>(std::istream& in, pedcnf_t::pedvar_t& var) {
 
 class assumption_manager_t
   :public log_able_t<assumption_manager_t> {
+public:
+  typedef plink_reader_t<>::multifamily_pedigree_t::pedigree_t pedigree_t;
+
 private:
   std::istream& in;
+  const pedigree_t& ped;
   pedcnf_t& cnf;
 
   class invalid_line_t {
@@ -62,8 +66,11 @@ private:
   };
 
 public:
-  assumption_manager_t(std::istream& _in, pedcnf_t& _cnf)
-		:in(_in), cnf(_cnf)
+
+  assumption_manager_t(std::istream& _in,
+							  const pedigree_t& _ped,
+							  pedcnf_t& _cnf)
+		:in(_in), ped(_ped), cnf(_cnf)
   {
   };
 
@@ -87,6 +94,8 @@ public:
 			 if (!(is >> value)) throw invalid_line_t("unrecognized boolean value");
 			 L_DEBUG("Read assumption '" << buff << "' ==> ("
 						<< v <<  " == " << (value?"True":"False") << ").");
+			 v.get<1>()= ped.get_by_id(v.get<1>()).progr_id();
+			 L_DEBUG("...and transformed into " << v <<  " == " << (value?"True":"False") << ".");
 			 if (v.get<0>() == ped_var_kind::SP) {
 				if (!cnf.has_sp(v.get<1>(), v.get<2>())) {
 				  L_WARN("Variable '" << v << "' does not exist in the SAT instance."
@@ -163,7 +172,8 @@ public:
 
 void
 add_assumptions(std::istream& is,
+					 const plink_reader_t<>::multifamily_pedigree_t::pedigree_t& ped,
 					 pedcnf_t& cnf) {
-  assumption_manager_t mgr(is, cnf);
+  assumption_manager_t mgr(is, ped, cnf);
   mgr.add_assumptions();
 };
