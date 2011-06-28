@@ -287,8 +287,10 @@ pedcnf_t::clauses_to_dimacs_format(std::ostream& out,
   BOOST_FOREACH(const std::string& s, notes) {
 	 out << "c " << s << std::endl;
   }
+#ifndef AVOID_XOR_CLAUSES
   if (_no_of_xor_clauses > 0)
 	 out << "c extended syntax: or- and xor-clauses" << std::endl;
+#endif // AVOID_XOR_CLAUSES
   out << "c" << std::endl;
   size_t i= 1;
   for (pedcnf_t::varvec_t::const_iterator it= _vars.begin();
@@ -297,17 +299,23 @@ pedcnf_t::clauses_to_dimacs_format(std::ostream& out,
 	 out << "c v " << std::setw(7) << i << " " << *it << std::endl;
   }
   out << "c" << std::endl;
-  out << "p cnf " << _vars.size() << " " << (_no_of_clauses + _no_of_xor_clauses) << std::endl;
+  size_t n_clauses= _no_of_clauses;
+#ifndef AVOID_XOR_CLAUSES
+  n_clauses += _no_of_xor_clauses;
+#endif // AVOID_XOR_CLAUSES
+  out << "p cnf " << _vars.size() << " " << n_clauses << std::endl;
   for (clauses_t::const_iterator it= _clauses.begin();
 		 it != _clauses.end();
 		 ++it) {
 	 out << *it << std::endl;
   }
+#ifndef AVOID_XOR_CLAUSES
   for (xor_clauses_t::const_iterator it= _xor_clauses.begin();
 		 it != _xor_clauses.end();
 		 ++it) {
 	 out << "x" << *it << std::endl;
   }
+#endif // AVOID_XOR_CLAUSES
   return out;
 };
 
