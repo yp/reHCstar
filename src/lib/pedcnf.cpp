@@ -321,10 +321,13 @@ pedcnf_t::clauses_to_dimacs_format(std::ostream& out,
 
 #endif // ONLY_INTERNAL_SAT_SOLVER
 
-
+#ifdef USE_PLAIN_CNF_FORMAT
+// *********************************************************
+//      !!!  OLD/PLAIN FORMAT  !!!
 // Read the assignment from a file like the following one:
 // SAT/UNSAT
 // 1 -2 3 4 0
+// *********************************************************
 bool
 pedcnf_t::assignment_from_minisat_format(std::istream& in) {
   std::string line;
@@ -355,6 +358,60 @@ pedcnf_t::assignment_from_minisat_format(std::istream& in) {
   return false;
 };
 
+#else // USE_PLAIN_CNF_FORMAT
+
+// *********************************************************
+//      !!!  DIMACS FORMAT  !!!
+// Read the assignment from a file like the following one:
+// s SATISFIABLE/UNSATISFIABLE
+// v 1 -2 3 4
+// v 5 -6 -7 0
+// *********************************************************
+bool
+pedcnf_t::assignment_from_minisat_format(std::istream& in) {
+  int status= 0; // 0 = undecided, 1 = SAT, -1 = UNSAT
+  std::string line;
+  while (std::getline(in, line)) {
+	 boost::trim(line);
+	 if ((line.length()==0) || boost::starts_with(line, "c ")) {
+// The line is a comment, discard.
+	 } else if (boost::starts_with(line, "s ")) {
+		if (line == "s SATISFIABLE") {
+		  L_DEBUG("The instance is SATISFIABLE");
+		  status= 1;
+		} else if (line == "s UNSATISFIABLE") {
+		  L_DEBUG("The instance is UNSATISFIABLE");
+		  status= -1;
+		} else {
+		  L_FATAL("Read a wrong status line: >" << line << "<");
+		  MY_FAIL;
+		}
+	 } else if (boost::starts_with(line, "v ")) {
+		std::istringstream is(line);
+// Remove the initial "v"
+		char c;
+		is >> c;
+		lit_t value;
+		while ((is >> value) && (value != 0)) {
+		  MY_ASSERT( (size_t)abs(value) <= _vals.size() );
+		  _vals[(size_t)abs(value)-1]= (value>0);
+		}
+	 } else {
+		L_FATAL("Read an unparsable line: >" << line << "<");
+		MY_FAIL;
+	 }
+  }
+  if (status == 1) { // SAT
+#ifndef ONLY_INTERNAL_SAT_SOLVER
+	 MY_ASSERT_DBG( is_satisfying_assignment() );
+#endif // ONLY_INTERNAL_SAT_SOLVER
+	 return true;
+  } else { // UNSAT or UNDECIDED
+	 return false;
+  }
+};
+
+#endif // USE_PLAIN_CNF_FORMAT
 
 std::ostream&
 operator<<(std::ostream& out, const pedcnf_t::clause_t& clause) {
