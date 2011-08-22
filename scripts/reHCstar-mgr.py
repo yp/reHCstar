@@ -40,12 +40,14 @@ import os
 import sys
 import random
 import logging
-import operator
-import functools
 import subprocess
 import math
 import time
+import array
 from optparse import OptionParser
+
+gen2code= { '0 0': 0, '1 1': 1, '2 2': 2, '1 2': 3 }
+code2gen= { 0: '0 0', 1: '1 1', 2: '2 2', 3: '1 2' }
 
 def parse_command_line():
     usage= "usage: %prog [options]"
@@ -147,29 +149,23 @@ def compute_recombinations_and_gps(h, ph, known_gps=None):
         return (n_rec2, gps2)
 
 def read_and_process_hc(haplotypes_filename, pedigree, complete_haplotypes, good_chunk_length):
-    logging.debug("Reading the haplotype configuration computed for "
+    logging.debug("Reading and parsing the haplotype configuration computed for "
                   "the current chunk...")
-    hap_str= []
-    with open(haplotypes_filename, 'r') as haplotypes_file:
-        hap_str= [ line.strip()
-                   for line in haplotypes_file
-                   if not line.startswith('#')  ]
-
-    logging.debug("Parsing the haplotype configuration...")
     current_haplotypes= {}
-    for r in hap_str:
-        row= r.split("\t", 6)
-        comb_hap= row[6].split("\t")
-        pat_hap= [ int(single.split('|')[0]) for single in comb_hap ]
-        mat_hap= [ int(single.split('|')[1]) for single in comb_hap ]
-        current_haplotypes[row[1]]= (pat_hap, mat_hap)
-        if not ( row[1] in complete_haplotypes ):
-            complete_haplotypes[row[1]]= [ pat_hap[0:good_chunk_length],
-                                               mat_hap[0:good_chunk_length],
-                                               [], []]
-        else:
-            complete_haplotypes[row[1]][0].extend( pat_hap[1:good_chunk_length] )
-            complete_haplotypes[row[1]][1].extend( mat_hap[1:good_chunk_length] )
+    with open(haplotypes_filename, 'r') as haplotypes_file:
+        for r in haplotypes_file:
+            if not r.startswith('#'):
+                row= r.strip().split("\t", 6)
+                comb_hap= [ [int(x) for x in single.split("|")] for single in row[6].split("\t") ]
+                (pat_hap, mat_hap)= [list(x) for x in zip(*comb_hap)]
+                current_haplotypes[row[1]]= (pat_hap, mat_hap)
+                if not ( row[1] in complete_haplotypes ):
+                    complete_haplotypes[row[1]]= [ pat_hap[0:good_chunk_length],
+                                                   mat_hap[0:good_chunk_length],
+                                                   [], []]
+                else:
+                    complete_haplotypes[row[1]][0].extend( pat_hap[1:good_chunk_length] )
+                    complete_haplotypes[row[1]][1].extend( mat_hap[1:good_chunk_length] )
 
     tot_rec= 0
     for ind in pedigree:
@@ -352,7 +348,7 @@ gen_len= 0
 i= 0
 for r in ped_str:
     split_r= r.split("\t", 6)
-    genotypes[ split_r[1] ]= split_r[6].split("\t")
+    genotypes[ split_r[1] ]= array.array('b', [gen2code[x] for x in split_r[6].split("\t")])
     gen_len= len(genotypes[ split_r[1] ])
     order.append(split_r[1])
     backorder[split_r[1]]= i
@@ -376,7 +372,7 @@ for start in range(0, gen_len, options.length):
     with open(genfile, 'w') as out_file:
         for ind in order:
             out_file.write("\t".join([str(x) for x in ped[ind]]) + "\t" +
-                           "\t".join([str(x) for x in genotypes[ind][start:stop]]) + "\n")
+                           "\t".join([code2gen[x] for x in genotypes[ind][start:stop]]) + "\n")
 
     # Write assumptions
     assumptions_filename= "tmp-assumptions-{}-{}-{}".format(start, stop, suffix)
