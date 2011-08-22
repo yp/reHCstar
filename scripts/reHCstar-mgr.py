@@ -44,58 +44,75 @@ import subprocess
 import math
 import time
 import array
-from optparse import OptionParser
+import shlex
+import optparse
 
 gen2code= { '0 0': 0, '1 1': 1, '2 2': 2, '1 2': 3 }
 code2gen= { 0: '0 0', 1: '1 1', 2: '2 2', 3: '1 2' }
 
 def parse_command_line():
     usage= "usage: %prog [options]"
-    parser= OptionParser(usage=usage)
-    parser.add_option("-p", "--pedigree",
-                      action="store", dest="pedigree",
-                      type="string", default=None,
-                      help="the file containing the genotyped pedigree",
-                      metavar="FILE")
-    parser.add_option("-r", "--results",
-                      action="store", dest="haplotypes",
-                      type="string", default=None,
-                      help="the file that will contain the haplotype configuration computed "
-                      "by reHC-*",
-                      metavar="FILE")
-    parser.add_option("-l", "--block-length",
-                      action="store", dest="length",
-                      type="int", default=50,
-                      help="the length of the blocks which the instance is divided into",
-                      metavar="length")
-    parser.add_option("-a", "--lookahead-length",
-                      action="store", dest="lookahead",
-                      type="int", default=0,
-                      help="the length of the additional overlapping blocks",
-                      metavar="length")
-    parser.add_option("-b", "--bin",
-                      action="store", dest="reHCstar",
-                      type="string", default="reHCstar",
-                      help="the path pointing to the 'reHCstar' binary",
-                      metavar="progr")
+    parser= optparse.OptionParser(usage=usage)
     parser.add_option("-v", "--verbose",
                       action="count", dest="verbose",
                       default=0,
-                      help="print additional log messages (specified more than once increase verbosity)")
+                      help="print additional log messages "
+                      "(specified more than once increase verbosity)")
+
+    io_group= optparse.OptionGroup(parser, "Input/Output Options",
+                                   "Options that specify the input and "
+                                   "the output files.")
+    io_group.add_option("-p", "--pedigree",
+                        action="store", dest="pedigree",
+                        type="string", default=None,
+                        help="the file containing the genotyped pedigree",
+                        metavar="FILE")
+    io_group.add_option("-r", "--results",
+                        action="store", dest="haplotypes",
+                        type="string", default=None,
+                        help="the file that will contain the haplotype "
+                        "configuration computed by reHC-*",
+                        metavar="FILE")
+    parser.add_option_group(io_group)
+
+    search_group= optparse.OptionGroup(parser, "Block Options",
+                                       "Options that regulates the division of "
+                                       "the full genotypes into smaller blocks.")
+    search_group.add_option("-l", "--block-length",
+                            action="store", dest="length",
+                            type="int", default=50,
+                            help="the length of the blocks which the instance "
+                            "is divided into  "
+                            "(default: %default)",
+                            metavar="LENGTH")
+    search_group.add_option("-a", "--lookahead-length",
+                            action="store", dest="lookahead",
+                            type="int", default=0,
+                            help="the length of the additional overlapping "
+                            "blocks  (default: %default)",
+                            metavar="LENGTH")
+    parser.add_option_group(search_group)
+
+    cmd_group= optparse.OptionGroup(parser, "Interoperability Options",
+                                    "Options that specify how the 'reHCstar' "
+                                    "is invoked.")
+    cmd_group.add_option("--cmd",
+                         action="store", dest="cmd", type="string",
+                         default="./reHCstar -4 -p \"{pedigree}\" -h \"{haplotypes}\" -a \"{assumptions}\"",
+                         help="the command-line used to invoke the 'reHCstar' program  "
+                         "(default: %default)",
+                         metavar="CMD-LINE")
+    cmd_group.add_option("--cmd-rec",
+                         action="store", dest="cmdrec", type="string",
+                         default="--global-recomb --global-recomb-number \"{number}\"",
+                         help="the options of the 'reHCstar' program used to specify "
+                         "the maximum number of RECOMBINATIONS  (default: %default)",
+                         metavar="PROGR-OPT")
+    parser.add_option_group(cmd_group)
+
     (options, args) = parser.parse_args()
 
-    return(options)
-
-
-
-
-options = parse_command_line()
-
-log_level= logging.DEBUG if options.verbose>0 else logging.INFO
-
-logging.basicConfig(level=log_level,
-                    format='%(levelname)5s [%(relativeCreated)15d] (%(filename)30s:%(lineno)-4d) - %(message)s',
-                    stream=sys.stderr)
+    return options
 
 def write_haplotypes(filename, order, ped, haplotypes, stop, verbose= False):
     source_vector_enc= { 0 : ".",   1 : "O" }
@@ -232,20 +249,26 @@ def read_and_process_partial_hc(haplotypes_filename, pedigree, complete_haplotyp
 def basic_exec_reHCstar(pedigree_filename,
                         haplotypes_filename,
                         assumptions_filename,
-                        max_recombs, max_errors,
-                        bin="./reHCstar"):
+                        max_recombs,
+                        cmd_templ):
     rehcstar_success= False
     terminate= False
-    cmd=[bin, "-4", "-p", pedigree_filename, "-h", haplotypes_filename, "-a", assumptions_filename]
+    full_cmd_str= cmd_templ['cmd'].format(pedigree=    pedigree_filename,
+                                          haplotypes=  haplotypes_filename,
+                                          assumptions= assumptions_filename)
+    cmd= []
     try:
         if max_recombs>0:
-            cmd.extend(("--global-recomb", "--global-recomb-number", str(max_recombs)))
-        if max_errors>0:
-            cmd.extend(("--global-error", "--global-error-number", str(max_errors)))
+            full_cmd_str+= " " + cmd_templ['rec'].format(number= str(max_recombs))
+        cmd= shlex.split(full_cmd_str)
+        logging.info("Invoking >%s<...", " ".join(cmd))
         retcode = subprocess.call(cmd, shell=False)
         rehcstar_success= (retcode==0)
     except OSError as e:
-        logging.warn("reHCstar execution failed. Command-line: >%s<. Additional information: '%s'", " ".join(cmd), e)
+        logging.warn("reHCstar execution failed. "
+                     "Command-line: >%s<. "
+                     "Additional information: '%s'",
+                     " ".join(cmd), e)
 
     return rehcstar_success
 
@@ -260,8 +283,10 @@ def exec_reHCstar(pedigree_filename, haplotypes_filename, assumptions_filename,
     logging.info("Step 1. Searching an upper bound on the number of recombinations...")
     while not terminate and not rehcstar_success:
         logging.debug("Step 1. Trying with at most %d recombinations.", max_recombs)
-        rehcstar_success= basic_exec_reHCstar(pedigree_filename, haplotypes_filename, assumptions_filename,
-                                              max_recombs, 0, cmd_bin)
+        rehcstar_success= basic_exec_reHCstar(pedigree_filename,
+                                              haplotypes_filename,
+                                              assumptions_filename,
+                                              max_recombs, cmd)
         if rehcstar_success:
             logging.info("Step 1. Found a solution with at most %d recombinations.", max_recombs)
         else:
@@ -286,8 +311,10 @@ def exec_reHCstar(pedigree_filename, haplotypes_filename, assumptions_filename,
                 mid= math.floor((lb+ub)/2)
                 logging.debug("Step 2. Bisecting interval (%d-%d]", lb, ub)
                 logging.debug("Step 2. Trying with at most %d recombinations.", mid)
-                rehcstar_success= basic_exec_reHCstar(pedigree_filename, haplotypes_filename, assumptions_filename,
-                                                      mid, 0, cmd_bin)
+                rehcstar_success= basic_exec_reHCstar(pedigree_filename,
+                                                      haplotypes_filename,
+                                                      assumptions_filename,
+                                                      mid, cmd)
                 if rehcstar_success:
                     logging.debug("Step 2. Found a solution with at most %d recombinations.", mid)
                     ub= read_and_process_partial_hc(haplotypes_filename, pedigree, complete_haplotypes, fixed_index)
@@ -303,7 +330,17 @@ def exec_reHCstar(pedigree_filename, haplotypes_filename, assumptions_filename,
 
 
 
+options = parse_command_line()
 
+log_level= logging.DEBUG if options.verbose>0 else logging.INFO
+verbose=  options.verbose>0
+verbose1= options.verbose>0
+verbose2= options.verbose>1
+verbose3= options.verbose>2
+
+logging.basicConfig(level=log_level,
+                    format='%(levelname)5s [%(relativeCreated)15d] (%(filename)30s:%(lineno)-4d) - %(message)s',
+                    stream=sys.stderr)
 
 logging.info("reHCstar manager - started at %s", time.asctime())
 
@@ -321,15 +358,42 @@ if ( not options.haplotypes ):
                   options.haplotypes)
     sys.exit(2)
 
+#  block lengths
 if options.length <= 0:
     logging.fatal("Maximum block length must be a positive integer. Given '%d'",
                   options.length)
     sys.exit(2)
+if options.lookahead < 0:
+    logging.fatal("Overlapping block length must be a non-negative integer. Given '%d'",
+                  options.lookahead)
+    sys.exit(2)
+
+#  command-line related options
+cmd= {}
+if not ( '{pedigree}' in options.cmd and
+         '{haplotypes}' in options.cmd and
+         '{assumptions}' in options.cmd ):
+    logging.fatal("The command-line *MUST* include the following placeholders: "
+                  "'{pedigree}' '{haplotypes}' '{assumptions}'. "
+                  "Given: '%s'",
+                  options.cmd)
+    sys.exit(2)
+if not '{number}' in options.cmdrec:
+    logging.fatal("The options for handling recombinations *MUST* include "
+                  "the following placeholder: '{number}'. "
+                  "Given: '%s'",
+                  options.cmdrec)
+    sys.exit(2)
+cmd['cmd']= options.cmd
+cmd['rec']= options.cmdrec
+
+
 
 logging.info("CONFIGURATION:")
 logging.info("Input pedigree:       '%s'", options.pedigree)
 logging.info("Resulting haplotypes: '%s'", options.haplotypes)
 logging.info("Max. block length:     %d", options.length)
+logging.info("Lookahead length:      %d", options.lookahead)
 
 
 # Read the original pedigree
@@ -393,12 +457,12 @@ for start in range(0, gen_len, options.length):
         tot_rec= read_and_process_hc(haplotypes_filename, ped, complete_haplotypes, good_chunk_length)
         logging.debug("The haplotype configuration has %d recombinations so far", tot_rec)
 
-        if options.verbose>1:
+        if verbose2:
             incremental_haplotypes_filename= "tmp-incremental-{}-{}-{}".format(start,
                                                                                stop,
                                                                                suffix)
             write_haplotypes(incremental_haplotypes_filename, order, ped,
-                             complete_haplotypes, good_stop, options.verbose>2)
+                             complete_haplotypes, good_stop, verbose3)
 
         assumptions= []
         if start + options.length < gen_len:
@@ -418,7 +482,7 @@ for start in range(0, gen_len, options.length):
 logging.info("Found a complete haplotype configuration with (at most) %d recombinations.", tot_rec)
 
 logging.info("Writing the haplotype configuration to '%s'...", options.haplotypes)
-write_haplotypes(options.haplotypes, order, ped, complete_haplotypes, gen_len, options.verbose>1)
+write_haplotypes(options.haplotypes, order, ped, complete_haplotypes, gen_len, verbose2)
 
 logging.info("reHCstar manager - completed at %s", time.asctime())
 
