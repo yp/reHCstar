@@ -199,7 +199,7 @@ public:
 	 separated_recomb_handler.handle_recombinations(cnf, mped.families().front().size(),
 																	mped.families().front().genotype_length());
 	 if (has_assumptions) {
-		std::ifstream assumptions(assumption_file);
+		std::ifstream assumptions(assumption_file.c_str());
 		if (assumptions) {
 		  add_assumptions(assumptions, mped.families().front(), cnf);
 		  assumptions.close();
