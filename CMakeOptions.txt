@@ -33,6 +33,11 @@ if (INTEGRATE_SAT_SOLVER)
      OFF
    )
 
+   option(USE_CLASP
+     "Use clasp."
+     OFF
+   )
+
    ## ####################
    ##
    ## Specific options for the solvers

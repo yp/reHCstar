@@ -97,17 +97,14 @@ public:
     return (out << val._g);
   }
 
-  template <int C_MALE= 1,
-            int C_FEMALE= 2,
-            int C_UNSPEC= 0>
   friend std::istream& operator>>(std::istream& in, gender_t& gender) {
     int val;
     if (in >> val) {
-      if (val == C_MALE) {
+      if (val == 1) {
         gender= MALE;
-      } else if (val == C_FEMALE) {
+      } else if (val == 2) {
         gender= FEMALE;
-      } else if (val == C_UNSPEC) {
+      } else if (val == 0) {
         gender= UNSPEC;
       } else {
         gender= UNSPEC;

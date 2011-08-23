@@ -503,7 +503,10 @@ reHC-* incorporates the following SAT solvers:
   (commit e819ab3236e, date 26/May/2011) by Mate Soos, which is
   distributed under the GNU General Public License version 3;
 - [MiniSat](http://www.minisat.se/MiniSat.html) version 2.2.0 by Niklas
-  Een and Niklas Sorensson, which is distributed under the MIT license.
+  Een and Niklas Sorensson, which is distributed under the MIT license;
+- [clasp](http://www.cs.uni-potsdam.de/clasp/) version 2.0.2 by Martin
+  Gebser, Benjamin Kaufmann et al., which is distributed under the GNU
+  General Public License version 2.
 
 We would like to thank Gianluca Della Vedova for useful discussions.
 

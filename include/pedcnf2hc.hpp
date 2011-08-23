@@ -68,6 +68,7 @@ void compute_reHC_from_SAT(basic_pedigree_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE
 	 for (size_t locus= 0; locus < ped.genotype_length(); ++locus) {
 		const bool pil= cnf.p(ind.progr_id(), locus);
 		const bool mil= cnf.m(ind.progr_id(), locus);
+		TRACE("Locus " << locus << "   pil " << pil << "   mil " << mil);
 		if ( ! is_genotyped(ind.obs_g(locus)) ) {
 //        Individual not genotyped ->
 //          -> imputing genotype based on variables p_i_l and m_i_l

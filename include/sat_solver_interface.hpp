@@ -77,11 +77,11 @@ typedef boost::uint_fast32_t var_t;
 
 // Enable the "right" interface depending on the macro definitions
 
-#if defined(USE_CRYPTOMINISAT) && defined(USE_MINISAT)
-#error "Only one SAT solver can be integrated: please choose among CryptoMiniSat and MiniSat"
+#if (defined(USE_CRYPTOMINISAT) && defined(USE_MINISAT)) || (defined(USE_CRYPTOMINISAT) && defined(USE_CLASP)) || (defined(USE_MINISAT) && defined(USE_CLASP))
+#error "Only one SAT solver can be integrated: please choose among CryptoMiniSat, MiniSat, and clasp"
 #endif
 
-#if !defined(USE_CRYPTOMINISAT) && !defined(USE_MINISAT)
+#if !defined(USE_CRYPTOMINISAT) && !defined(USE_MINISAT) && !defined(USE_CLASP)
 #message "No SAT solver specified: enabling 'CryptoMiniSat' by default"
 #define USE_CRYPTOMINISAT
 #endif
@@ -100,6 +100,12 @@ typedef boost::uint_fast32_t var_t;
 
 #endif
 
+
+#ifdef USE_CLASP
+
+#include "clasp_sat_solver_interface.hpp"
+
+#endif
 
 #endif
 

@@ -8,7 +8,10 @@ reHC-* incorporates the following SAT solvers:
   Mate Soos, which is distributed under the GNU General Public License
   version 3;
 - [MiniSat](http://www.minisat.se/MiniSat.html) version 2.2.0 by Niklas
-  Een and Niklas Sorensson, which is distributed under the MIT license.
+  Een and Niklas Sorensson, which is distributed under the MIT license;
+- [clasp](http://www.cs.uni-potsdam.de/clasp/) version 2.0.2 by Martin
+  Gebser, Benjamin Kaufmann et al., which is distributed under the GNU
+  General Public License version 2.
 
 reHC-* includes the program suite "JPSGCS" version 03/14/2011 by Alun
 Thomas for the generation of zero-loop pedigree structures.
