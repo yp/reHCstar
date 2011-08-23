@@ -36,16 +36,16 @@
 #
 ##########
 
-import os
-import sys
-import random
-import logging
-import subprocess
-import math
-import time
 import array
-import shlex
+import logging
+import math
 import optparse
+import os
+import random
+import shlex
+import subprocess
+import sys
+import time
 
 gen2code= { '0 0': 0, '1 1': 1, '2 2': 2, '1 2': 3 }
 code2gen= { 0: '0 0', 1: '1 1', 2: '2 2', 3: '1 2' }
@@ -281,6 +281,7 @@ def exec_reHCstar(pedigree_filename, haplotypes_filename, assumptions_filename,
     cmd_bin="./reHCstar"
     logging.info("Trying to solve the instance in file '%s'.", pedigree_filename)
     logging.info("Step 1. Searching an upper bound on the number of recombinations...")
+    new_haplotypes_filename= haplotypes_filename
     while not terminate and not rehcstar_success:
         logging.debug("Step 1. Trying with at most %d recombinations.", max_recombs)
         rehcstar_success= basic_exec_reHCstar(pedigree_filename,
@@ -289,6 +290,8 @@ def exec_reHCstar(pedigree_filename, haplotypes_filename, assumptions_filename,
                                               max_recombs, cmd)
         if rehcstar_success:
             logging.info("Step 1. Found a solution with at most %d recombinations.", max_recombs)
+            new_haplotypes_filename="{}-success-{}".format(haplotypes_filename, str(os.getpid()))
+            os.rename(haplotypes_filename, new_haplotypes_filename)
         else:
             if max_recombs > 2*len(pedigree):
                 logging.info("Step 1. Solution NOT found. The instance requires "
@@ -305,7 +308,7 @@ def exec_reHCstar(pedigree_filename, haplotypes_filename, assumptions_filename,
         else:
             # Read the haplotype configuration and compute the real upper-bound
             lb= ((max_recombs+1)/2)-1
-            ub= read_and_process_partial_hc(haplotypes_filename, pedigree, complete_haplotypes, fixed_index)
+            ub= read_and_process_partial_hc(new_haplotypes_filename, pedigree, complete_haplotypes, fixed_index)
             logging.info("Step 2. Performing a bisection to find an optimal solution...")
             while lb+1 < ub:
                 mid= math.floor((lb+ub)/2)
@@ -317,7 +320,9 @@ def exec_reHCstar(pedigree_filename, haplotypes_filename, assumptions_filename,
                                                       mid, cmd)
                 if rehcstar_success:
                     logging.debug("Step 2. Found a solution with at most %d recombinations.", mid)
-                    ub= read_and_process_partial_hc(haplotypes_filename, pedigree, complete_haplotypes, fixed_index)
+                    new_haplotypes_filename="{}-success-{}".format(haplotypes_filename, str(os.getpid()))
+                    os.rename(haplotypes_filename, new_haplotypes_filename)
+                    ub= read_and_process_partial_hc(new_haplotypes_filename, pedigree, complete_haplotypes, fixed_index)
                     max_recombs= ub
                 else:
                     logging.debug("Step 2. Solution NOT found in this half interval. Using the other...")
@@ -425,7 +430,7 @@ logging.info("Starting the computation of the haplotype configuration...")
 assumptions= []
 complete_haplotypes= {}
 tot_rec= 0
-suffix="{}-{}".format(options.pedigree, options.haplotypes)
+suffix="{}-{}".format(os.path.basename(options.pedigree), os.path.basename(options.haplotypes))
 for start in range(0, gen_len, options.length):
     good_stop= min( gen_len, start + options.length + 1 )
     stop=      min( gen_len, good_stop + options.lookahead )
@@ -454,7 +459,7 @@ for start in range(0, gen_len, options.length):
         logging.info("reHCstar has successfully computed a solution on the chunk [%d-%d).", start, stop)
         logging.debug("Reading the haplotype configuration computed for "
                       "the current chunk [%d-%d)...", start, stop)
-        tot_rec= read_and_process_hc(haplotypes_filename, ped, complete_haplotypes, good_chunk_length)
+        tot_rec= read_and_process_hc(haplotypes_filename+"-success-"+str(os.getpid()), ped, complete_haplotypes, good_chunk_length)
         logging.debug("The haplotype configuration has %d recombinations so far", tot_rec)
 
         if verbose2:
