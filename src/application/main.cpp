@@ -125,10 +125,15 @@ protected:
 		("compress-input", po::bool_switch()->default_value(false),
 		 "Use compressed input files.")
 		("compress-output", po::bool_switch()->default_value(false),
-		 "Use compressed output files.")
+		 "Use compressed output files.");
+#ifndef ONLY_INTERNAL_SAT_SOLVER
+	 files.add_options()
+		("compress-sat", po::bool_switch()->default_value(false),
+		 "Compress the file containing the SAT instance.")
 		("keep,k", po::bool_switch()->default_value(false),
 		 "Keep temporary files (such as 'cnf-instance-*' and 'res-cnf-instance-*' "
 		 "files for '--create-read'/'-3' mode) after the execution.");
+#endif // ONLY_INTERNAL_SAT_SOLVER
 	 po::options_description errors("Error Management Options",
 											  po::options_description::m_default_line_length,
 											  po::options_description::m_default_line_length-16);
@@ -282,6 +287,11 @@ protected:
 	 const bool out_compress=
 		vm["compress"].as<bool>() ||
 		vm["compress-output"].as<bool>();
+#ifndef ONLY_INTERNAL_SAT_SOLVER
+	 const bool sat_compress=
+		out_compress ||
+		vm["compress-sat"].as<bool>();
+#endif
 
 	 rehcstar_t rehcstar;
 	 rehcstar.prepare_program_options(vm);
@@ -298,7 +308,7 @@ protected:
 		  get_ifstream(vm["pedigree"].as<string>(), in_compress);
 		file_utility::postream sat_os=
 		  file_utility::get_file_utility().
-		  get_ofstream(vm["sat"].as<string>(), out_compress);
+		  get_ofstream(vm["sat"].as<string>(), sat_compress);
 		const std::string headers[] = {
 		  "SAT instance",
 		  std::string("pedigree: ") + vm["pedigree"].as<string>(),
@@ -359,7 +369,7 @@ protected:
 			 get_ifstream(vm["pedigree"].as<string>(), in_compress);
 		  file_utility::postream sat_os=
 			 file_utility::get_file_utility().
-			 get_tmp_ostream("cnf-instance-XXXXXX", sat_name, out_compress);
+			 get_tmp_ostream("cnf-instance-XXXXXX", sat_name, sat_compress);
 		  const std::string headers[] = {
 			 "SAT instance",
 			 std::string("pedigree: ") + vm["pedigree"].as<string>(),
