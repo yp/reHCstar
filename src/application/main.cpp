@@ -132,7 +132,9 @@ protected:
 		 "Compress the file containing the SAT instance.")
 		("keep,k", po::bool_switch()->default_value(false),
 		 "Keep temporary files (such as 'cnf-instance-*' and 'res-cnf-instance-*' "
-		 "files for '--create-read'/'-3' mode) after the execution.");
+		 "files for '--create-read'/'-3' mode) after the execution.")
+		("pipe", po::bool_switch()->default_value(false),
+		 "Pipe the SAT instance to the external solver instead of using an intermediate file.");
 #endif // ONLY_INTERNAL_SAT_SOLVER
 	 po::options_description errors("Error Management Options",
 											  po::options_description::m_default_line_length,
@@ -226,6 +228,7 @@ protected:
 	 option_dependency(vm, "create-read", "pedigree");
 	 option_dependency(vm, "create-read", "haplotypes");
 	 option_dependency(vm, "create-read", "sat-cmdline");
+	 option_dependency(vm, "pipe", "create-read");
 #endif
 #ifdef INTERNAL_SAT_SOLVER
 #ifndef ONLY_INTERNAL_SAT_SOLVER
@@ -233,6 +236,7 @@ protected:
 	 conflicting_options(vm, "solve-internal", "read");
 	 conflicting_options(vm, "solve-internal", "create-read");
 #endif
+	 conflicting_options(vm, "compress-sat", "pipe");
 	 option_dependency(vm, "solve-internal", "pedigree");
 	 option_dependency(vm, "solve-internal", "haplotypes");
 #endif
@@ -358,41 +362,88 @@ protected:
 			  "pedigree of file '"
 			  << vm["pedigree"].as<string>() << "' by direct invocation of the SAT solver...");
 		string sat_name;
+		string res_name= ".";
 		rehcstar_t::pedigree_t ped;
 		pedcnf_t cnf;
+		int ret_value;
+//
+// ** USE "NORMAL" FILES ** BEGIN
+		if (! vm["pipe"].as<bool>()) {
 // Block for reading the pedigree and writing the SAT instance
 // The block is needed to close the SAT instance stream before executing
 // the solver
-		{
-		  file_utility::pistream ped_is=
-			 file_utility::get_file_utility().
-			 get_ifstream(vm["pedigree"].as<string>(), in_compress);
-		  file_utility::postream sat_os=
-			 file_utility::get_file_utility().
-			 get_tmp_ostream("cnf-instance-XXXXXX", sat_name, sat_compress);
-		  const std::string headers[] = {
-			 "SAT instance",
-			 std::string("pedigree: ") + vm["pedigree"].as<string>(),
-			 std::string("sat: ") + sat_name,
-			 std::string("source version: ") + APPLICATION_SOURCE_VERSION
-		  };
-		  rehcstar.create_SAT_instance_from_pedigree(*ped_is, *sat_os,
-																	vector<string>(headers,
-																						headers+4),
-																	ped, cnf);
-		}
+		  {
+			 file_utility::pistream ped_is=
+				file_utility::get_file_utility().
+				get_ifstream(vm["pedigree"].as<string>(), in_compress);
+			 file_utility::postream sat_os=
+				file_utility::get_file_utility().
+				get_tmp_ostream("cnf-instance-XXXXXX", sat_name, sat_compress);
+			 const std::string headers[] = {
+				"SAT instance",
+				std::string("pedigree: ") + vm["pedigree"].as<string>(),
+				std::string("sat: ") + sat_name,
+				std::string("source version: ") + APPLICATION_SOURCE_VERSION
+			 };
+			 rehcstar.create_SAT_instance_from_pedigree(*ped_is, *sat_os,
+																	  vector<string>(headers,
+																						  headers+4),
+																	  ped, cnf);
+		  }
 
 // Execute the SAT solver
-		INFO("Execution of the SAT solver...");
-		INFO("Given command line: '"<< vm["sat-cmdline"].as<string>() << "'");
-		const string res_name= "res-" + sat_name;
-		string cmdline= vm["sat-cmdline"].as<string>();
-		boost::replace_all(cmdline, "%%INPUT%%", "\"" + sat_name + "\"");
-		boost::replace_all(cmdline, "%%OUTPUT%%", "\"" + res_name + "\"");
-		INFO("Real command line: '"<< cmdline <<"'");
+		  INFO("Execution of the SAT solver...");
+		  INFO("Given command line: '"<< vm["sat-cmdline"].as<string>() << "'");
+		  res_name= "res-" + sat_name;
+		  string cmdline= vm["sat-cmdline"].as<string>();
+		  boost::replace_all(cmdline, "%%INPUT%%", "\"" + sat_name + "\"");
+		  boost::replace_all(cmdline, "%%OUTPUT%%", "\"" + res_name + "\"");
+		  INFO("Real command line: '"<< cmdline <<"'");
 
-		boost::filesystem::remove(res_name);
-		const int ret_value= system(cmdline.c_str());
+		  boost::filesystem::remove(res_name);
+		  ret_value= system(cmdline.c_str());
+// ** USE "NORMAL" FILES ** END
+//
+		} else {
+//
+// ** USE "PIPE" ** BEGIN
+		  { // used only to get a temporary filename
+			 file_utility::postream sat_os=
+				file_utility::get_file_utility().
+				get_tmp_ostream("cnf-instance-XXXXXX", sat_name, sat_compress);
+		  }
+		  boost::filesystem::remove(sat_name);
+		  INFO("Starting the SAT solver (piping the instance)...");
+		  INFO("Given command line: '"<< vm["sat-cmdline"].as<string>() << "'");
+		  res_name= "res-" + sat_name;
+		  string cmdline= vm["sat-cmdline"].as<string>();
+		  boost::replace_all(cmdline, "%%INPUT%%", "");
+		  boost::replace_all(cmdline, "%%OUTPUT%%", "\"" + res_name + "\"");
+		  INFO("Real command line: '"<< cmdline <<"'");
+
+		  boost::filesystem::remove(res_name);
+		  FILE* sat_pipe= popen(cmdline.c_str(), "w");
+
+		  if (sat_pipe == NULL) {
+			 WARN("Impossible to execute the command (or another error has occurred).");
+			 ret_value= -1;
+		  } else {
+			 INFO("Creating the SAT instance and writing to SAT solver's standard input...");
+			 file_utility::pistream ped_is=
+				file_utility::get_file_utility().
+				get_ifstream(vm["pedigree"].as<string>(), in_compress);
+			 file_utility::postream sat_os=
+				file_utility::get_file_utility().
+				get_ostream_from_file(sat_pipe);
+			 rehcstar.create_SAT_instance_from_pedigree(*ped_is, *sat_os,
+																	  vector<string>(),
+																	  ped, cnf);
+			 INFO("Finished creating and writing the SAT instance. Waiting the solver...");
+			 ret_value= pclose(sat_pipe);
+		  }
+// ** USE "PIPE" ** END
+//
+		}
 // We cannot trust the return value
 		DEBUG("The SAT solver returned: '" << ret_value << "'.");
 
@@ -414,7 +465,10 @@ protected:
 
 		  if (!vm["keep"].as<bool>()) {
 			 DEBUG("Removing temporary files...");
-			 bool remove_res= boost::filesystem::remove(sat_name);
+			 bool remove_res= true;
+			 if (!vm["pipe"].as<bool>()) {
+				remove_res= boost::filesystem::remove(sat_name);
+			 }
 			 remove_res= boost::filesystem::remove(res_name) && remove_res;
 			 if (!remove_res) {
 				WARN("File '" << sat_name << "' or '" << res_name <<

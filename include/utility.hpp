@@ -335,6 +335,23 @@ public:
 	 return pos;
   };
 
+  postream get_ostream_from_file(FILE* file) const {
+	 MY_ASSERT(file != NULL);
+	 const int fd = fileno(file);
+	 if (fd == -1) {
+		L_ERROR("Impossible to open a stream associated to the given C-file.");
+		throw std::logic_error(std::string("Impossible to open a stream associated to the given C-file."));
+	 }
+	 boost::iostreams::file_descriptor_sink sink(fd);
+	 if (!sink.is_open()) {
+		L_ERROR("Impossible to open the given C-file.");
+		throw std::logic_error(std::string("Impossible to open the given C-file."));
+	 }
+	 std::ostream* os= new boost::iostreams::stream<boost::iostreams::file_descriptor_sink>(sink);
+	 postream pos(os);
+	 return pos;
+  };
+
 };
 
 
