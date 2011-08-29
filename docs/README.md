@@ -179,13 +179,31 @@ The following options are used to specify the input/output files:
    associated with the genotyped pedigree (input file);
 -  `--haplotypes` (short form `-h`), that specifies the file that will
    contain the haplotype configuration of the genotyped pedigree
-   computed by reHC-* (output file).
+   computed by reHC-* (output file);
+-  `--assumptions` (short form `-a`), that specifies an _optional_ file
+   that contains additional assumptions that *must* be satisfied by the
+   resulting haplotype configuration. Assumptions are specified one for
+   each row with the following syntax:
+
+        <variable kind> <individual id> <locus> <value>
+
+   Where `<variable kind>` is one of `sp` (paternal source), `sm`
+   (maternal source), `p` (paternal allele), `m` (maternal allele), `rp`
+   (paternal recombination), `rm` (maternal recombination), and `e`
+   (genotyping error), `<individual id>` is the numerical identifier of
+   the individual (1-based), `<locus>` is the genotype locus, and
+   `<value>` is the boolean value (0/1) that the variable must have.
+
 
 For the `--create-read` mode, the command-line that has to be used to
 invoke the external SAT must be specified by using the `--sat-cmdline`
 (short form `-c`) program option.
 The strings `%%INPUT%%` and `%%OUTPUT%%` are placeholders for,
 respectively, the input and the output files of the SAT solver.
+If the SAT solver can read the SAT instance from its standard input,
+then it is possible to write the SAT instance to the solver's standard
+input by specifying the option `--pipe`.
+In this case, the placeholder `%%INPUT%%` will _not_ be used.
 
 
 ### Options for Recombinations and Errors ###
@@ -230,7 +248,9 @@ Three options regulates the GZip compression:
    that are written by reHC-* (currently the `--sat` and `--haplotypes`
    files);
 -  `--compress` (short form `-z`), which is equivalent to specify both
-   `--compress-input` and `--compress-output`.
+   `--compress-input` and `--compress-output`;
+-  `--compress-sat`, which enables the GZip compression only for the
+   file that contains the computed SAT instance.
 
 Temporary files of the `--create-read` mode are automatically removed by
 default.
@@ -274,6 +294,97 @@ invocation of the SAT solver:
           -p genotyped-pedigree.txt  \
           -h haplotype-configuration.txt  \
           -c "./external-sat-solver %%INPUT%% %%OUTPUT%%"
+
+Or, if the SAT solver reads the SAT instance from its standard input:
+
+    $ ./bin/reHCstar -3  \
+          -p genotyped-pedigree.txt  \
+          -h haplotype-configuration.txt  \
+          --pipe  \
+          -c "./external-sat-solver %%OUTPUT%%"
+
+
+
+## Optimization Version ##
+
+reHC-* also includes a program that uses the basic `reHCstar` executable
+in order to achieve two different aims:
+
+-  finding (by a bisect-like search) the haplotype configuration that
+   induces the minimum number of recombinations;
+-  splitting long input genotypes into smaller overlapping blocks on
+   which a partial haplotype configuration is computed independently and
+   then used to reconstruct the complete haplotype configuration.
+
+Please notice that the optimality of the solution (in term of number of
+recombinations) is guaranteed if the genotypes are _not_ split into
+smaller blocks.
+
+These functionalities are provided by the program `reHCstar-mgr.py`
+written in [Python](http://www.python.org) version 3 and later.
+
+`reHCstar-mgr.py` requires two parameters, `-p` and `-r`, that specify,
+respectively, the file containing the input genotyped pedigree and the
+file on which the computed haplotype configuration will be saved.
+
+By default, `reHCstar-mgr.py` invokes the `reHCstar` executable in the
+current directory using the internal SAT solver mode (option
+`--solve-internal` described above).
+To change the default, the complete command line must be provided as
+argument of the program option `--cmd` and must contain the following
+three placeholders `{pedigree}`, `{haplotypes}`, and `{assumptions}`
+that will be replaced, respectively, with the input pedigree file, the
+output haplotype configuration file, and the input additional assumption
+file.
+For example, the default value of the `--cmd` option (i.e. the default
+command line) is:
+
+    ./reHCstar -4 -p "{pedigree}" -h "{haplotypes}" -a "{assumptions}"
+
+The final command line used to invoke the `reHCstar` executable is
+composed by concatenating the argument of the previous option with the
+argument of a second option, `--cmd-rec`, which specifies the options
+(of `reHCstar`) that regulates the maximum number of recombinations.
+In particular, the argument must include the placeholder `{number}`
+which will be replaced before invocation with the actual maximum number
+of recombinations.
+For example, the default value of the `--cmd-rec` option is:
+
+    --global-recomb --global-recomb-number "{number}"
+
+The subdivision of the input genotypes in (smaller) overlapping blocks
+is regulated by the following two options: `--block-length` (short form
+`-l`, default `50`) and `--lookahead-length` (short form `-a`,
+default `0`).
+The first option specifies the non-overlapping (maximum) length of each
+block which the genotypes are divided into, while the second option
+specifies the number of loci (in addition to a single fixed locus) which
+two consecutive blocks overlap on.
+In other words, a single block can be considered as composed by three
+parts: the first part spans `block-length` loci, the second is composed
+by a single locus, and the third (optional) part spans
+`lookahead-length` loci.
+(Hence, the total length of a block is `block-length` + `1` +
+`lookahead-length`.)
+The second part of a block always overlaps with the first locus of the
+first part of the next genotype block.
+Moreover the haplotype configuration computed on this locus during the
+solution of the "current" block is used as assumptions during the
+solution of the next block (thus coincide).
+The third part of a block, the "look-ahead" part, if it is present
+overlaps with the next block starting from its second locus.
+This part is used to compute a haplotype configuration of the "current"
+block, but the solution is then discarded when the next block is
+considered (thus it may not coincide).
+Its purpose is to provide a hint of the structure of the next block and
+it should be particularly useful when the proportion of missing
+genotypes is relevant, since when the overlapping locus has many missing
+genotypes, the solution of the current block could impute the genotypes
+in a way that is locally optimal, but globally sub-optimal.
+
+Please notice that `reHCstar-mgr.py` finds a solution that requires the
+minimum number of recombinations only if the genotypes are *not* divided
+into blocks.
 
 
 
