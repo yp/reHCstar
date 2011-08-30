@@ -24,6 +24,13 @@ is then solved by a SAT solver.
 A haplotype configuration is finally recovered from the satisfying
 assignment.
 
+The algorithm is described in this technical report:  
+Yuri Pirola, Gianluca Della Vedova, Stefano Biffani, Alessandra Stella,
+and Paola Bonizzoni.
+_Haplotype Inference on Pedigrees with Recombinations, Errors, and
+Missing Genotypes via SAT solvers_.
+CoRR abs/1107.3724 (2011).
+[Link](http://arxiv.org/abs/1107.3724)
 
 
 ## Download and Installation ##
