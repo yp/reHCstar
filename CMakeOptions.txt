@@ -7,11 +7,6 @@
 ## Uncomment to disable xor-clauses
 # add_definitions("-DAVOID_XOR_CLAUSES")
 
-option(ENABLE_TESTS
-  "Enable unit tests (effective only in DEBUG builds and if Google Test has been found)."
-  OFF
-)
-
 option(INTEGRATE_SAT_SOLVER
   "Integrate a SAT solver into ZRHCstar."
   ON
@@ -37,5 +32,18 @@ if (INTEGRATE_SAT_SOLVER)
      "Use MiniSat."
      OFF
    )
+
+   ## ####################
+   ##
+   ## Specific options for the solvers
+   ##
+   ## ####################
+
+   ## Solver: CryptoMiniSat
+
+   ### Uncomment the following to (try to) lower the memory usage
+   ### (speed will be affected)
+   # add_definitions("-DTRY_LOW_MEMORY_USAGE")
+
 
 endif()

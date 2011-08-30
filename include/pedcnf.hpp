@@ -47,6 +47,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <deque>
 #include <ostream>
 
 #include <boost/tuple/tuple.hpp>
@@ -108,9 +109,9 @@ public:
 #endif
 
 #ifndef ONLY_INTERNAL_SAT_SOLVER
-  typedef std::set< clause_t > clauses_t;
+  typedef std::deque< clause_t > clauses_t;
 #ifndef AVOID_XOR_CLAUSES
-  typedef std::set< xor_clause_t > xor_clauses_t;
+  typedef std::deque< xor_clause_t > xor_clauses_t;
 #endif
 #endif // ONLY_INTERNAL_SAT_SOLVER
 

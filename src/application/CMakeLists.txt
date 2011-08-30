@@ -12,10 +12,10 @@ file (GLOB_RECURSE project_SRCS
 set (project_BIN ${PROJECT_NAME})
 
 set (project_LIBS
-  ${sat_LIBS}
   ${Boost_LIBRARIES}
   ${Log4Cxx_LIBRARIES}
   ${project_base_LIB}
+  ${sat_LIBS}
 )
 
 add_executable(${project_BIN}

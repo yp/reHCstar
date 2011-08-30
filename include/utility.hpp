@@ -89,26 +89,36 @@ public:
   }
 };
 
-template <int i, int default_index, class derived_enum>
+class generic_raise_error_class_t
+  :public log_able_t<generic_raise_error_class_t>
+{
+public:
+  void raise_error(const std::string& reason="no detail specified") {
+	 L_FATAL("Generic error. Reason: " << reason << ". Exiting...");
+	 MY_FAIL;
+  };
+};
+
+template <int i, int default_index, class derived_enum, class raise_error_class_t>
 class static_str_switch {
 public:
-  static inline derived_enum EXEC(const std::string& s) {
+  static inline derived_enum EXEC(const std::string& s, raise_error_class_t& err) {
 	 if (s == derived_enum::str_values[i]) {
 		return derived_enum::enum_values[i];
 	 } else {
-		return static_str_switch< i-1, default_index, derived_enum>::EXEC(s);
+		return static_str_switch< i-1, default_index, derived_enum, raise_error_class_t>::EXEC(s, err);
 	 }
   }
 };
 
-template <int default_index, class derived_enum>
-class static_str_switch<0, default_index, derived_enum> {
+template <int default_index, class derived_enum, class raise_error_class_t>
+class static_str_switch<0, default_index, derived_enum, raise_error_class_t> {
 public:
-  static inline derived_enum EXEC(const std::string& s) {
+  static inline derived_enum EXEC(const std::string& s, raise_error_class_t& err) {
 	 if (s == derived_enum::str_values[0]) {
 		return derived_enum::enum_values[0];
 	 } else {
-		MY_FAIL;
+		err.raise_error("string >" + s + "< not recognized");
 		return derived_enum::enum_values[default_index];
 	 }
   }
@@ -147,6 +157,18 @@ private:
   int _d;
 
 protected:
+
+  class raise_input_error_t {
+  private:
+	 std::istream& in;
+  public:
+	 raise_input_error_t(std::istream& _in)
+		  :in(_in)
+	 {};
+	 void raise_error(const std::string& reason="no deatail provided") {
+		in.setstate(std::ios::failbit);
+	 };
+  };
 
   enum_like_t(const size_t d)
 		:_d(d)
@@ -195,11 +217,12 @@ public:
   }
 
   friend std::istream& operator>>(std::istream& in, derived_enum& val) {
-	 char h;
+	 std::string h;
+	 typename derived_enum::raise_input_error_t err(in);
 	 if (in >> h) {
-		val= static_str_switch< n_values-1, default_index, derived_enum>::EXEC(std::string(1,h));
+		val= static_str_switch< n_values-1, default_index, derived_enum, raise_input_error_t>::EXEC(h, err);
 	 } else {
-		MY_FAIL;
+		err.raise_error("generic error");
 		val= derived_enum::enum_values[default_index];
 	 }
 	 return in;
@@ -308,6 +331,23 @@ public:
 	 } else {
 		os= new boost::iostreams::stream<boost::iostreams::file_descriptor_sink>(sink);
 	 }
+	 postream pos(os);
+	 return pos;
+  };
+
+  postream get_ostream_from_file(FILE* file) const {
+	 MY_ASSERT(file != NULL);
+	 const int fd = fileno(file);
+	 if (fd == -1) {
+		L_ERROR("Impossible to open a stream associated to the given C-file.");
+		throw std::logic_error(std::string("Impossible to open a stream associated to the given C-file."));
+	 }
+	 boost::iostreams::file_descriptor_sink sink(fd);
+	 if (!sink.is_open()) {
+		L_ERROR("Impossible to open the given C-file.");
+		throw std::logic_error(std::string("Impossible to open the given C-file."));
+	 }
+	 std::ostream* os= new boost::iostreams::stream<boost::iostreams::file_descriptor_sink>(sink);
 	 postream pos(os);
 	 return pos;
   };

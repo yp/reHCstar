@@ -3,7 +3,7 @@
  *                              reHC-*
  * Haplotyping with Recombinations, Errors, and Missing Genotypes
  *
- * Copyright (C) 2010  Yuri Pirola <yuri.pirola(-at-)gmail.com>
+ * Copyright (C) 2010,2011  Yuri Pirola <yuri.pirola(-at-)gmail.com>
  *
  * Distributed under the terms of the GNU General Public License (GPL)
  *
@@ -25,19 +25,19 @@
  * along with reHC-*.  If not, see <http://www.gnu.org/licenses/>.
  *
  **/
-#include <gtest/gtest.h>
+#ifndef __ASSUMPTIONS_HPP__
+#define __ASSUMPTIONS_HPP__
 
+
+#include "pedcnf.hpp"
 #include "pedigree.hpp"
+#include "io-pedigree.hpp"
 
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <algorithm>
+#include <istream>
 
-TEST(multipedigree, creation) {
-  multifamily_pedigree_t multip(4);
-  multifamily_pedigree_t::pedigree_t& ped0= multip.add_family();
-  multifamily_pedigree_t::pedigree_t& ped1= multip.add_family();
-  ASSERT_EQ(&ped0, &multip.families()[0]);
-  ASSERT_EQ(&ped1, &multip.families()[1]);
-}
+void
+add_assumptions(std::istream& is,
+					 const plink_reader_t<>::multifamily_pedigree_t::pedigree_t& ped,
+					 pedcnf_t& cnf);
+
+#endif

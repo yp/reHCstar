@@ -291,14 +291,14 @@ pedcnf_t::clauses_to_dimacs_format(std::ostream& out,
   if (_no_of_xor_clauses > 0)
 	 out << "c extended syntax: or- and xor-clauses" << std::endl;
 #endif // AVOID_XOR_CLAUSES
-  out << "c" << std::endl;
-  size_t i= 1;
-  for (pedcnf_t::varvec_t::const_iterator it= _vars.begin();
-		 it != _vars.end();
-		 ++it, ++i) {
-	 out << "c v " << std::setw(7) << i << " " << *it << std::endl;
-  }
-  out << "c" << std::endl;
+  // out << "c" << std::endl;
+  // size_t i= 1;
+  // for (pedcnf_t::varvec_t::const_iterator it= _vars.begin();
+  // 		 it != _vars.end();
+  // 		 ++it, ++i) {
+  // 	 out << "c v " << std::setw(7) << i << " " << *it << std::endl;
+  // }
+  // out << "c" << std::endl;
   size_t n_clauses= _no_of_clauses;
 #ifndef AVOID_XOR_CLAUSES
   n_clauses += _no_of_xor_clauses;
@@ -307,15 +307,16 @@ pedcnf_t::clauses_to_dimacs_format(std::ostream& out,
   for (clauses_t::const_iterator it= _clauses.begin();
 		 it != _clauses.end();
 		 ++it) {
-	 out << *it << std::endl;
+	 out << *it << '\n';
   }
 #ifndef AVOID_XOR_CLAUSES
   for (xor_clauses_t::const_iterator it= _xor_clauses.begin();
 		 it != _xor_clauses.end();
 		 ++it) {
-	 out << "x" << *it << std::endl;
+	 out << "x" << *it << '\n';
   }
 #endif // AVOID_XOR_CLAUSES
+  out.flush();
   return out;
 };
 
@@ -418,16 +419,17 @@ operator<<(std::ostream& out, const pedcnf_t::clause_t& clause) {
   for (pedcnf_t::clause_t::const_iterator it= clause.begin();
 		 it != clause.end();
 		 ++it) {
-	 out << std::setw(10) << *it << " ";
+//	 out << std::setw(10) << *it << " ";
+	 out << *it << " ";
   }
-  out << "     0";
+  out << "0";
   return out;
 };
 
 void
 pedcnf_t::add_clause(const clause_t& clause) {
 #ifndef ONLY_INTERNAL_SAT_SOLVER
-  _clauses.insert(clause);
+  _clauses.push_back(clause);
 #endif
 #ifdef INTERNAL_SAT_SOLVER
   _solver.add_clause(clause);
@@ -439,7 +441,7 @@ pedcnf_t::add_clause(const clause_t& clause) {
 void
 pedcnf_t::add_xor_clause(const xor_clause_t& clause) {
 #ifndef ONLY_INTERNAL_SAT_SOLVER
-  _xor_clauses.insert(clause);
+  _xor_clauses.push_back(clause);
 #endif
 #ifdef INTERNAL_SAT_SOLVER
   _solver.add_xor_clause(clause);

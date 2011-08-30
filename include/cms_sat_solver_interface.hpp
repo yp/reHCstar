@@ -64,12 +64,15 @@ public:
 		:_solver(new Solver()), _solved(false), _sat(false)
   {
 	 SolverConf& conf= _solver->conf;
-	 conf.verbosity= 1;
+	 conf.verbosity= 3;
 	 conf.doFindXors= false;
 	 conf.doFindEqLits= false;
 	 conf.doRegFindEqLits= false;
 	 conf.libraryUsage= true;
 	 conf.restrictPickBranch= 0;
+#ifdef TRY_LOW_MEMORY_USAGE
+	 conf.doSatELite= false;
+#endif
   };
 
   ~SAT_solver_iface_t() {

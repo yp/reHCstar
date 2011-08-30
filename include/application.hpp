@@ -160,7 +160,9 @@ public:
 		DEBUG("Parsing program parameters...");
 // Parse options
 		po::variables_map vm;
-		po::options_description desc("Help options");
+		po::options_description desc("Help Options",
+											  po::options_description::m_default_line_length,
+											  po::options_description::m_default_line_length-16);
 		desc.add_options()
 		  ("help,?", po::bool_switch(),
 			"Produce (this) help message.");
