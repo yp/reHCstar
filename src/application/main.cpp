@@ -457,7 +457,7 @@ protected:
 			 rehcstar.create_SAT_instance_from_pedigree(*ped_is, *sat_os,
 																	  vector<string>(),
 																	  ped, cnf);
-			 INFO("Finished creating and writing the SAT instance. Waiting the solver...");
+			 INFO("Finished creating and writing the SAT instance. Waiting for the solver...");
 			 ret_value= pclose(sat_pipe);
 		  }
 // ** USE "PIPE" ** END
