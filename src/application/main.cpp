@@ -33,6 +33,7 @@
 #include "log.hpp"
 #include "assertion.hpp"
 #include "utility.hpp"
+#include "timelimit.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -200,9 +201,18 @@ protected:
 		 "Windows overlap each other by half their length.")
 		;
 
+	 po::options_description exec_opt("Execution Management Options",
+												 po::options_description::m_default_line_length,
+												 po::options_description::m_default_line_length-16);
+	 exec_opt.add_options()
+		("time-limit", po::value< unsigned int >()->default_value(0),
+		 "Maximum (approximated) execution time in seconds (0=no limit).")
+		;
+
 	 modes.add(files);
 	 modes.add(errors);
 	 modes.add(recombs);
+	 modes.add(exec_opt);
 	 return modes;
   };
 
@@ -299,6 +309,11 @@ protected:
 
 	 rehcstar_t rehcstar;
 	 rehcstar.prepare_program_options(vm);
+
+// Check if a time-limit is specified
+	 if (vm["time-limit"].as<unsigned int>()>0) {
+		register_time_limit(vm["time-limit"].as<unsigned int>());
+	 }
 
 // Dispatch the work depending on the program parameters
 #ifndef ONLY_INTERNAL_SAT_SOLVER
