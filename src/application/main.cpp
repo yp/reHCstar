@@ -359,17 +359,21 @@ protected:
 		file_utility::postream hap_os=
 		  file_utility::get_file_utility().
 		  get_ofstream(vm["haplotypes"].as<string>(), out_compress);
-		bool is_rehc=
+		boost::tribool is_rehc=
 		  rehcstar.compute_HC_from_SAT_results(*ped_is, *res_is, *hap_os);
 
 		if (is_rehc) {
 		  INFO("(r,e)-Haplotype Configuration successfully "
 				 "computed and saved.");
 		  main_ris= EXIT_SUCCESS;
-		} else {
+		} else if (!is_rehc) {
 		  WARN("No (r,e)-Haplotype Configuration can exist. "
 				 "Exiting without haplotype configuration.");
 		  main_ris= EXIT_NO_reHC;
+		} else {
+		  WARN("We do NOT know if a (r,e)-Haplotype Configuration can exist. "
+				 "The SAT solver did not give a valid result.");
+		  main_ris= EXIT_FAILURE;
 		}
 
 	 } else if (vm["create-read"].as<bool>()) {
@@ -475,8 +479,9 @@ protected:
 		  file_utility::postream hap_os=
 			 file_utility::get_file_utility().
 			 get_ofstream(vm["haplotypes"].as<string>(), out_compress);
-		  bool is_rehc= rehcstar.compute_HC_from_SAT_results(ped, cnf,
-																			  *res_is, *hap_os);
+		  boost::tribool
+			 is_rehc= rehcstar.compute_HC_from_SAT_results(ped, cnf,
+																		  *res_is, *hap_os);
 
 		  if (!vm["keep"].as<bool>()) {
 			 DEBUG("Removing temporary files...");
@@ -497,10 +502,14 @@ protected:
 			 INFO("(r,e)-Haplotype Configuration successfully "
 					"computed and saved.");
 			 main_ris= EXIT_SUCCESS;
-		  } else {
+		  } else if (!is_rehc) {
 			 WARN("No (r,e)-Haplotype Configuration can exist. "
 					"Exiting without haplotype configuration.");
 			 main_ris= EXIT_NO_reHC;
+		  } else {
+			 WARN("We do NOT know if a (r,e)-Haplotype Configuration can exist. "
+					"The SAT solver did not give a valid result.");
+			 main_ris= EXIT_FAILURE;
 		  }
 		}
 

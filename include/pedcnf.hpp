@@ -52,6 +52,7 @@
 
 #include <boost/tuple/tuple.hpp>
 #include <boost/tuple/tuple_comparison.hpp>
+#include <boost/logic/tribool.hpp>
 
 
 class ped_var_kind
@@ -331,7 +332,7 @@ public:
 // Read the assignment from a file like the following one:
 // SAT/UNSAT
 // 1 -2 3 4 0
-  bool assignment_from_minisat_format(std::istream& in);
+  boost::tribool assignment_from_minisat_format(std::istream& in);
 
 
 #ifdef INTERNAL_SAT_SOLVER
