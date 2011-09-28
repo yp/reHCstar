@@ -104,9 +104,10 @@ def parse_command_line():
                          metavar="CMD-LINE")
     cmd_group.add_option("--cmd-rec",
                          action="store", dest="cmdrec", type="string",
-                         default="--global-recomb --global-recomb-number \"{number}\"",
+                         default="--global-recomb --global-recomb-number \"{number}\" --global-recomb-min-number \"{min_number}\"",
                          help="the options of the 'reHCstar' program used to specify "
-                         "the maximum number of RECOMBINATIONS  (default: %default)",
+                         "the maximum (and optionally minimum) number of "
+                         "RECOMBINATIONS  (default: %default)",
                          metavar="PROGR-OPT")
     parser.add_option_group(cmd_group)
 
@@ -249,7 +250,7 @@ def read_and_process_partial_hc(haplotypes_filename, pedigree, complete_haplotyp
 def basic_exec_reHCstar(pedigree_filename,
                         haplotypes_filename,
                         assumptions_filename,
-                        max_recombs,
+                        min_recombs, max_recombs,
                         cmd_templ):
     rehcstar_success= False
     terminate= False
@@ -259,7 +260,7 @@ def basic_exec_reHCstar(pedigree_filename,
     cmd= []
     try:
         if max_recombs>0:
-            full_cmd_str+= " " + cmd_templ['rec'].format(number= str(max_recombs))
+            full_cmd_str+= " " + cmd_templ['rec'].format(number= str(max_recombs), min_number= str(min_recombs+1))
         cmd= shlex.split(full_cmd_str)
         logging.info("Invoking >%s<...", " ".join(cmd))
         retcode = subprocess.call(cmd, shell=False)
@@ -277,6 +278,7 @@ def exec_reHCstar(pedigree_filename, haplotypes_filename, assumptions_filename,
                   pedigree, complete_haplotypes, fixed_index):
     rehcstar_success= False
     terminate= False
+    min_recombs= -1
     max_recombs= 0
     logging.info("Trying to solve the instance in file '%s'.", pedigree_filename)
     logging.info("Step 1. Searching an upper bound on the number of recombinations...")
@@ -286,7 +288,8 @@ def exec_reHCstar(pedigree_filename, haplotypes_filename, assumptions_filename,
         rehcstar_success= basic_exec_reHCstar(pedigree_filename,
                                               haplotypes_filename,
                                               assumptions_filename,
-                                              max_recombs, cmd)
+                                              min_recombs, max_recombs,
+                                              cmd)
         if rehcstar_success:
             logging.info("Step 1. Found a solution with at most %d recombinations.", max_recombs)
             new_haplotypes_filename="{}-success-{}".format(haplotypes_filename, str(os.getpid()))
@@ -299,24 +302,25 @@ def exec_reHCstar(pedigree_filename, haplotypes_filename, assumptions_filename,
             else:
                 logging.debug("Step 1. Solution not found yet. Increasing the maximum "
                               "number of recombinations.")
-                max_recombs=2*(max_recombs+1)-1
+                min_recombs= max_recombs
+                max_recombs= 2*(max_recombs+1)-1
 
     if rehcstar_success:
         if max_recombs == 0:
             logging.info("Step 2. A solution without recombinations has been found. It is optimal, thus bisection is skipped...")
         else:
             # Read the haplotype configuration and compute the real upper-bound
-            lb= ((max_recombs+1)/2)-1
+            lb= min_recombs
             ub= read_and_process_partial_hc(new_haplotypes_filename, pedigree, complete_haplotypes, fixed_index)
             logging.info("Step 2. Performing a bisection to find an optimal solution...")
             while lb+1 < ub:
                 mid= math.floor((lb+ub)/2)
-                logging.debug("Step 2. Bisecting interval (%d-%d]", lb, ub)
-                logging.debug("Step 2. Trying with at most %d recombinations.", mid)
+                logging.info("Step 2. Bisecting interval (%d-%d]", lb, ub)
+                logging.info("Step 2. Trying with at most %d recombinations.", mid)
                 rehcstar_success= basic_exec_reHCstar(pedigree_filename,
                                                       haplotypes_filename,
                                                       assumptions_filename,
-                                                      mid, cmd)
+                                                      lb, mid, cmd)
                 if rehcstar_success:
                     logging.debug("Step 2. Found a solution with at most %d recombinations.", mid)
                     new_haplotypes_filename="{}-success-{}".format(haplotypes_filename, str(os.getpid()))
@@ -388,6 +392,11 @@ if not '{number}' in options.cmdrec:
                   "Given: '%s'",
                   options.cmdrec)
     sys.exit(2)
+if not '{min_number}' in options.cmdrec:
+    logging.warn("The options do NOT include the placeholder '{min_number}' "
+                 "for lower bounding the number of recombinations. "
+                 "Given: '%s'",
+                  options.cmdrec)
 cmd['cmd']= options.cmd
 cmd['rec']= options.cmdrec
 
