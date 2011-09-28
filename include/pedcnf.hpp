@@ -365,6 +365,11 @@ add_card_constraint_less_or_equal_than(pedcnf_t& cnf,
 													const size_t k);
 
 void
+add_card_constraint_between(pedcnf_t& cnf,
+									 const std::vector<var_t>& in_vars,
+									 const size_t k1, const size_t k2);
+
+void
 add_uniform_card_constraint_less_or_equal_than(pedcnf_t& cnf,
 															  const std::vector<var_t>& in_vars,
 															  const size_t window_size,

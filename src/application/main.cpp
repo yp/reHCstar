@@ -181,6 +181,13 @@ protected:
 		("global-recomb-number", po::value< unsigned int >()->default_value(1),
 		 "Maximum number of recombinations in all the genotypes "
 		 "(used only if '--global-recomb' is specified, cannot be used with '--global-recomb-rate').")
+		("global-recomb-min-number", po::value< unsigned int >()->default_value(0),
+		 "Minimum number of recombinations in all the genotypes "
+		 "(used only if '--global-recomb' is specified, cannot be used with '--global-recomb-rate').\n"
+		 "NOTE: This lower bound is not strictly enforced, since the SAT solver could compute a "
+		 "solution with unnecessary recombinations. This option should be used to improve the "
+		 "efficiency of the search of the optimum and should be set to a value such that "
+		 "a solution with this number of recombinations does not exist.")
 		("individual-recomb", po::bool_switch()->default_value(false),
 		 "Enable INDIVIDUAL recombination handling (i.e., the recombination rate in each genotype is "
 		 "less than or equal to the specified recombination rate, computed over *ALL* loci).")
@@ -257,9 +264,19 @@ protected:
 	 option_dependency(vm, "error-window-length", "uniform-error");
 	 option_dependency(vm, "global-recomb-rate", "global-recomb");
 	 option_dependency(vm, "global-recomb-number", "global-recomb");
+	 option_dependency(vm, "global-recomb-min-number", "global-recomb");
+	 conflicting_options(vm, "global-recomb-rate", "global-recomb-number");
+	 conflicting_options(vm, "global-recomb-rate", "global-recomb-min-number");
 	 option_dependency(vm, "individual-recomb-rate", "individual-recomb");
 	 option_dependency(vm, "max-recombs-in-window", "uniform-recomb");
 	 option_dependency(vm, "recomb-window-length", "uniform-recomb");
+	 if (vm["global-recomb"].as<bool>()) {
+		const unsigned int rmin= vm["global-recomb-min-number"].as<unsigned int>();
+		const unsigned int rmax= vm["global-recomb-number"].as<unsigned int>();
+		if (rmin > rmax) {
+		  throw std::logic_error(std::string("The minimum number of recombinations must be not greater than the maximum number of recombinations."));
+		}
+	 }
 	 if (vm["uniform-error"].as<bool>()) {
 		const unsigned int wlen= vm["error-window-length"].as<unsigned int>();
 		const unsigned int merr= vm["max-errors-in-window"].as<unsigned int>();

@@ -118,9 +118,17 @@ public:
 // have been specified
 		if (vm.count("global-recomb-number") && !vm["global-recomb-number"].defaulted()) {
 		  const unsigned int recomb_number= vm["global-recomb-number"].as<unsigned int>();
-		  L_INFO("Enabling *GLOBAL* recombination handling ("
-					"recomb-number=" << recomb_number << ")");
-		  global_recomb_constraints.add(new at_most_global_constraints_abs_t(recomb_number, "recombinations"));
+		  if (vm.count("global-recomb-min-number") && !vm["global-recomb-min-number"].defaulted()) {
+			 const unsigned int recomb_min_number= vm["global-recomb-min-number"].as<unsigned int>();
+			 L_INFO("Enabling *GLOBAL* recombination handling ("
+					  "recomb-number=" << recomb_number << ", "
+					  "recomb-min-number=" << recomb_min_number << ")");
+			 global_recomb_constraints.add(new interval_global_constraints_abs_t(recomb_min_number, recomb_number, "recombinations"));
+		  } else {
+			 L_INFO("Enabling *GLOBAL* recombination handling ("
+					  "recomb-number=" << recomb_number << ")");
+			 global_recomb_constraints.add(new at_most_global_constraints_abs_t(recomb_number, "recombinations"));
+		  }
 		} else {
 		  const double recomb_rate= vm["global-recomb-rate"].as<double>();
 		  L_INFO("Enabling *GLOBAL* recombination handling ("

@@ -224,6 +224,14 @@ Here `XX` is a number between `0.0` and `1.0` that represents the
 maximum number of recombinations *r* as a fraction of the total number
 of possible recombination loci, while `YY` is (directly) the maximum
 number of recombinations *r*.
+Moreover, if option `--global-recomb` is enabled and
+`--global-recomb-number` is used, it is also possible to search for a
+haplotype configuration with a given minimum number of recombinations by
+specifying the option `--global-recomb-min-number=ZZ`, where `ZZ` is the
+sought lower bound.
+This option should only be used to specify a lower bound that has been
+already proved since the resulting haplotype configuration could induce
+unnecessary recombination in order to satisfy the given lower bound.
 
 Similarly, to enable genotyping errors in the computed haplotype
 configuration, the program options `--global-error` and

@@ -104,6 +104,18 @@ at_most_global_constraints_abs_t::_handle_constraints(pedcnf_t& cnf,
 };
 
 void
+interval_global_constraints_abs_t::_handle_constraints(pedcnf_t& cnf,
+																		 const individuals_variables_t& variables) const {
+  individual_variables_t all_vars;
+  BOOST_FOREACH(const individual_variables_t& ivar, variables) {
+	 all_vars.insert(all_vars.end(), ivar.begin(), ivar.end());
+  }
+  INFO("Globally, number of " << _description << " between " << _vmin <<
+		 " and " << _vmax << " (over " << all_vars.size() << ")");
+  add_card_constraint_between(cnf, all_vars, _vmin, _vmax);
+};
+
+void
 at_most_windowed_constraints_t::_handle_constraints(pedcnf_t& cnf,
 																	 const individuals_variables_t& variables) const {
   BOOST_FOREACH(const individual_variables_t& ivar, variables) {
