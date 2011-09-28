@@ -68,8 +68,8 @@ protected:
   virtual po::options_description
   get_named_options() const {
 	 po::options_description modes("Program Modes",
-											 po::options_description::m_default_line_length,
-											 po::options_description::m_default_line_length-16);
+											 po::options_description::m_default_line_length+12,
+											 po::options_description::m_default_line_length-12);
 #ifndef ONLY_INTERNAL_SAT_SOLVER
 	 modes.add_options()
 		("create,1", po::bool_switch(),
@@ -85,8 +85,8 @@ protected:
 		 "Execute the integrated SAT solver.");
 #endif // INTERNAL_SAT_SOLVER
 	 po::options_description files("Input/Output",
-											 po::options_description::m_default_line_length,
-											 po::options_description::m_default_line_length-16);
+											 po::options_description::m_default_line_length+12,
+											 po::options_description::m_default_line_length-12);
 	 files.add_options()
 		("pedigree,p",
 		 po::value< std::string >()->default_value("pedigree.ped"),
@@ -110,7 +110,7 @@ protected:
 		 "File storing additional assumptions/constraints that must hold in the "
 		 "reconstructed haplotype configuration.\n"
 		 "Each assumption is in a single row composed by 4 white-spaced fields:\n"
-		 "\t<kind of variable> <individual index> <locus index> <bool value (0/1)>\n");
+		 "\t<kind of variable> <individual index> <locus index> <bool value (0/1)>");
 #ifndef ONLY_INTERNAL_SAT_SOLVER
 	 files.add_options()
 		("sat-cmdline,c",
@@ -138,13 +138,13 @@ protected:
 		 "Pipe the SAT instance to the external solver instead of using an intermediate file.");
 #endif // ONLY_INTERNAL_SAT_SOLVER
 	 po::options_description errors("Error Management Options",
-											  po::options_description::m_default_line_length,
-											  po::options_description::m_default_line_length-16);
+											  po::options_description::m_default_line_length+12,
+											  po::options_description::m_default_line_length-12);
 	 errors.add_options()
 		("global-error", po::bool_switch()->default_value(false),
 		 "Enable GLOBAL error handling (i.e., the global error rate in the whole pedigree is "
 		 "less than or equal to the specified error rate, computed over genotyped loci).")
-		("global-error-rate", po::value< double >()->default_value(0.03),
+		("global-error-rate", po::value< double >()->default_value(0.005),
 		 "Maximum error rate in all the genotypes, computed only over genotyped loci "
 		 "(used only if '--global-error' is specified, cannot be used with '--global-error-number').")
 		("global-error-number", po::value< unsigned int >()->default_value(1),
@@ -153,7 +153,7 @@ protected:
 		("individual-error", po::bool_switch()->default_value(false),
 		 "Enable INDIVIDUAL error handling (i.e., the error rate in each genotype is less than "
 		 "or equal to the specified error rate, computed over genotyped loci).")
-		("individual-error-rate", po::value< double >()->default_value(0.03),
+		("individual-error-rate", po::value< double >()->default_value(0.01),
 		 "Maximum error rate in each genotype, computed only over genotyped loci "
 		 "(used only if '--individual-error' is specified).")
 		("uniform-error", po::bool_switch()->default_value(false),
@@ -162,20 +162,20 @@ protected:
 		("max-errors-in-window", po::value< unsigned int >()->default_value(4),
 		 "Maximum number of errors in each window "
 		 "(used only if '--uniform-error' is specified).\n"
-		 "*MUST* be less than or equal to half window size.")
+		 "NOTE: It *must* be less than or equal to half window size.")
 		("error-window-length", po::value< unsigned int >()->default_value(16),
 		 "Number of typed loci that compose a window "
 		 "(used only if '--uniform-error' is specified).\n"
-		 "*MUST* be a power of 2 and *MUST* be greater than 2.\n"
+		 "NOTE: It *must* be a power of 2 and *must* be greater than 2.\n"
 		 "Windows overlap each other by half their length.");
 	 po::options_description recombs("Recombination Management Options",
-												po::options_description::m_default_line_length,
-												po::options_description::m_default_line_length-16);
+												po::options_description::m_default_line_length+12,
+												po::options_description::m_default_line_length-12);
 	 recombs.add_options()
 		("global-recomb", po::bool_switch()->default_value(false),
 		 "Enable GLOBAL recombination handling (i.e., the global recombination rate in the whole "
 		 "pedigree is less than or equal to the specified recombination rate, computed over *ALL* loci).")
-		("global-recomb-rate", po::value< double >()->default_value(0.03),
+		("global-recomb-rate", po::value< double >()->default_value(0.01),
 		 "Maximum recombination rate in all the genotypes "
 		 "(used only if '--global-recomb' is specified, cannot be used with '--global-recomb-number').")
 		("global-recomb-number", po::value< unsigned int >()->default_value(1),
@@ -191,7 +191,7 @@ protected:
 		("individual-recomb", po::bool_switch()->default_value(false),
 		 "Enable INDIVIDUAL recombination handling (i.e., the recombination rate in each genotype is "
 		 "less than or equal to the specified recombination rate, computed over *ALL* loci).")
-		("individual-recomb-rate", po::value< double >()->default_value(0.03),
+		("individual-recomb-rate", po::value< double >()->default_value(0.01),
 		 "Maximum recombination rate in each genotype "
 		 "(used only if '--individual-recomb' is specified).")
 		("uniform-recomb", po::bool_switch()->default_value(false),
@@ -200,17 +200,17 @@ protected:
 		("max-recombs-in-window", po::value< unsigned int >()->default_value(4),
 		 "Maximum number of recombinations in each window "
 		 "(used only if '--uniform-recomb' is specified).\n"
-		 "*MUST* be less than or equal to half window size.")
+		 "NOTE: It *must* be less than or equal to half window size.")
 		("recomb-window-length", po::value< unsigned int >()->default_value(16),
 		 "Number of loci that compose a window "
 		 "(used only if '--uniform-recomb' is specified).\n"
-		 "*MUST* be a power of 2 and *MUST* be greater than 2.\n"
+		 "NOTE: It *must* be a power of 2 and *must* be greater than 2.\n"
 		 "Windows overlap each other by half their length.")
 		;
 
 	 po::options_description exec_opt("Execution Management Options",
-												 po::options_description::m_default_line_length,
-												 po::options_description::m_default_line_length-16);
+												 po::options_description::m_default_line_length+12,
+												 po::options_description::m_default_line_length-12);
 	 exec_opt.add_options()
 		("time-limit", po::value< unsigned int >()->default_value(0),
 		 "Maximum (approximated) execution time in seconds (0=no limit).")
