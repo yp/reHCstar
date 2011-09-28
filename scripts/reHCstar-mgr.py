@@ -278,7 +278,6 @@ def exec_reHCstar(pedigree_filename, haplotypes_filename, assumptions_filename,
     rehcstar_success= False
     terminate= False
     max_recombs= 0
-    cmd_bin="./reHCstar"
     logging.info("Trying to solve the instance in file '%s'.", pedigree_filename)
     logging.info("Step 1. Searching an upper bound on the number of recombinations...")
     new_haplotypes_filename= haplotypes_filename
