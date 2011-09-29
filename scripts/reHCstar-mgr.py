@@ -29,7 +29,7 @@
 
 ##########
 #
-#  reHCstar-big.py
+#  reHCstar-mgr.py
 #
 #  A program that decomposes an instance with long genotypes is several fixed-length
 #  blocks that are solved by reHCstar and then recombined.
@@ -46,6 +46,7 @@ import shlex
 import subprocess
 import sys
 import time
+import resource
 
 gen2code= { '0 0': 0, '1 1': 1, '2 2': 2, '1 2': 3 }
 code2gen= { 0: '0 0', 1: '1 1', 2: '2 2', 3: '1 2' }
@@ -108,6 +109,12 @@ def parse_command_line():
                          help="the options of the 'reHCstar' program used to specify "
                          "the maximum (and optionally minimum) number of "
                          "RECOMBINATIONS  (default: %default)",
+                         metavar="PROGR-OPT")
+    cmd_group.add_option("--cmd-time",
+                         action="store", dest="cmdtime", type="string",
+                         default="--time-limit {time}",
+                         help="the option of the 'reHCstar' program used to specify "
+                         "the maximum CPU time (default: %default)",
                          metavar="PROGR-OPT")
     parser.add_option_group(cmd_group)
 
@@ -247,6 +254,18 @@ def read_and_process_partial_hc(haplotypes_filename, pedigree, complete_haplotyp
             tot_rec= tot_rec + n_rec
     return tot_rec
 
+def check_remaining_time():
+    time_limit= min(resource.getrlimit(resource.RLIMIT_CPU))
+    if time_limit<=0:
+        return -1
+    time_used= ( resource.getrusage(resource.RUSAGE_CHILDREN)[0] +
+                 resource.getrusage(resource.RUSAGE_SELF)[0] )
+    logging.debug("Used %.3f seconds so far.", time_used)
+    if time_used > time_limit:
+        logging.critical("Maximum CPU time exceeded. Used %.3f sec.  Given %d sec. Aborting...", time_used, time_limit)
+        sys.exit("Maximum CPU time exceeded. Used {} sec.   Given {} sec.".format(time_used, time_limit))
+    return max(time_limit - time_used, 1)
+
 def basic_exec_reHCstar(pedigree_filename,
                         haplotypes_filename,
                         assumptions_filename,
@@ -261,6 +280,9 @@ def basic_exec_reHCstar(pedigree_filename,
     try:
         if max_recombs>0:
             full_cmd_str+= " " + cmd_templ['rec'].format(number= str(max_recombs), min_number= str(min_recombs+1))
+        rem_time= check_remaining_time();
+        if rem_time>0:
+            full_cmd_str+= " " + cmd_templ['time'].format(time= str(int(rem_time)))
         cmd= shlex.split(full_cmd_str)
         logging.info("Invoking >%s<...", " ".join(cmd))
         retcode = subprocess.call(cmd, shell=False)
@@ -347,7 +369,7 @@ verbose2= options.verbose>1
 verbose3= options.verbose>2
 
 logging.basicConfig(level=log_level,
-                    format='%(levelname)5s [%(relativeCreated)15d] (%(filename)30s:%(lineno)-4d) - %(message)s',
+                    format='%(levelname)5.5s [%(relativeCreated)15d] (%(filename)30s:%(lineno)-4d) - %(message)s',
                     stream=sys.stderr)
 
 logging.info("reHCstar manager - started at %s", time.asctime())
@@ -397,16 +419,24 @@ if not '{min_number}' in options.cmdrec:
                  "for lower bounding the number of recombinations. "
                  "Given: '%s'",
                   options.cmdrec)
+if not '{time}' in options.cmdtime:
+    logging.warn("The options do NOT include the placeholder '{time}'. "
+                 "Time limit is *DISABLED*. "
+                 "Given: '%s'",
+                  options.cmdtime)
 cmd['cmd']= options.cmd
 cmd['rec']= options.cmdrec
-
+cmd['time']= options.cmdtime
 
 
 logging.info("CONFIGURATION:")
 logging.info("Input pedigree:       '%s'", options.pedigree)
 logging.info("Resulting haplotypes: '%s'", options.haplotypes)
-logging.info("Max. block length:     %d", options.length)
-logging.info("Lookahead length:      %d", options.lookahead)
+logging.info("Max. block length:     %4d", options.length)
+logging.info("Lookahead length:      %4d", options.lookahead)
+time_limit= min(resource.getrlimit(resource.RLIMIT_CPU))
+if time_limit >= 0:
+    logging.info("Time limit (secs):     %4d", time_limit)
 
 
 # Read the original pedigree
