@@ -52,7 +52,6 @@ void register_time_limit(unsigned long int secs) {
 	 struct rlimit cpu_limit;
 	 getrlimit(RLIMIT_CPU, &cpu_limit);
 	 cpu_limit.rlim_cur= secs;
-	 cpu_limit.rlim_max= secs+10;
 	 const int lim_res= setrlimit(RLIMIT_CPU, &cpu_limit);
 	 if (lim_res!=0) {
 		ROOT_ERROR("Failed to set the \"hard\" time-limit! "
