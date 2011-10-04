@@ -29,6 +29,7 @@
 #include "timelimit.hpp"
 
 #include "log.hpp"
+#include "utility.hpp"
 
 #include <csignal>
 #include <cstdlib>
@@ -36,7 +37,7 @@
 
 void exceeded_time_limit(int sig, siginfo_t * info, void * context) {
   ROOT_FATAL("Time limit reached. Exiting now...");
-  exit(EXIT_FAILURE);
+  exit(EXIT_reHC_ERROR);
 };
 
 void register_time_limit(unsigned long int secs) {

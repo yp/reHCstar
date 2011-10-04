@@ -42,11 +42,8 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 
-#ifndef EXIT_NO_reHC
-#define EXIT_NO_reHC (2)
-#endif
-
 BOOST_STATIC_ASSERT(EXIT_FAILURE != EXIT_NO_reHC);
+BOOST_STATIC_ASSERT(EXIT_FAILURE != EXIT_reHC_ERROR);
 
 using namespace std;
 
@@ -390,7 +387,7 @@ protected:
 		} else {
 		  WARN("We do NOT know if a (r,e)-Haplotype Configuration can exist. "
 				 "The SAT solver did not give a valid result.");
-		  main_ris= EXIT_FAILURE;
+		  main_ris= EXIT_reHC_ERROR;
 		}
 
 	 } else if (vm["create-read"].as<bool>()) {
@@ -526,7 +523,7 @@ protected:
 		  } else {
 			 WARN("We do NOT know if a (r,e)-Haplotype Configuration can exist. "
 					"The SAT solver did not give a valid result.");
-			 main_ris= EXIT_FAILURE;
+			 main_ris= EXIT_reHC_ERROR;
 		  }
 		}
 
@@ -568,7 +565,7 @@ protected:
 			 main_ris= EXIT_SUCCESS;
 		  } else {
 			 WARN("A Haplotype Configuration has been computed but it is not valid!!");
-			 main_ris= EXIT_NO_reHC;
+			 main_ris= EXIT_reHC_ERROR;
 		  }
 		} else {
 		  WARN("No (r,e)-Haplotype Configuration can exist. "

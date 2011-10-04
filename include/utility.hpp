@@ -56,6 +56,14 @@
 
 #include "assertion.hpp"
 
+#ifndef EXIT_NO_reHC
+#define EXIT_NO_reHC (2)
+#endif
+
+#ifndef EXIT_reHC_ERROR
+#define EXIT_reHC_ERROR (4)
+#endif
+
 
 template <typename T>
 std::string tostr(const std::vector<T>& x) {
