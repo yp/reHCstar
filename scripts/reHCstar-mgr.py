@@ -75,11 +75,26 @@ class TimeLimit:
     """A class representing a CPU running time limit."""
 
     def __init__(self, time_limit= None):
-        if time_limit is None:
-            self.limit= min(resource.getrlimit(resource.RLIMIT_CPU))
-            self.limit= None if self.limit<0 else self.limit
-        else:
+        # Compute the minimum system limit (None= unlimited)
+        (soft_sys_limit, hard_sys_limit)= resource.getrlimit(resource.RLIMIT_CPU)
+        assert soft_sys_limit != -1 or hard_sys_limit == -1
+        if hard_sys_limit == -1:
+            hard_sys_limit= soft_sys_limit
+        assert soft_sys_limit <= hard_sys_limit
+        sys_limit= None if soft_sys_limit <= 0 else soft_sys_limit
+        # Check the given time limit (None= unlimited)
+        if time_limit is not None and time_limit <= 0:
+            time_limit= None
+        assert sys_limit is None or sys_limit > 0
+        assert time_limit is None or time_limit > 0
+        if sys_limit is None:
             self.limit= time_limit
+        elif time_limit is None:
+            self.limit= sys_limit
+        else:
+            self.limit= min(time_limit, sys_limit)
+
+
 
     def get_remaining_time(self):
         time_used= ( resource.getrusage(resource.RUSAGE_CHILDREN)[0] +
@@ -413,6 +428,16 @@ def parse_command_line():
                          metavar="PROGR-OPT")
     parser.add_option_group(cmd_group)
 
+    oth_group= optparse.OptionGroup(parser, "Additional Options",
+                                    "Other options that specify how 'reHCstar-mgr' behaves.")
+    oth_group.add_option("--time-limit",
+                         action="store", dest="time_limit",
+                         type="int", default=0,
+                         help="the maximum CPU time (in seconds) for 'reHCstar-mgr' execution "
+                         "or '0' to disable  (default: %default)",
+                         metavar="SECONDS")
+    parser.add_option_group(oth_group)
+
     (options, args) = parser.parse_args()
 
     return options
@@ -468,6 +493,11 @@ def check_program_options(options):
                      "Given: '%s'",
                      options.cmdtime)
 
+    #  other options
+    if options.time_limit < 0:
+        logging.fatal("Running-time limit CANNOT be negative. Set to '0' to disable. "
+                      "Given '%d'. Aborting...", options.time_limit)
+        sys.exit(2)
 
 
 
@@ -720,7 +750,7 @@ logging.info("Input pedigree:       '%s'", options.pedigree)
 logging.info("Resulting haplotypes: '%s'", options.haplotypes)
 logging.info("Max. block length:     %4d", options.length)
 logging.info("Lookahead length:      %4d", options.lookahead)
-time_limit= TimeLimit(None)
+time_limit= TimeLimit(options.time_limit)
 logging.info("Time limit (secs):     %s",
              "{:4d}".format(time_limit.limit)
              if time_limit.limit is not None
