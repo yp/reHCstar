@@ -444,8 +444,23 @@ def parse_command_line():
                          metavar="PROGR-OPT")
     parser.add_option_group(cmd_group)
 
-    oth_group= optparse.OptionGroup(parser, "Additional Options",
+    oth_group= optparse.OptionGroup(parser, "Search Options",
                                     "Other options that specify how 'reHCstar-mgr' behaves.")
+    oth_group.add_option("--initial-recomb-lb",
+                         action="store", dest="recomb_lb",
+                         type="int", default=-1,
+                         help="an initial pre-determined lower bound of the number of "
+                         "recombinations (i.e. a haplotype configuration with that number "
+                         "of recombinations does not exist).  (default: %default)",
+                         metavar="int")
+    oth_group.add_option("--initial-recomb-ub",
+                         action="store", dest="recomb_ub",
+                         type="int", default=-1,
+                         help="an initial pre-determined upper bound of the number of "
+                         "recombinations (i.e. a haplotype configuration with that number "
+                         "of recombinations certainly exists) or '-1' to disable.  "
+                         "(default: %default)",
+                         metavar="int")
     oth_group.add_option("--time-limit",
                          action="store", dest="time_limit",
                          type="int", default=0,
@@ -510,6 +525,14 @@ def check_program_options(options):
                      options.cmdtime)
 
     #  other options
+    if options.recomb_lb < -1 or options.recomb_ub < -1:
+        logging.fatal("The initial bounds must be non-negative or equal to '-1' to disable. "
+                      "Given: (%d, %d]", options.recomb_lb, options.recomb_ub)
+        sys.exit(2)
+    if options.recomb_ub != -1 and options.recomb_ub <= options.recomb_lb:
+        logging.fatal("The initial upper bound must be greater than the initial lower bound. "
+                      "Given: (%d, %d]", options.recomb_lb, options.recomb_ub)
+        sys.exit(2)
     if options.time_limit < 0:
         logging.fatal("Running-time limit CANNOT be negative. Set to '0' to disable. "
                       "Given '%d'. Aborting...", options.time_limit)
@@ -634,7 +657,7 @@ def basic_exec_reHCstar(filenames,
 
 
 
-def exec_reHCstar(filenames, solution, chunk, cmd, time_limit):
+def exec_reHCstar(filenames, solution, chunk, bounds, cmd, time_limit):
     rehcstar_success= False
     terminate= False
     out_of_time= False
@@ -643,6 +666,18 @@ def exec_reHCstar(filenames, solution, chunk, cmd, time_limit):
     (c_start, c_stop, c_stop_la)= chunk
     fixed_index= c_start if c_start > 0 else None
     logging.info("Trying to solve the instance in file '%s'.", filenames['genotypes'])
+    ## Search and/or set the initial bounds
+    if bounds[0] != -1:
+        logging.info("Lower bound on the number of recombinations= %d (given).", bounds[0])
+        min_recombs= bounds[0]
+        max_recombs= min_recombs+1
+    if bounds[1] != -1:
+        logging.info("Upper bound on the number of recombinations= %d (given).", bounds[1])
+        max_recombs= bounds[1]
+    else:
+        max_recombs= int(math.ldexp(1, math.frexp(max_recombs)[1]))-1
+    assert min_recombs < max_recombs
+
     logging.info("Step 1. Searching an upper bound on the number of recombinations...")
     successful_haplotypes_filename= None
     chunk_info= {}
@@ -768,6 +803,7 @@ logging.info("Input pedigree:       '%s'", options.pedigree)
 logging.info("Resulting haplotypes: '%s'", options.haplotypes)
 logging.info("Max. block length:     %4d", options.length)
 logging.info("Lookahead length:      %4d", options.lookahead)
+logging.info("Recombination bounds: (%4d, %4d]", options.recomb_lb, options.recomb_ub)
 time_limit= TimeLimit(options.time_limit)
 logging.info("Time limit (secs):     %s",
              "{:4d}".format(time_limit.limit)
@@ -785,6 +821,7 @@ complete_sol.notes.extend([
         "OUTPUT HAPLOTYPES: '{}'".format(options.haplotypes),
         "MAX BLOCK LENGTH: '{}'".format(options.length),
         "LOOKAHEAD LENGTH: '{}'".format(options.lookahead),
+        "INITIAL RECOMBINATION BOUNDS: '({}, {}]'".format(options.recomb_lb, options.recomb_ub),
         "TIME LIMIT: '{}'".format("{}s".format(time_limit.limit)
                                   if time_limit.limit is not None
                                   else "unlimited") ])
@@ -794,6 +831,7 @@ assumptions= []
 suffix="{}-{}-pid{}".format(os.path.basename(options.pedigree),
                             os.path.basename(options.haplotypes),
                             os.getpid())
+bounds=(options.recomb_lb, options.recomb_ub)
 
 partial_solution_found= False
 for start in range(0, complete_sol.genotype_length, options.length):
@@ -819,7 +857,7 @@ for start in range(0, complete_sol.genotype_length, options.length):
     chunk= (start, good_stop, stop)
     filenames['haplotypes']= "tmp-haplotypes-{}-{}-{}".format(start, stop, suffix)
     (rehcstar_success, out_of_time)= exec_reHCstar(filenames, complete_sol,
-                                                   chunk,
+                                                   chunk, bounds,
                                                    cmd, time_limit)
     if rehcstar_success:
         logging.info("reHCstar has successfully computed %s solution on the chunk [%d-%d).",
