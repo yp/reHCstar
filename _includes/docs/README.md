@@ -9,7 +9,7 @@ by [Yuri Pirola](http://bimib.disco.unimib.it/index.php/Pirola_Yuri)
 
 
 Started: September 27, 2010  
-Current release: **1.1.0** (August 30, 2011)
+Current release: **1.2.0** (October 5, 2011)
 
 
 ------------------------------------------------------------------------
@@ -224,6 +224,14 @@ Here `XX` is a number between `0.0` and `1.0` that represents the
 maximum number of recombinations *r* as a fraction of the total number
 of possible recombination loci, while `YY` is (directly) the maximum
 number of recombinations *r*.
+Moreover, if option `--global-recomb` is enabled and
+`--global-recomb-number` is used, it is also possible to search for a
+haplotype configuration with a given minimum number of recombinations by
+specifying the option `--global-recomb-min-number=ZZ`, where `ZZ` is the
+sought lower bound.
+This option should only be used to specify a lower bound that has been
+already proved since the resulting haplotype configuration could induce
+unnecessary recombination in order to satisfy the given lower bound.
 
 Similarly, to enable genotyping errors in the computed haplotype
 configuration, the program options `--global-error` and
@@ -343,21 +351,46 @@ three placeholders `{pedigree}`, `{haplotypes}`, and `{assumptions}`
 that will be replaced, respectively, with the input pedigree file, the
 output haplotype configuration file, and the input additional assumption
 file.
+
 For example, the default value of the `--cmd` option (i.e. the default
 command line) is:
 
     ./reHCstar -4 -p "{pedigree}" -h "{haplotypes}" -a "{assumptions}"
 
-The final command line used to invoke the `reHCstar` executable is
+The command line used to invoke the `reHCstar` executable is
 composed by concatenating the argument of the previous option with the
-argument of a second option, `--cmd-rec`, which specifies the options
-(of `reHCstar`) that regulates the maximum number of recombinations.
+arguments of two other options: `--cmd-rec` and `--cmd-time`.
+The first one, `--cmd-rec`, specifies the options (of `reHCstar`) that
+regulates the maximum (and, possibly, minimum) number of recombinations.
 In particular, the argument must include the placeholder `{number}`
 which will be replaced before invocation with the actual maximum number
 of recombinations.
+Moreover, the argument may include the placeholder `{min_number}` which
+will be replaced before invocation with the largest lower bound on the
+number of recombinations computed so far.
+
 For example, the default value of the `--cmd-rec` option is:
 
-    --global-recomb --global-recomb-number "{number}"
+    --global-recomb --global-recomb-number "{number}" --global-recomb-min-number "{min_number}"
+
+The last option that regulates the final command line of `reHCstar` is
+`--cmd-time` and, if specified, must include the placeholder `{time}`
+which will be replaced before invocation with the maximum CPU time of
+the `reHCstar` execution (in seconds).
+An empty argument disables the running time limit control (albeit it
+could be enforced anyway via OS services).
+
+For example, the default value of the `--cmd-time` option is:
+
+    --time-limit {time}
+
+
+The following sections present the other main features of
+`reHCstar-mgr.py` while the full list of its options is available in the
+integrated help (option `-h`).
+
+
+### Automatic Genotype Partition ###
 
 The subdivision of the input genotypes in (smaller) overlapping blocks
 is regulated by the following two options: `--block-length` (short form
@@ -392,6 +425,42 @@ in a way that is locally optimal, but globally sub-optimal.
 Please notice that `reHCstar-mgr.py` finds a solution that requires the
 minimum number of recombinations only if the genotypes are *not* divided
 into blocks.
+
+
+### Initial Bounds on the Number of Recombinations ###
+
+Initial lower and upper bounds on the number of recombinations may be
+specified with the options `--initial-recomb-lb=XX` and
+`--initial-recomb-ub=YY`, respectively.
+The options' arguments, `XX` and `YY`, are non-negative numbers such
+that a haplotype configuration with `XX` recombinations does not exist
+and a haplotype configuration with `YY` recombinations certainly exists.
+The default value of both of them is `-1` which means that no bound is
+known/provided.
+These options could help to speed-up the process of searching the
+solution with the minimum number of recombinations since they provide
+the initial interval which the bisect-like search is performed on.
+
+
+### Running Time Management ###
+
+`reHCstar-mgr.py` provides basic tools for limiting its total running
+time (CPU time).
+In particular, option `--time-limit=SS` specifies the maximum running
+time of the program (`SS` seconds).
+For the proper functioning of this feature, the option `--cmd-time` must
+be valid.
+If the program execution exceeds the given time limit, then
+`reHCstar-mgr.py` tries to save the solution computed so far in a file
+whose name is the name specified by the option `--results` concatenated
+with the (fixed) extension `.part`.
+The saved solution could be _partial_ (if the original instance has been
+partitioned in blocks) and/or _suboptimal_ (if the minimum number of
+recombinations has not been computed within the time limit).
+The status of the solution is saved as a comment line in the same file
+of the solution.
+We suggest to enable the verbose mode (with `-v` or `-vv`) for getting
+additional information.
 
 
 
