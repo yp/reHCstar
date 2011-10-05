@@ -118,9 +118,17 @@ public:
 // have been specified
 		if (vm.count("global-recomb-number") && !vm["global-recomb-number"].defaulted()) {
 		  const unsigned int recomb_number= vm["global-recomb-number"].as<unsigned int>();
-		  L_INFO("Enabling *GLOBAL* recombination handling ("
-					"recomb-number=" << recomb_number << ")");
-		  global_recomb_constraints.add(new at_most_global_constraints_abs_t(recomb_number, "recombinations"));
+		  if (vm.count("global-recomb-min-number") && !vm["global-recomb-min-number"].defaulted()) {
+			 const unsigned int recomb_min_number= vm["global-recomb-min-number"].as<unsigned int>();
+			 L_INFO("Enabling *GLOBAL* recombination handling ("
+					  "recomb-number=" << recomb_number << ", "
+					  "recomb-min-number=" << recomb_min_number << ")");
+			 global_recomb_constraints.add(new interval_global_constraints_abs_t(recomb_min_number, recomb_number, "recombinations"));
+		  } else {
+			 L_INFO("Enabling *GLOBAL* recombination handling ("
+					  "recomb-number=" << recomb_number << ")");
+			 global_recomb_constraints.add(new at_most_global_constraints_abs_t(recomb_number, "recombinations"));
+		  }
 		} else {
 		  const double recomb_rate= vm["global-recomb-rate"].as<double>();
 		  L_INFO("Enabling *GLOBAL* recombination handling ("
@@ -234,10 +242,10 @@ public:
 	 L_INFO("Haplotype configuration successfully saved.");
   };
 
-  bool read_SAT_results(pedcnf_t& cnf,
+  boost::tribool read_SAT_results(pedcnf_t& cnf,
 								std::istream& res_is) const {
 	 L_INFO("Reading SAT results...");
-	 const bool is_sat= cnf.assignment_from_minisat_format(res_is);
+	 const boost::tribool is_sat= cnf.assignment_from_minisat_format(res_is);
 	 L_INFO("SAT results successfully read.");
 	 return is_sat;
   };
@@ -267,19 +275,21 @@ public:
 
 
 
-  bool compute_HC_from_SAT_results(std::istream& ped_is,
-											  std::istream& res_is,
-											  pedigree_t& ped,
-											  pedcnf_t& cnf) const {
+  boost::tribool
+  compute_HC_from_SAT_results(std::istream& ped_is,
+										std::istream& res_is,
+										pedigree_t& ped,
+										pedcnf_t& cnf) const {
 	 prepare_pedigree_and_sat(ped_is, ped, cnf);
 	 return compute_HC_from_SAT_results(res_is, ped, cnf);
   };
 
-  bool compute_HC_from_SAT_results(std::istream& res_is,
-											  pedigree_t& ped,
-											  pedcnf_t& cnf) const {
+  boost::tribool
+  compute_HC_from_SAT_results(std::istream& res_is,
+										pedigree_t& ped,
+										pedcnf_t& cnf) const {
 // Open the result file and read the assignment
-	 const bool is_sat= read_SAT_results(cnf, res_is);
+	 const boost::tribool is_sat= read_SAT_results(cnf, res_is);
 	 if (is_sat) {
 		L_INFO("The pedigree can be realized by a (r,e)-haplotype "
 				 "configuration.");
@@ -287,10 +297,14 @@ public:
 		if (!ok) {
 		  MY_FAIL;
 		}
-	 } else {
+	 } else if (!is_sat) {
 		L_INFO("The pedigree CANNOT be realized by a (r,e)-haplotype "
 			  "configuration.");
 // Do nothing
+	 } else {
+		L_WARN("We do NOT know if the pedigree can be realized by a "
+				 "(r,e)-haplotype configuration. "
+				 "The SAT solver did not give a valid result.")
 	 }
 	 return is_sat;
   }
@@ -329,12 +343,13 @@ public:
 
 #ifndef ONLY_INTERNAL_SAT_SOLVER
 
-  bool compute_HC_from_SAT_results(std::istream& ped_is,
-											  std::istream& res_is,
-											  std::ostream& hap_os) const {
+  boost::tribool
+  compute_HC_from_SAT_results(std::istream& ped_is,
+										std::istream& res_is,
+										std::ostream& hap_os) const {
 	 pedigree_t ped;
 	 pedcnf_t cnf;
-	 const bool is_sat=
+	 const boost::tribool is_sat=
 		compute_HC_from_SAT_results(ped_is, res_is,
 											 ped, cnf);
 	 if (is_sat) {
@@ -344,11 +359,12 @@ public:
 	 return is_sat;
   }
 
-  bool compute_HC_from_SAT_results(pedigree_t& ped,
-											  pedcnf_t& cnf,
-											  std::istream& res_is,
-											  std::ostream& hap_os) const {
-	 const bool is_sat=
+  boost::tribool
+  compute_HC_from_SAT_results(pedigree_t& ped,
+										pedcnf_t& cnf,
+										std::istream& res_is,
+										std::ostream& hap_os) const {
+	 const boost::tribool is_sat=
 		compute_HC_from_SAT_results(res_is,
 											 ped, cnf);
 	 if (is_sat) {

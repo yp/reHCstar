@@ -162,6 +162,24 @@ public:
 
 };
 
+class interval_global_constraints_abs_t
+  :public constraint_handler_t
+{
+private:
+  const unsigned int _vmin;
+  const unsigned int _vmax;
+
+  virtual void
+  _handle_constraints(pedcnf_t& cnf, const individuals_variables_t& variables) const;
+
+public:
+  interval_global_constraints_abs_t(const unsigned int vmin, const unsigned int vmax,
+												const std::string& description="true variables")
+		:constraint_handler_t(description), _vmin(vmin), _vmax(vmax)
+  {};
+
+};
+
 
 class at_most_windowed_constraints_t
   :public constraint_handler_t

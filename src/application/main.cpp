@@ -33,6 +33,7 @@
 #include "log.hpp"
 #include "assertion.hpp"
 #include "utility.hpp"
+#include "timelimit.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -41,11 +42,8 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 
-#ifndef EXIT_NO_reHC
-#define EXIT_NO_reHC (2)
-#endif
-
 BOOST_STATIC_ASSERT(EXIT_FAILURE != EXIT_NO_reHC);
+BOOST_STATIC_ASSERT(EXIT_FAILURE != EXIT_reHC_ERROR);
 
 using namespace std;
 
@@ -67,8 +65,8 @@ protected:
   virtual po::options_description
   get_named_options() const {
 	 po::options_description modes("Program Modes",
-											 po::options_description::m_default_line_length,
-											 po::options_description::m_default_line_length-16);
+											 po::options_description::m_default_line_length+12,
+											 po::options_description::m_default_line_length-12);
 #ifndef ONLY_INTERNAL_SAT_SOLVER
 	 modes.add_options()
 		("create,1", po::bool_switch(),
@@ -84,8 +82,8 @@ protected:
 		 "Execute the integrated SAT solver.");
 #endif // INTERNAL_SAT_SOLVER
 	 po::options_description files("Input/Output",
-											 po::options_description::m_default_line_length,
-											 po::options_description::m_default_line_length-16);
+											 po::options_description::m_default_line_length+12,
+											 po::options_description::m_default_line_length-12);
 	 files.add_options()
 		("pedigree,p",
 		 po::value< std::string >()->default_value("pedigree.ped"),
@@ -109,7 +107,7 @@ protected:
 		 "File storing additional assumptions/constraints that must hold in the "
 		 "reconstructed haplotype configuration.\n"
 		 "Each assumption is in a single row composed by 4 white-spaced fields:\n"
-		 "\t<kind of variable> <individual index> <locus index> <bool value (0/1)>\n");
+		 "\t<kind of variable> <individual index> <locus index> <bool value (0/1)>");
 #ifndef ONLY_INTERNAL_SAT_SOLVER
 	 files.add_options()
 		("sat-cmdline,c",
@@ -137,13 +135,13 @@ protected:
 		 "Pipe the SAT instance to the external solver instead of using an intermediate file.");
 #endif // ONLY_INTERNAL_SAT_SOLVER
 	 po::options_description errors("Error Management Options",
-											  po::options_description::m_default_line_length,
-											  po::options_description::m_default_line_length-16);
+											  po::options_description::m_default_line_length+12,
+											  po::options_description::m_default_line_length-12);
 	 errors.add_options()
 		("global-error", po::bool_switch()->default_value(false),
 		 "Enable GLOBAL error handling (i.e., the global error rate in the whole pedigree is "
 		 "less than or equal to the specified error rate, computed over genotyped loci).")
-		("global-error-rate", po::value< double >()->default_value(0.03),
+		("global-error-rate", po::value< double >()->default_value(0.005),
 		 "Maximum error rate in all the genotypes, computed only over genotyped loci "
 		 "(used only if '--global-error' is specified, cannot be used with '--global-error-number').")
 		("global-error-number", po::value< unsigned int >()->default_value(1),
@@ -152,7 +150,7 @@ protected:
 		("individual-error", po::bool_switch()->default_value(false),
 		 "Enable INDIVIDUAL error handling (i.e., the error rate in each genotype is less than "
 		 "or equal to the specified error rate, computed over genotyped loci).")
-		("individual-error-rate", po::value< double >()->default_value(0.03),
+		("individual-error-rate", po::value< double >()->default_value(0.01),
 		 "Maximum error rate in each genotype, computed only over genotyped loci "
 		 "(used only if '--individual-error' is specified).")
 		("uniform-error", po::bool_switch()->default_value(false),
@@ -161,29 +159,36 @@ protected:
 		("max-errors-in-window", po::value< unsigned int >()->default_value(4),
 		 "Maximum number of errors in each window "
 		 "(used only if '--uniform-error' is specified).\n"
-		 "*MUST* be less than or equal to half window size.")
+		 "NOTE: It *must* be less than or equal to half window size.")
 		("error-window-length", po::value< unsigned int >()->default_value(16),
 		 "Number of typed loci that compose a window "
 		 "(used only if '--uniform-error' is specified).\n"
-		 "*MUST* be a power of 2 and *MUST* be greater than 2.\n"
+		 "NOTE: It *must* be a power of 2 and *must* be greater than 2.\n"
 		 "Windows overlap each other by half their length.");
 	 po::options_description recombs("Recombination Management Options",
-												po::options_description::m_default_line_length,
-												po::options_description::m_default_line_length-16);
+												po::options_description::m_default_line_length+12,
+												po::options_description::m_default_line_length-12);
 	 recombs.add_options()
 		("global-recomb", po::bool_switch()->default_value(false),
 		 "Enable GLOBAL recombination handling (i.e., the global recombination rate in the whole "
 		 "pedigree is less than or equal to the specified recombination rate, computed over *ALL* loci).")
-		("global-recomb-rate", po::value< double >()->default_value(0.03),
+		("global-recomb-rate", po::value< double >()->default_value(0.01),
 		 "Maximum recombination rate in all the genotypes "
 		 "(used only if '--global-recomb' is specified, cannot be used with '--global-recomb-number').")
 		("global-recomb-number", po::value< unsigned int >()->default_value(1),
 		 "Maximum number of recombinations in all the genotypes "
 		 "(used only if '--global-recomb' is specified, cannot be used with '--global-recomb-rate').")
+		("global-recomb-min-number", po::value< unsigned int >()->default_value(0),
+		 "Minimum number of recombinations in all the genotypes "
+		 "(used only if '--global-recomb' is specified, cannot be used with '--global-recomb-rate').\n"
+		 "NOTE: This lower bound is not strictly enforced, since the SAT solver could compute a "
+		 "solution with unnecessary recombinations. This option should be used to improve the "
+		 "efficiency of the search of the optimum and should be set to a value such that "
+		 "a solution with this number of recombinations does not exist.")
 		("individual-recomb", po::bool_switch()->default_value(false),
 		 "Enable INDIVIDUAL recombination handling (i.e., the recombination rate in each genotype is "
 		 "less than or equal to the specified recombination rate, computed over *ALL* loci).")
-		("individual-recomb-rate", po::value< double >()->default_value(0.03),
+		("individual-recomb-rate", po::value< double >()->default_value(0.01),
 		 "Maximum recombination rate in each genotype "
 		 "(used only if '--individual-recomb' is specified).")
 		("uniform-recomb", po::bool_switch()->default_value(false),
@@ -192,17 +197,26 @@ protected:
 		("max-recombs-in-window", po::value< unsigned int >()->default_value(4),
 		 "Maximum number of recombinations in each window "
 		 "(used only if '--uniform-recomb' is specified).\n"
-		 "*MUST* be less than or equal to half window size.")
+		 "NOTE: It *must* be less than or equal to half window size.")
 		("recomb-window-length", po::value< unsigned int >()->default_value(16),
 		 "Number of loci that compose a window "
 		 "(used only if '--uniform-recomb' is specified).\n"
-		 "*MUST* be a power of 2 and *MUST* be greater than 2.\n"
+		 "NOTE: It *must* be a power of 2 and *must* be greater than 2.\n"
 		 "Windows overlap each other by half their length.")
+		;
+
+	 po::options_description exec_opt("Execution Management Options",
+												 po::options_description::m_default_line_length+12,
+												 po::options_description::m_default_line_length-12);
+	 exec_opt.add_options()
+		("time-limit", po::value< unsigned int >()->default_value(0),
+		 "Maximum (approximated) execution time in seconds (0=no limit).")
 		;
 
 	 modes.add(files);
 	 modes.add(errors);
 	 modes.add(recombs);
+	 modes.add(exec_opt);
 	 return modes;
   };
 
@@ -247,9 +261,19 @@ protected:
 	 option_dependency(vm, "error-window-length", "uniform-error");
 	 option_dependency(vm, "global-recomb-rate", "global-recomb");
 	 option_dependency(vm, "global-recomb-number", "global-recomb");
+	 option_dependency(vm, "global-recomb-min-number", "global-recomb");
+	 conflicting_options(vm, "global-recomb-rate", "global-recomb-number");
+	 conflicting_options(vm, "global-recomb-rate", "global-recomb-min-number");
 	 option_dependency(vm, "individual-recomb-rate", "individual-recomb");
 	 option_dependency(vm, "max-recombs-in-window", "uniform-recomb");
 	 option_dependency(vm, "recomb-window-length", "uniform-recomb");
+	 if (vm["global-recomb"].as<bool>()) {
+		const unsigned int rmin= vm["global-recomb-min-number"].as<unsigned int>();
+		const unsigned int rmax= vm["global-recomb-number"].as<unsigned int>();
+		if (rmin > rmax) {
+		  throw std::logic_error(std::string("The minimum number of recombinations must be not greater than the maximum number of recombinations."));
+		}
+	 }
 	 if (vm["uniform-error"].as<bool>()) {
 		const unsigned int wlen= vm["error-window-length"].as<unsigned int>();
 		const unsigned int merr= vm["max-errors-in-window"].as<unsigned int>();
@@ -300,6 +324,11 @@ protected:
 	 rehcstar_t rehcstar;
 	 rehcstar.prepare_program_options(vm);
 
+// Check if a time-limit is specified
+	 if (vm["time-limit"].as<unsigned int>()>0) {
+		register_time_limit(vm["time-limit"].as<unsigned int>());
+	 }
+
 // Dispatch the work depending on the program parameters
 #ifndef ONLY_INTERNAL_SAT_SOLVER
 	 if (vm["create"].as<bool>()) {
@@ -344,17 +373,21 @@ protected:
 		file_utility::postream hap_os=
 		  file_utility::get_file_utility().
 		  get_ofstream(vm["haplotypes"].as<string>(), out_compress);
-		bool is_rehc=
+		boost::tribool is_rehc=
 		  rehcstar.compute_HC_from_SAT_results(*ped_is, *res_is, *hap_os);
 
 		if (is_rehc) {
 		  INFO("(r,e)-Haplotype Configuration successfully "
 				 "computed and saved.");
 		  main_ris= EXIT_SUCCESS;
-		} else {
+		} else if (!is_rehc) {
 		  WARN("No (r,e)-Haplotype Configuration can exist. "
 				 "Exiting without haplotype configuration.");
 		  main_ris= EXIT_NO_reHC;
+		} else {
+		  WARN("We do NOT know if a (r,e)-Haplotype Configuration can exist. "
+				 "The SAT solver did not give a valid result.");
+		  main_ris= EXIT_reHC_ERROR;
 		}
 
 	 } else if (vm["create-read"].as<bool>()) {
@@ -438,7 +471,7 @@ protected:
 			 rehcstar.create_SAT_instance_from_pedigree(*ped_is, *sat_os,
 																	  vector<string>(),
 																	  ped, cnf);
-			 INFO("Finished creating and writing the SAT instance. Waiting the solver...");
+			 INFO("Finished creating and writing the SAT instance. Waiting for the solver...");
 			 ret_value= pclose(sat_pipe);
 		  }
 // ** USE "PIPE" ** END
@@ -460,8 +493,9 @@ protected:
 		  file_utility::postream hap_os=
 			 file_utility::get_file_utility().
 			 get_ofstream(vm["haplotypes"].as<string>(), out_compress);
-		  bool is_rehc= rehcstar.compute_HC_from_SAT_results(ped, cnf,
-																			  *res_is, *hap_os);
+		  boost::tribool
+			 is_rehc= rehcstar.compute_HC_from_SAT_results(ped, cnf,
+																		  *res_is, *hap_os);
 
 		  if (!vm["keep"].as<bool>()) {
 			 DEBUG("Removing temporary files...");
@@ -482,10 +516,14 @@ protected:
 			 INFO("(r,e)-Haplotype Configuration successfully "
 					"computed and saved.");
 			 main_ris= EXIT_SUCCESS;
-		  } else {
+		  } else if (!is_rehc) {
 			 WARN("No (r,e)-Haplotype Configuration can exist. "
 					"Exiting without haplotype configuration.");
 			 main_ris= EXIT_NO_reHC;
+		  } else {
+			 WARN("We do NOT know if a (r,e)-Haplotype Configuration can exist. "
+					"The SAT solver did not give a valid result.");
+			 main_ris= EXIT_reHC_ERROR;
 		  }
 		}
 
@@ -527,7 +565,7 @@ protected:
 			 main_ris= EXIT_SUCCESS;
 		  } else {
 			 WARN("A Haplotype Configuration has been computed but it is not valid!!");
-			 main_ris= EXIT_NO_reHC;
+			 main_ris= EXIT_reHC_ERROR;
 		  }
 		} else {
 		  WARN("No (r,e)-Haplotype Configuration can exist. "

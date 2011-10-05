@@ -329,7 +329,7 @@ pedcnf_t::clauses_to_dimacs_format(std::ostream& out,
 // SAT/UNSAT
 // 1 -2 3 4 0
 // *********************************************************
-bool
+boost::tribool
 pedcnf_t::assignment_from_minisat_format(std::istream& in) {
   std::string line;
   std::getline(in, line);
@@ -368,7 +368,7 @@ pedcnf_t::assignment_from_minisat_format(std::istream& in) {
 // v 1 -2 3 4
 // v 5 -6 -7 0
 // *********************************************************
-bool
+boost::tribool
 pedcnf_t::assignment_from_minisat_format(std::istream& in) {
   int status= 0; // 0 = undecided, 1 = SAT, -1 = UNSAT
   std::string line;
@@ -407,8 +407,10 @@ pedcnf_t::assignment_from_minisat_format(std::istream& in) {
 	 MY_ASSERT_DBG( is_satisfying_assignment() );
 #endif // ONLY_INTERNAL_SAT_SOLVER
 	 return true;
-  } else { // UNSAT or UNDECIDED
+  } else if (status == -1) { // UNSAT
 	 return false;
+  } else { // undecided
+	 return boost::indeterminate;
   }
 };
 

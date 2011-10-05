@@ -52,6 +52,7 @@
 
 #include <boost/tuple/tuple.hpp>
 #include <boost/tuple/tuple_comparison.hpp>
+#include <boost/logic/tribool.hpp>
 
 
 class ped_var_kind
@@ -331,7 +332,7 @@ public:
 // Read the assignment from a file like the following one:
 // SAT/UNSAT
 // 1 -2 3 4 0
-  bool assignment_from_minisat_format(std::istream& in);
+  boost::tribool assignment_from_minisat_format(std::istream& in);
 
 
 #ifdef INTERNAL_SAT_SOLVER
@@ -362,6 +363,11 @@ void
 add_card_constraint_less_or_equal_than(pedcnf_t& cnf,
 													const std::vector<var_t>& in_vars,
 													const size_t k);
+
+void
+add_card_constraint_between(pedcnf_t& cnf,
+									 const std::vector<var_t>& in_vars,
+									 const size_t k1, const size_t k2);
 
 void
 add_uniform_card_constraint_less_or_equal_than(pedcnf_t& cnf,
