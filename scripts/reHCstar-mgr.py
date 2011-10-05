@@ -127,7 +127,7 @@ class TimeLimit:
             return None
         if rem_time <= 0:
             msg= "Maximum CPU time exceeded. (used {:.2f} s, given {:d} s)".format( time_used, time_limit )
-            logging.critical(msg)
+            logging.warn(msg)
             raise REHCstarMgrOutOfTimeError(msg)
 
         return max(time_limit - time_used, 1)
@@ -183,7 +183,7 @@ class Solution:
     def read_genotyped_pedigree(self, pedigree_filename):
         '''Read a genotyped pedigree from a file.'''
 
-        logging.info("Reading pedigree file '%s'...", pedigree_filename)
+        logging.debug("Reading pedigree file '%s'...", pedigree_filename)
 
         with open(pedigree_filename, 'r') as ped_file:
             for row in ped_file:
@@ -206,8 +206,9 @@ class Solution:
         errors=     []
         chunk_info= {}
 
-        logging.info("Genotyped pedigree '%s' successfully read (individuals=%d).",
-                     pedigree_filename, len(self.pedigree))
+        logging.info("Genotyped pedigree successfully read from file '%s' "
+                     "(individuals=%d, genotype length=%d).",
+                     pedigree_filename, len(self.individuals), self.genotype_length)
 
     def write_genotype_block(self, filename, start=None, stop=None):
         if start is None:
@@ -225,7 +226,7 @@ class Solution:
 
     def write_haplotypes(self, filename, stop=None, verbose= False):
 
-        logging.debug("Writing haplotypes to file '%s'%s...", filename, "(verbose)" if verbose else "")
+        logging.debug("Writing haplotypes to file '%s'%s...", filename, " (verbose)" if verbose else "")
 
         if stop is None:
             stop= self.genotype_length ## Genotype length should always be greater than haplotype length
@@ -291,7 +292,8 @@ class Solution:
                                                                    self.haplotypes[ind.id][1][:stop]) ] ) )
                 haplotypes_file.write("\n")
 
-        logging.debug("Haplotypes successfully written to file '%s'%s...", filename, "(verbose)" if verbose else "")
+        logging.debug("Haplotypes successfully written to file '%s'%s...",
+                      filename, " (verbose)" if verbose else "")
 
     def compute_recombinations_and_gps(self, indiv_id, parent_id):
         gender_idx= int(self.pedigree[parent_id].gender) - 1
@@ -461,22 +463,22 @@ def check_program_options(options):
     if ( not options.pedigree or
          not os.path.isfile(options.pedigree) or
          not os.access(options.pedigree, os.R_OK) ):
-        logging.fatal("Pedigree file not specified or not accessible. Given '%s'",
+        logging.fatal("Pedigree file not specified or not accessible. Given '%s'. Aborting...",
                       options.pedigree)
         sys.exit(2)
     #  output haplotype configuration
     if not options.haplotypes:
-        logging.fatal("Result file not specified. Given '%s'",
+        logging.fatal("Result file not specified. Given '%s'. Aborting...",
                       options.haplotypes)
         sys.exit(2)
 
     #  block lengths
     if options.length <= 0:
-        logging.fatal("Maximum block length must be a positive integer. Given '%d'",
+        logging.fatal("Maximum block length must be a positive integer. Given '%d'. Aborting...",
                       options.length)
         sys.exit(2)
     if options.lookahead < 0:
-        logging.fatal("Overlapping block length must be a non-negative integer. Given '%d'",
+        logging.fatal("Overlapping block length must be a non-negative integer. Given '%d'. Aborting...",
                       options.lookahead)
         sys.exit(2)
 
@@ -486,13 +488,13 @@ def check_program_options(options):
              '{assumptions}' in options.cmd ):
         logging.fatal("The command-line *MUST* include the following placeholders: "
                       "'{pedigree}' '{haplotypes}' '{assumptions}'. "
-                      "Given: '%s'",
+                      "Given: '%s'. Aborting...",
                       options.cmd)
         sys.exit(2)
     if not '{number}' in options.cmdrec:
         logging.fatal("The options for handling recombinations *MUST* include "
                       "the following placeholder: '{number}'. "
-                      "Given: '%s'",
+                      "Given: '%s'. Aborting...",
                       options.cmdrec)
         sys.exit(2)
     if not '{min_number}' in options.cmdrec:
@@ -611,7 +613,7 @@ def basic_exec_reHCstar(filenames,
             full_cmd_str+= " " + cmd_templ['time'].format(time= str(int(rem_time)))
 
         cmd= shlex.split(full_cmd_str)
-        logging.info("Invoking >%s<...", " ".join(cmd))
+        logging.debug("Invoking >%s<...", " ".join(cmd))
         retcode = subprocess.call(cmd, shell=False)
 
         if retcode==4:
@@ -646,7 +648,7 @@ def exec_reHCstar(filenames, solution, chunk, cmd, time_limit):
     chunk_info= {}
     solution.chunk_info[chunk]= chunk_info
     while not terminate and not rehcstar_success and not out_of_time:
-        logging.debug("Step 1. Trying with at most %d recombinations.", max_recombs)
+        logging.info("Step 1. Trying with at most %d recombinations.", max_recombs)
         try:
             rehcstar_success= basic_exec_reHCstar(filenames, min_recombs, max_recombs, cmd, time_limit)
             if rehcstar_success:
@@ -655,17 +657,17 @@ def exec_reHCstar(filenames, solution, chunk, cmd, time_limit):
                 os.rename(filenames['haplotypes'], successful_haplotypes_filename)
             else:
                 if max_recombs > 2*len(solution.genotypes)*solution.genotype_length:
-                    logging.info("Step 1. Solution NOT found. The instance requires "
-                                 "too much recombinations (more than %d). Aborting...", max_recombs)
+                    logging.fatal("Step 1. Solution NOT found. The instance requires "
+                                  "too much recombinations (more than %d). Aborting...", max_recombs)
                     terminate= True
                 else:
-                    logging.debug("Step 1. Solution not found yet. Increasing the maximum "
-                                  "number of recombinations.")
+                    logging.info("Step 1. Solution not found. Increasing the maximum "
+                                 "number of recombinations...")
                     min_recombs= max_recombs
                     max_recombs= 2*(max_recombs+1)-1
         except REHCstarMgrOutOfTimeError as e:
-            logging.critical("Step 1. Time-limit exceeded before computing an "
-                             "upper-bound to the number of recombinations. Aborting...")
+            logging.fatal("Step 1. Time-limit exceeded before computing an "
+                          "upper-bound to the number of recombinations. Aborting...")
             chunk_info["optimum found"]= False
             chunk_info["status"]= "Time limit exceeded during Step 1: no upper bound found"
             chunk_info["last tried upper bound"]= max_recombs
@@ -838,13 +840,13 @@ for start in range(0, complete_sol.genotype_length, options.length):
             complete_sol.write_haplotypes(partial_sol_filename, verbose=verbose1)
         else:
             logging.warn("No partial solution found.")
-        logging.info("reHCstar manager - aborted at %s", time.asctime())
+        logging.fatal("reHCstar manager - aborted at %s", time.asctime())
         sys.exit(1)
 
     elif not rehcstar_success:
         # No solution of reHCstar
         logging.fatal("reHCstar did NOT computed a solution on the chunk [%d-%d]. Aborting...", start, stop-1)
-        logging.info("reHCstar manager - aborted at %s", time.asctime())
+        logging.fatal("reHCstar manager - aborted at %s", time.asctime())
         sys.exit(1)
     else:
         # Prepare for next chunk
