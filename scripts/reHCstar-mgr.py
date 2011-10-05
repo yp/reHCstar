@@ -52,6 +52,18 @@ gen2code= { '0 0': 0, '1 1': 1, '2 2': 2, '1 2': 3, '2 1': 3}
 code2gen= { 0: '0 0', 1: '1 1', 2: '2 2', 3: '1 2' }
 source_vector_enc= { 0 : ".",   1 : "*" }
 
+rehcstar_license_msgs= [
+    "reHCstar-mgr -- reHC-* manager",
+    "Haplotyping on Pedigrees with Recombinations, Errors, and Missing Genotypes.",
+    "Copyright (C) 2010, 2011  Yuri Pirola <yuri.pirola(-at-)gmail.com>.",
+    "This program is distributed under the terms of the GNU General Public License (GPL), either version 3 of the License, or (at your option) any later version.",
+    "This program comes with ABSOLUTELY NO WARRANTY. See the GNU General Public License for more details.",
+    "This is free software, and you are welcome to redistribute it under the conditions specified by the license."
+]
+
+class MyIndentedHelpFormatter(optparse.IndentedHelpFormatter):
+    def format_usage(self, usage):
+        return "%s\n" % usage
 
 class REHCstarMgrError(Exception):
     """Base class for exceptions of reHCstar-mgr."""
@@ -362,15 +374,17 @@ class Solution:
 
 
 def parse_command_line():
-    usage= "usage: %prog [options]"
-    parser= optparse.OptionParser(usage=usage)
+    usage= "\n".join( rehcstar_license_msgs +
+                      [ "", "Usage:", "  %prog --pedigree 'PEDIGREE FILE' --results 'RESULT FILE' [options]"] )
+    parser= optparse.OptionParser(usage= usage,
+                                  formatter= MyIndentedHelpFormatter())
     parser.add_option("-v", "--verbose",
                       action="count", dest="verbose",
                       default=0,
                       help="print additional log messages "
                       "(specified more than once increase verbosity)")
 
-    io_group= optparse.OptionGroup(parser, "Input/Output Options",
+    io_group= optparse.OptionGroup(parser, "Input/Output Options (MANDATORY)",
                                    "Options that specify the input and "
                                    "the output files.")
     io_group.add_option("-p", "--pedigree",
@@ -734,7 +748,9 @@ logging.basicConfig(level=log_level,
                     format='%(levelname)5.5s [%(relativeCreated)15d] (%(filename)30s:%(lineno)-4d) - %(message)s',
                     stream=sys.stderr)
 
-logging.info("reHCstar manager - started at %s", time.asctime())
+for lic_lin in rehcstar_license_msgs:
+    logging.info(lic_lin)
+logging.info("Started at %s", time.asctime())
 
 # Check program options
 check_program_options(options)
@@ -760,13 +776,16 @@ logging.info("Time limit (secs):     %s",
 # Read the original pedigree
 complete_sol= Solution()
 complete_sol.read_genotyped_pedigree(options.pedigree)
-complete_sol.notes.extend([ "INPUT PEDIGREE: '{}'".format(options.pedigree),
-                            "OUTPUT HAPLOTYPES: '{}'".format(options.haplotypes),
-                            "MAX BLOCK LENGTH: '{}'".format(options.length),
-                            "LOOKAHEAD LENGTH: '{}'".format(options.lookahead),
-                            "TIME LIMIT: '{}'".format("{}s".format(time_limit.limit)
-                                                      if time_limit.limit is not None
-                                                      else "unlimited") ])
+complete_sol.notes.extend([
+        "COMMAND LINE: {}".format(" ".join(sys.argv)),
+        "START TIME: {}".format(time.asctime()),
+        "INPUT PEDIGREE: '{}'".format(options.pedigree),
+        "OUTPUT HAPLOTYPES: '{}'".format(options.haplotypes),
+        "MAX BLOCK LENGTH: '{}'".format(options.length),
+        "LOOKAHEAD LENGTH: '{}'".format(options.lookahead),
+        "TIME LIMIT: '{}'".format("{}s".format(time_limit.limit)
+                                  if time_limit.limit is not None
+                                  else "unlimited") ])
 
 logging.info("Starting the computation of the haplotype configuration...")
 assumptions= []
@@ -815,6 +834,7 @@ for start in range(0, complete_sol.genotype_length, options.length):
             assert len(complete_sol.chunk_info) > 0
             complete_sol.analyze_optimality()
             logging.info("Saving the partial haplotype configuration to file '%s'", partial_sol_filename)
+            complete_sol.notes.append("END TIME: {}".format(time.asctime()))
             complete_sol.write_haplotypes(partial_sol_filename, verbose=verbose1)
         else:
             logging.warn("No partial solution found.")
@@ -853,6 +873,7 @@ logging.info("Found a complete haplotype configuration with %d recombinations an
 complete_sol.analyze_optimality()
 
 logging.info("Writing the haplotype configuration to '%s'...", options.haplotypes)
+complete_sol.notes.append("END TIME: {}".format(time.asctime()))
 complete_sol.write_haplotypes(options.haplotypes, verbose=verbose1)
 
 logging.info("reHCstar manager - completed at %s", time.asctime())
