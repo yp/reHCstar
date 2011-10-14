@@ -437,6 +437,17 @@ that a haplotype configuration with `XX` recombinations does not exist
 and a haplotype configuration with `YY` recombinations certainly exists.
 The default value of both of them is `-1` which means that no bound is
 known/provided.
+Moreover it is possible to specify a file containing an initial
+haplotype configuration that `reHCstar-mgr.py` tries to improve (in
+terms of number of recombinations).
+In this case, the initial haplotype configuration is read and the number
+of recombinations that it induces is used as initial upper bound.
+If not better solution is found (for example, due to time limits), then
+`reHCstar-mgr.py` outputs the initial haplotype configuration.
+The file containing the initial haplotype configuration is specified as
+argument of the `--initial-haplotype-configuration` program option.
+Please notice that options `--initial-haplotype-configuration` and
+`--initial-recomb-ub` cannot be used together.
 These options could help to speed-up the process of searching the
 solution with the minimum number of recombinations since they provide
 the initial interval which the bisect-like search is performed on.
