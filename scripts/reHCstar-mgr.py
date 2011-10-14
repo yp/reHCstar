@@ -483,8 +483,7 @@ def check_program_options(options):
         sys.exit(2)
     #  output haplotype configuration
     if not options.haplotypes:
-        logging.fatal("Result file not specified. Given '%s'. Aborting...",
-                      options.haplotypes)
+        logging.fatal("Result file not specified. Aborting...")
         sys.exit(2)
 
     #  block lengths
@@ -641,7 +640,7 @@ def basic_exec_reHCstar(filenames,
 
         if retcode==4:
             (t_remain, t_limit, t_used)= time_limit.get_remaining_time()
-            msg= "'reHCstar' has exceeded the maximum CPU time. (used {:.2f} s, given {:d} s)".format( t_used, t_limit )
+            msg= "'reHCstar' has exceeded the maximum CPU time. (used {:.2f} s, given {:s} s)".format( t_used, str(t_limit) )
             logging.critical(msg)
             raise REHCstarMgrOutOfTimeError(msg)
 
