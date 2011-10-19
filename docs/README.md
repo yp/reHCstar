@@ -452,6 +452,15 @@ These options could help to speed-up the process of searching the
 solution with the minimum number of recombinations since they provide
 the initial interval which the bisect-like search is performed on.
 
+If an initial upper bound is known but an initial lower bound is not, it
+is possible to enable a _bootstrap_ phase that attempts to quickly
+identify an initial lower bound and then the execution continues by
+bisecting the interval so determined.
+The bootstrap phase can be activated by specifying the `--bootstrap`
+switch, while the maximum CPU time spent in the bootstrap
+phase can be specified with the `--bootstrap-time-limit=XX` parameter,
+where `XX` is the time limit expressed in seconds.
+
 
 ### Running Time Management ###
 

@@ -440,7 +440,7 @@ def parse_command_line():
                          action="store", dest="cmdtime", type="string",
                          default="--time-limit {time}",
                          help="the option of the 'reHCstar' program used to specify "
-                         "the maximum CPU time (default: %default)",
+                         "the maximum CPU time  (default: %default)",
                          metavar="PROGR-OPT")
     parser.add_option_group(cmd_group)
 
@@ -451,14 +451,14 @@ def parse_command_line():
                          type="int", default=-1,
                          help="an initial pre-determined lower bound of the number of "
                          "recombinations (i.e. a haplotype configuration with that number "
-                         "of recombinations does not exist).  (default: %default)",
+                         "of recombinations does not exist)  (default: %default)",
                          metavar="int")
     oth_group.add_option("--initial-recomb-ub",
                          action="store", dest="recomb_ub",
                          type="int", default=-1,
                          help="an initial pre-determined upper bound of the number of "
                          "recombinations (i.e. a haplotype configuration with that number "
-                         "of recombinations certainly exists) or '-1' to disable.  "
+                         "of recombinations certainly exists) or '-1' to disable  "
                          "(default: %default)",
                          metavar="int")
     oth_group.add_option("--initial-haplotype-configuration",
@@ -466,10 +466,22 @@ def parse_command_line():
                          type="string", default=None,
                          help="a file containing an initial haplotype configuration "
                          "that possibly induces more recombinations than the optimum. "
-                         "Conflicts with '--initial-recomb-ub' and cannot be used "
+                         "It conflicts with '--initial-recomb-ub' and cannot be used "
                          "with the automatic genotype segmentation (i.e. block length "
-                         "must be greater than genotype length).  (default: %default)",
+                         "must be greater than genotype length)  (default: %default)",
                          metavar="FILE")
+    oth_group.add_option("--bootstrap",
+                         action="store_true", dest="bootstrap",
+                         default=False,
+                         help="enable the bootstrap phase if an initial lower bound is not provided. "
+                         "It conflicts with '--initial-recomb-lb')  "
+                         "(default: %default)")
+    oth_group.add_option("--bootstrap-time-limit",
+                         action="store", dest="bootstrap_time_limit",
+                         type="int", default=120,
+                         help="the maximum CPU time (in seconds) for the bootstrap phase  "
+                         "(default: %default)",
+                         metavar="SECONDS")
     oth_group.add_option("--time-limit",
                          action="store", dest="time_limit",
                          type="int", default=0,
@@ -556,6 +568,16 @@ def check_program_options(options):
         logging.fatal("Initial haplotype configuration file not accessible. "
                       "Given '%s'. Aborting...",
                       options.init_hc)
+        sys.exit(2)
+
+    if options.bootstrap_time_limit <= 0:
+        logging.fatal("Bootstrap time limit CANNOT be negative or '0'. "
+                      "Given '%d'. Aborting...", options.bootstrap_time_limit)
+        sys.exit(2)
+
+    if options.bootstrap and options.recomb_lb != -1:
+        logging.fatal("Parameters '--initial-recomb-lb' and "
+                      "'--bootstrap' cannot be used togheter.")
         sys.exit(2)
 
 
@@ -674,11 +696,111 @@ def basic_exec_reHCstar(filenames,
 
     return rehcstar_success
 
+def limited_exec_reHCstar(filenames,
+                          min_recombs, max_recombs,
+                          cmd_templ, time_limit):
+    try:
+        rehcstar_success= basic_exec_reHCstar(filenames, min_recombs, max_recombs,
+                                              cmd_templ, time_limit)
+        return "success" if rehcstar_success else "failure"
+    except REHCstarMgrOutOfTimeError as e:
+        return "out-of-time"
+
+def step1_bootstrap(filenames, solution, init_n_rec, cmd, time_limit):
+    logging.info("Step 1(bootstrap). An upper bound is given but a lower bound is not. "
+                 "Trying to quickly find a lower bound.")
+    bootstrap_ub= 0
+    bootstrap_lb= -1
+    bootstrap_end= False
+    successful_haplotypes_filename= None
+    while not bootstrap_end:
+        logging.info("Step 1(bootstrap). Trying with at most %d recombinations.",
+                     bootstrap_ub)
+        exec_rehcstar_status= limited_exec_reHCstar(filenames,
+                                                    bootstrap_lb, bootstrap_ub,
+                                                    cmd, time_limit)
+        if exec_rehcstar_status == "success":
+            logging.info("Step 1(bootstrap). Found a solution with at most %d recombinations.",
+                         bootstrap_ub)
+            successful_haplotypes_filename= filenames['haplotypes'] + "-success"
+            os.rename(filenames['haplotypes'], successful_haplotypes_filename)
+            bootstrap_end= True
+        elif exec_rehcstar_status == "failure":
+            logging.info("Step 1(bootstrap). Solution not found. Increasing the maximum "
+                         "number of recombinations...")
+            bootstrap_lb= bootstrap_ub
+            bootstrap_ub= max(bootstrap_lb+1, int(3*(bootstrap_ub+1)/2-1))
+            if bootstrap_ub >= init_n_rec:
+                logging.info("Step 1(bootstrap). "
+                             "The new maximum is greater than the given upper bound. "
+                             "New maximum %d, given upper bound %d. Skipping bootstrap...",
+                             bootstrap_ub, init_n_rec)
+                bootstrap_end= True
+        else: # exec_rehcstar_status == "out-of-time"
+            bootstrap_end= True
+
+    if successful_haplotypes_filename is not None:
+        current_haplotypes= read_haplotypes(successful_haplotypes_filename)
+        n_rec= process_partial_hc(current_haplotypes, solution, None)
+        assert n_rec < init_n_rec
+        logging.info("Step 1(bootstrap). "
+                     "Found a haplotype configuration which improves the initial one. "
+                     "New recombination upper bound: %d.", n_rec)
+        return (True, bootstrap_lb, n_rec, current_haplotypes)
+    elif bootstrap_lb >= 0:
+        logging.info("Step 1(bootstrap). "
+                     "No solution has been found but a lower bound has been computed. "
+                     "New recombination lower bound: %d.", bootstrap_lb)
+        return (False, bootstrap_lb, init_n_rec, None)
+    else:
+        logging.info("Step 1(bootstrap). "
+                     "Bounds have not been improved. Continuing...")
+        return (False, bootstrap_lb, init_n_rec, None)
+
+def step1_regular(filenames, solution, min_recombs, max_recombs, fixed_index, cmd, time_limit):
+    logging.info("Step 1. Searching an upper bound on the number of recombinations...")
+    step1_end= False
+    out_of_time= False
+    successful_haplotypes_filename= None
+    while not step1_end:
+        logging.info("Step 1. Trying with at most %d recombinations.", max_recombs)
+        exec_rehcstar_status= limited_exec_reHCstar(filenames, min_recombs, max_recombs,
+                                                    cmd, time_limit)
+        if exec_rehcstar_status == "success":
+            logging.info("Step 1. Found a solution with at most %d recombinations.", max_recombs)
+            successful_haplotypes_filename= filenames['haplotypes'] + "-success"
+            os.rename(filenames['haplotypes'], successful_haplotypes_filename)
+            step1_end= True
+        elif exec_rehcstar_status == "failure":
+            if max_recombs > 2*len(solution.genotypes)*solution.genotype_length:
+                logging.fatal("Step 1. Solution NOT found. The instance requires "
+                              "too much recombinations (more than %d). Aborting...", max_recombs)
+                step1_end= True
+            else:
+                logging.info("Step 1. Solution not found. Increasing the maximum "
+                             "number of recombinations...")
+                min_recombs= max_recombs
+                max_recombs= 2*(max_recombs+1)-1
+        else:
+            assert exec_rehcstar_status == "out-of-time"
+            logging.fatal("Step 1. Time-limit exceeded before computing an "
+                          "upper-bound to the number of recombinations. Aborting...")
+            step1_end= True
+            out_of_time= True
+
+    if successful_haplotypes_filename is not None:
+        current_haplotypes= read_haplotypes(successful_haplotypes_filename)
+        n_rec= process_partial_hc(current_haplotypes, solution, fixed_index)
+        assert n_rec <= max_recombs
+        logging.info("Step 1. "
+                     "Found a haplotype configuration with %d recombinations.", n_rec)
+        return (True, min_recombs, n_rec, current_haplotypes)
+    else:
+        logging.info("Step 1. No solution has been found.")
+        return (False, min_recombs, max_recombs, None)
 
 
-def exec_reHCstar(filenames, solution, chunk, bounds, cmd, time_limit, initial_haplotypes):
-    rehcstar_success= False
-    terminate= False
+def exec_reHCstar(filenames, solution, chunk, bounds, cmd, time_limit, initial_haplotypes, bootstrap):
     out_of_time= False
     min_recombs= -1
     max_recombs= 0
@@ -700,46 +822,42 @@ def exec_reHCstar(filenames, solution, chunk, bounds, cmd, time_limit, initial_h
     successful_haplotypes_filename= None
     chunk_info= {}
     solution.chunk_info[chunk]= chunk_info
-    if not initial_haplotypes:
-        logging.info("Step 1. Searching an upper bound on the number of recombinations...")
-        while not terminate and not rehcstar_success and not out_of_time:
-            logging.info("Step 1. Trying with at most %d recombinations.", max_recombs)
-            try:
-                rehcstar_success= basic_exec_reHCstar(filenames, min_recombs, max_recombs, cmd, time_limit)
-                if rehcstar_success:
-                    logging.info("Step 1. Found a solution with at most %d recombinations.", max_recombs)
-                    successful_haplotypes_filename= filenames['haplotypes'] + "-success"
-                    os.rename(filenames['haplotypes'], successful_haplotypes_filename)
-                else:
-                    if max_recombs > 2*len(solution.genotypes)*solution.genotype_length:
-                        logging.fatal("Step 1. Solution NOT found. The instance requires "
-                                      "too much recombinations (more than %d). Aborting...", max_recombs)
-                        terminate= True
-                    else:
-                        logging.info("Step 1. Solution not found. Increasing the maximum "
-                                     "number of recombinations...")
-                        min_recombs= max_recombs
-                        max_recombs= 2*(max_recombs+1)-1
-            except REHCstarMgrOutOfTimeError as e:
-                logging.fatal("Step 1. Time-limit exceeded before computing an "
-                              "upper-bound to the number of recombinations. Aborting...")
-                chunk_info["optimum found"]= False
-                chunk_info["status"]= "Time limit exceeded during Step 1: no upper bound found"
-                chunk_info["last tried upper bound"]= max_recombs
-                chunk_info["known lb"]= min_recombs
-                out_of_time= True
 
     current_haplotypes= None
-    if initial_haplotypes is not None:
-        logging.info("Given a valid initial haplotype configuration. Skipping 'Step 1'...")
-        rehcstar_success= True
+    if bounds[0] == -1 and (bounds[1] != -1 or initial_haplotypes) and bootstrap['enabled']:
+        # A lower bound has not been provided.
+        # Try to quickly compute a lower bound...
+        (bs_status, bs_lb, bs_ub, bs_haplotypes)= \
+            step1_bootstrap(filenames, solution, max_recombs, cmd, TimeLimit(bootstrap['time-limit']))
+        assert min_recombs <= bs_lb and bs_ub <= max_recombs
+        if bs_status: # New better solution
+            initial_haplotypes= None
+            current_haplotypes= bs_haplotypes
+        min_recombs= bs_lb
+        max_recombs= bs_ub
 
-    if rehcstar_success:
-        if initial_haplotypes is not None:
-            current_haplotypes= initial_haplotypes
-            max_recombs= bounds[1]
+    if initial_haplotypes is not None:
+        assert not current_haplotypes
+        current_haplotypes= initial_haplotypes
+
+    if current_haplotypes is None: # No initial haplotypes and not successful bootstrap phase
+        (s1_status, s1_lb, s1_ub, s1_haplotypes)= \
+            step1_regular(filenames, solution, min_recombs, max_recombs, fixed_index, cmd, time_limit)
+        min_recombs= s1_lb
+        max_recombs= s1_ub
+        if not s1_status:
+            chunk_info["optimum found"]= False
+            chunk_info["status"]= "Failed Step 1 "\
+                "(time limit or recombination limit has exceeded): no upper bound found"
+            chunk_info["last tried upper bound"]= s1_ub
+            chunk_info["known lb"]= s1_lb
         else:
-            current_haplotypes= read_haplotypes(successful_haplotypes_filename)
+            current_haplotypes= s1_haplotypes
+
+
+    rehcstar_success= current_haplotypes is not None
+
+    if current_haplotypes is not None:
         if max_recombs == 0:
             logging.info("Step 2. A solution without recombinations has been found. "
                          "It is optimal, thus bisection is skipped...")
@@ -750,12 +868,15 @@ def exec_reHCstar(filenames, solution, chunk, bounds, cmd, time_limit, initial_h
         else:
             # Read the haplotype configuration and compute the real upper-bound
             lb= min_recombs
-            ub= process_partial_hc(current_haplotypes, solution, fixed_index)
+            ub= max_recombs
             mid= ub
+            assert lb < ub
             try:
 
-                logging.info("Step 2. Performing a bisection to find an optimal solution...")
+                logging.info("Step 2. Performing a bisection of interval (%d, %d] to find an optimal solution...",
+                             lb, ub)
                 while lb+1 < ub:
+                    assert lb < ub
                     mid= math.floor((lb+ub)/2)
                     logging.info("Step 2. Bisecting interval (%d-%d]", lb, ub)
                     logging.info("Step 2. Trying with at most %d recombinations.", mid)
@@ -826,6 +947,10 @@ cmd['cmd']= options.cmd
 cmd['rec']= options.cmdrec
 cmd['time']= options.cmdtime
 
+bootstrap= {
+    'enabled': options.bootstrap,
+    'time-limit': options.bootstrap_time_limit
+}
 
 logging.info("CONFIGURATION:")
 logging.info("Input pedigree:       '%s'", options.pedigree)
@@ -852,6 +977,12 @@ if options.init_hc is not None and complete_sol.genotype_length > options.length
                   "Aborting...", options.length, complete_sol.genotype_length)
     sys.exit(2)
 
+if len(complete_sol.individuals) == 0 or complete_sol.genotype_length == 0:
+    logging.warn("The input genotyped pedigree is empty (individuals=%d, genotype length=%d). "
+                 "A haplotype configuration cannot be computed. Exiting...",
+                 len(complete_sol.individuals), complete_sol.genotype_length)
+    sys.exit(1)
+
 logging.info("Starting the computation of the haplotype configuration...")
 assumptions= []
 suffix="{}-{}-pid{}".format(os.path.basename(options.pedigree),
@@ -876,6 +1007,8 @@ complete_sol.notes.extend([
         "LOOKAHEAD LENGTH: '{}'".format(options.lookahead),
         "INITIAL RECOMBINATION BOUNDS: '({}, {}]'".format(*bounds),
         "INITIAL HAPLOTYPE CONFIGURATION: '{}'".format(options.init_hc),
+        "BOOTSTRAP ENABLED: '{}'".format(options.bootstrap),
+        "BOOTSTRAP TIME LIMIT: '{}s'".format(options.bootstrap_time_limit),
         "TIME LIMIT: '{}'".format("{}s".format(time_limit.limit)
                                   if time_limit.limit is not None
                                   else "unlimited") ])
@@ -906,7 +1039,7 @@ for start in range(0, complete_sol.genotype_length, options.length):
     (rehcstar_success, out_of_time)= exec_reHCstar(filenames, complete_sol,
                                                    chunk, bounds,
                                                    cmd, time_limit,
-                                                   initial_haplotypes)
+                                                   initial_haplotypes, bootstrap)
     if rehcstar_success:
         logging.info("reHCstar has successfully computed %s solution on the chunk [%d-%d).",
                      "an optimal" if complete_sol.chunk_info[chunk]["optimum found"] else "a suboptimal",
