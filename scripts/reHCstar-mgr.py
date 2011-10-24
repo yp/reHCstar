@@ -711,7 +711,7 @@ def step1_bootstrap(filenames, solution, init_n_rec, cmd, time_limit):
                  "Trying to quickly find a lower bound.")
     bootstrap_ub= 0
     bootstrap_lb= -1
-    bootstrap_end= False
+    bootstrap_end= bootstrap_ub >= init_n_rec
     successful_haplotypes_filename= None
     while not bootstrap_end:
         logging.info("Step 1(bootstrap). Trying with at most %d recombinations.",
