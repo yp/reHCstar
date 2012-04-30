@@ -24,13 +24,14 @@ is then solved by a SAT solver.
 A haplotype configuration is finally recovered from the satisfying
 assignment.
 
-The algorithm is described in this technical report:  
+The algorithm is described in the following paper:  
 Yuri Pirola, Gianluca Della Vedova, Stefano Biffani, Alessandra Stella,
 and Paola Bonizzoni.
-_Haplotype Inference on Pedigrees with Recombinations, Errors, and
-Missing Genotypes via SAT solvers_.
-CoRR abs/1107.3724 (2011).
-[Link](http://arxiv.org/abs/1107.3724)
+_A fast and practical approach to genotype phasing and imputation on a
+pedigree with erroneous and incomplete information_.
+In: Proc. of IEEE 2nd International Conference on Computational Advances
+in Bio and Medical Sciences, ICCABS 2012.
+[Link](http://dx.doi.org/10.1109/ICCABS.2012.6182643)
 
 
 ## Download and Installation ##
