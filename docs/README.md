@@ -9,7 +9,7 @@ by [Yuri Pirola](http://bimib.disco.unimib.it/index.php/Pirola_Yuri)
 
 
 Started: September 27, 2010  
-Current release: **development version** (do not use for production)
+Current release: **1.3.1** (October 24, 2011)
 
 
 ------------------------------------------------------------------------
@@ -24,6 +24,13 @@ is then solved by a SAT solver.
 A haplotype configuration is finally recovered from the satisfying
 assignment.
 
+The algorithm is described in this technical report:  
+Yuri Pirola, Gianluca Della Vedova, Stefano Biffani, Alessandra Stella,
+and Paola Bonizzoni.
+_Haplotype Inference on Pedigrees with Recombinations, Errors, and
+Missing Genotypes via SAT solvers_.
+CoRR abs/1107.3724 (2011).
+[Link](http://arxiv.org/abs/1107.3724)
 
 
 ## Download and Installation ##
@@ -179,13 +186,31 @@ The following options are used to specify the input/output files:
    associated with the genotyped pedigree (input file);
 -  `--haplotypes` (short form `-h`), that specifies the file that will
    contain the haplotype configuration of the genotyped pedigree
-   computed by reHC-* (output file).
+   computed by reHC-* (output file);
+-  `--assumptions` (short form `-a`), that specifies an _optional_ file
+   that contains additional assumptions that *must* be satisfied by the
+   resulting haplotype configuration. Assumptions are specified one for
+   each row with the following syntax:
+
+        <variable kind> <individual id> <locus> <value>
+
+   Where `<variable kind>` is one of `sp` (paternal source), `sm`
+   (maternal source), `p` (paternal allele), `m` (maternal allele), `rp`
+   (paternal recombination), `rm` (maternal recombination), and `e`
+   (genotyping error), `<individual id>` is the numerical identifier of
+   the individual (1-based), `<locus>` is the genotype locus, and
+   `<value>` is the boolean value (0/1) that the variable must have.
+
 
 For the `--create-read` mode, the command-line that has to be used to
 invoke the external SAT must be specified by using the `--sat-cmdline`
 (short form `-c`) program option.
 The strings `%%INPUT%%` and `%%OUTPUT%%` are placeholders for,
 respectively, the input and the output files of the SAT solver.
+If the SAT solver can read the SAT instance from its standard input,
+then it is possible to write the SAT instance to the solver's standard
+input by specifying the option `--pipe`.
+In this case, the placeholder `%%INPUT%%` will _not_ be used.
 
 
 ### Options for Recombinations and Errors ###
@@ -193,16 +218,28 @@ respectively, the input and the output files of the SAT solver.
 By default, reHC-* search for a haplotype configuration with zero
 recombinations and zero errors.
 To enable recombinations in the haplotyping process, the program options
-`--global-recomb` and `--global-recomb-rate=XX` _must be specified_,
-where `XX` is a number between `0.0` and `1.0` that represents the
+`--global-recomb` and either `--global-recomb-rate=XX` or
+`--global-recomb-number=YY` _must be specified_.
+Here `XX` is a number between `0.0` and `1.0` that represents the
 maximum number of recombinations *r* as a fraction of the total number
-of possible recombination loci.
+of possible recombination loci, while `YY` is (directly) the maximum
+number of recombinations *r*.
+Moreover, if option `--global-recomb` is enabled and
+`--global-recomb-number` is used, it is also possible to search for a
+haplotype configuration with a given minimum number of recombinations by
+specifying the option `--global-recomb-min-number=ZZ`, where `ZZ` is the
+sought lower bound.
+This option should only be used to specify a lower bound that has been
+already proved since the resulting haplotype configuration could induce
+unnecessary recombination in order to satisfy the given lower bound.
 
 Similarly, to enable genotyping errors in the computed haplotype
 configuration, the program options `--global-error` and
-`--global-error-rate=XX` _must be specified_, where `XX` is a number
-between `0.0` and `1.0` that represents the maximum number of errors *e*
-as a fraction of the number of non-missing genotypes.
+either `--global-error-rate=XX` or `--global-error-number=YY` _must be
+specified_.
+As before, `XX` is a number between `0.0` and `1.0` that represents the
+maximum number of errors *e* as a fraction of the number of non-missing
+genotypes, while `YY` is (directly) the maximum number of errors *e*.
 
 Other program options allow a finer control over the distribution of
 recombinations and errors.
@@ -226,7 +263,9 @@ Three options regulates the GZip compression:
    that are written by reHC-* (currently the `--sat` and `--haplotypes`
    files);
 -  `--compress` (short form `-z`), which is equivalent to specify both
-   `--compress-input` and `--compress-output`.
+   `--compress-input` and `--compress-output`;
+-  `--compress-sat`, which enables the GZip compression only for the
+   file that contains the computed SAT instance.
 
 Temporary files of the `--create-read` mode are automatically removed by
 default.
@@ -270,6 +309,178 @@ invocation of the SAT solver:
           -p genotyped-pedigree.txt  \
           -h haplotype-configuration.txt  \
           -c "./external-sat-solver %%INPUT%% %%OUTPUT%%"
+
+Or, if the SAT solver reads the SAT instance from its standard input:
+
+    $ ./bin/reHCstar -3  \
+          -p genotyped-pedigree.txt  \
+          -h haplotype-configuration.txt  \
+          --pipe  \
+          -c "./external-sat-solver %%OUTPUT%%"
+
+
+
+## Optimization Version ##
+
+reHC-* also includes a program that uses the basic `reHCstar` executable
+in order to achieve two different aims:
+
+-  finding (by a bisect-like search) the haplotype configuration that
+   induces the minimum number of recombinations;
+-  splitting long input genotypes into smaller overlapping blocks on
+   which a partial haplotype configuration is computed independently and
+   then used to reconstruct the complete haplotype configuration.
+
+Please notice that the optimality of the solution (in term of number of
+recombinations) is guaranteed if the genotypes are _not_ split into
+smaller blocks.
+
+These functionalities are provided by the program `reHCstar-mgr.py`
+written in [Python](http://www.python.org) version 3 and later.
+
+`reHCstar-mgr.py` requires two parameters, `-p` and `-r`, that specify,
+respectively, the file containing the input genotyped pedigree and the
+file on which the computed haplotype configuration will be saved.
+
+By default, `reHCstar-mgr.py` invokes the `reHCstar` executable in the
+current directory using the internal SAT solver mode (option
+`--solve-internal` described above).
+To change the default, the complete command line must be provided as
+argument of the program option `--cmd` and must contain the following
+three placeholders `{pedigree}`, `{haplotypes}`, and `{assumptions}`
+that will be replaced, respectively, with the input pedigree file, the
+output haplotype configuration file, and the input additional assumption
+file.
+
+For example, the default value of the `--cmd` option (i.e. the default
+command line) is:
+
+    ./reHCstar -4 -p "{pedigree}" -h "{haplotypes}" -a "{assumptions}"
+
+The command line used to invoke the `reHCstar` executable is
+composed by concatenating the argument of the previous option with the
+arguments of two other options: `--cmd-rec` and `--cmd-time`.
+The first one, `--cmd-rec`, specifies the options (of `reHCstar`) that
+regulates the maximum (and, possibly, minimum) number of recombinations.
+In particular, the argument must include the placeholder `{number}`
+which will be replaced before invocation with the actual maximum number
+of recombinations.
+Moreover, the argument may include the placeholder `{min_number}` which
+will be replaced before invocation with the largest lower bound on the
+number of recombinations computed so far.
+
+For example, the default value of the `--cmd-rec` option is:
+
+    --global-recomb --global-recomb-number "{number}" --global-recomb-min-number "{min_number}"
+
+The last option that regulates the final command line of `reHCstar` is
+`--cmd-time` and, if specified, must include the placeholder `{time}`
+which will be replaced before invocation with the maximum CPU time of
+the `reHCstar` execution (in seconds).
+An empty argument disables the running time limit control (albeit it
+could be enforced anyway via OS services).
+
+For example, the default value of the `--cmd-time` option is:
+
+    --time-limit {time}
+
+
+The following sections present the other main features of
+`reHCstar-mgr.py` while the full list of its options is available in the
+integrated help (option `-h`).
+
+
+### Automatic Genotype Partition ###
+
+The subdivision of the input genotypes in (smaller) overlapping blocks
+is regulated by the following two options: `--block-length` (short form
+`-l`, default `50`) and `--lookahead-length` (short form `-a`,
+default `0`).
+The first option specifies the non-overlapping (maximum) length of each
+block which the genotypes are divided into, while the second option
+specifies the number of loci (in addition to a single fixed locus) which
+two consecutive blocks overlap on.
+In other words, a single block can be considered as composed by three
+parts: the first part spans `block-length` loci, the second is composed
+by a single locus, and the third (optional) part spans
+`lookahead-length` loci.
+(Hence, the total length of a block is `block-length` + `1` +
+`lookahead-length`.)
+The second part of a block always overlaps with the first locus of the
+first part of the next genotype block.
+Moreover the haplotype configuration computed on this locus during the
+solution of the "current" block is used as assumptions during the
+solution of the next block (thus coincide).
+The third part of a block, the "look-ahead" part, if it is present
+overlaps with the next block starting from its second locus.
+This part is used to compute a haplotype configuration of the "current"
+block, but the solution is then discarded when the next block is
+considered (thus it may not coincide).
+Its purpose is to provide a hint of the structure of the next block and
+it should be particularly useful when the proportion of missing
+genotypes is relevant, since when the overlapping locus has many missing
+genotypes, the solution of the current block could impute the genotypes
+in a way that is locally optimal, but globally sub-optimal.
+
+Please notice that `reHCstar-mgr.py` finds a solution that requires the
+minimum number of recombinations only if the genotypes are *not* divided
+into blocks.
+
+
+### Initial Bounds on the Number of Recombinations ###
+
+Initial lower and upper bounds on the number of recombinations may be
+specified with the options `--initial-recomb-lb=XX` and
+`--initial-recomb-ub=YY`, respectively.
+The options' arguments, `XX` and `YY`, are non-negative numbers such
+that a haplotype configuration with `XX` recombinations does not exist
+and a haplotype configuration with `YY` recombinations certainly exists.
+The default value of both of them is `-1` which means that no bound is
+known/provided.
+Moreover it is possible to specify a file containing an initial
+haplotype configuration that `reHCstar-mgr.py` tries to improve (in
+terms of number of recombinations).
+In this case, the initial haplotype configuration is read and the number
+of recombinations that it induces is used as initial upper bound.
+If not better solution is found (for example, due to time limits), then
+`reHCstar-mgr.py` outputs the initial haplotype configuration.
+The file containing the initial haplotype configuration is specified as
+argument of the `--initial-haplotype-configuration` program option.
+Please notice that options `--initial-haplotype-configuration` and
+`--initial-recomb-ub` cannot be used together.
+These options could help to speed-up the process of searching the
+solution with the minimum number of recombinations since they provide
+the initial interval which the bisect-like search is performed on.
+
+If an initial upper bound is known but an initial lower bound is not, it
+is possible to enable a _bootstrap_ phase that attempts to quickly
+identify an initial lower bound and then the execution continues by
+bisecting the interval so determined.
+The bootstrap phase can be activated by specifying the `--bootstrap`
+switch, while the maximum CPU time spent in the bootstrap
+phase can be specified with the `--bootstrap-time-limit=XX` parameter,
+where `XX` is the time limit expressed in seconds.
+
+
+### Running Time Management ###
+
+`reHCstar-mgr.py` provides basic tools for limiting its total running
+time (CPU time).
+In particular, option `--time-limit=SS` specifies the maximum running
+time of the program (`SS` seconds).
+For the proper functioning of this feature, the option `--cmd-time` must
+be valid.
+If the program execution exceeds the given time limit, then
+`reHCstar-mgr.py` tries to save the solution computed so far in a file
+whose name is the name specified by the option `--results` concatenated
+with the (fixed) extension `.part`.
+The saved solution could be _partial_ (if the original instance has been
+partitioned in blocks) and/or _suboptimal_ (if the minimum number of
+recombinations has not been computed within the time limit).
+The status of the solution is saved as a comment line in the same file
+of the solution.
+We suggest to enable the verbose mode (with `-v` or `-vv`) for getting
+additional information.
 
 
 

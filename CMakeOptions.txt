@@ -33,4 +33,17 @@ if (INTEGRATE_SAT_SOLVER)
      OFF
    )
 
+   ## ####################
+   ##
+   ## Specific options for the solvers
+   ##
+   ## ####################
+
+   ## Solver: CryptoMiniSat
+
+   ### Uncomment the following to (try to) lower the memory usage
+   ### (speed will be affected)
+   # add_definitions("-DTRY_LOW_MEMORY_USAGE")
+
+
 endif()

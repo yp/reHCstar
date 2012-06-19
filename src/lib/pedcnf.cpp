@@ -287,37 +287,49 @@ pedcnf_t::clauses_to_dimacs_format(std::ostream& out,
   BOOST_FOREACH(const std::string& s, notes) {
 	 out << "c " << s << std::endl;
   }
+#ifndef AVOID_XOR_CLAUSES
   if (_no_of_xor_clauses > 0)
 	 out << "c extended syntax: or- and xor-clauses" << std::endl;
-  out << "c" << std::endl;
-  size_t i= 1;
-  for (pedcnf_t::varvec_t::const_iterator it= _vars.begin();
-		 it != _vars.end();
-		 ++it, ++i) {
-	 out << "c v " << std::setw(7) << i << " " << *it << std::endl;
-  }
-  out << "c" << std::endl;
-  out << "p cnf " << _vars.size() << " " << (_no_of_clauses + _no_of_xor_clauses) << std::endl;
+#endif // AVOID_XOR_CLAUSES
+  // out << "c" << std::endl;
+  // size_t i= 1;
+  // for (pedcnf_t::varvec_t::const_iterator it= _vars.begin();
+  // 		 it != _vars.end();
+  // 		 ++it, ++i) {
+  // 	 out << "c v " << std::setw(7) << i << " " << *it << std::endl;
+  // }
+  // out << "c" << std::endl;
+  size_t n_clauses= _no_of_clauses;
+#ifndef AVOID_XOR_CLAUSES
+  n_clauses += _no_of_xor_clauses;
+#endif // AVOID_XOR_CLAUSES
+  out << "p cnf " << _vars.size() << " " << n_clauses << std::endl;
   for (clauses_t::const_iterator it= _clauses.begin();
 		 it != _clauses.end();
 		 ++it) {
-	 out << *it << std::endl;
+	 out << *it << '\n';
   }
+#ifndef AVOID_XOR_CLAUSES
   for (xor_clauses_t::const_iterator it= _xor_clauses.begin();
 		 it != _xor_clauses.end();
 		 ++it) {
-	 out << "x" << *it << std::endl;
+	 out << "x" << *it << '\n';
   }
+#endif // AVOID_XOR_CLAUSES
+  out.flush();
   return out;
 };
 
 #endif // ONLY_INTERNAL_SAT_SOLVER
 
-
+#ifdef USE_PLAIN_CNF_FORMAT
+// *********************************************************
+//      !!!  OLD/PLAIN FORMAT  !!!
 // Read the assignment from a file like the following one:
 // SAT/UNSAT
 // 1 -2 3 4 0
-bool
+// *********************************************************
+boost::tribool
 pedcnf_t::assignment_from_minisat_format(std::istream& in) {
   std::string line;
   std::getline(in, line);
@@ -347,22 +359,79 @@ pedcnf_t::assignment_from_minisat_format(std::istream& in) {
   return false;
 };
 
+#else // USE_PLAIN_CNF_FORMAT
+
+// *********************************************************
+//      !!!  DIMACS FORMAT  !!!
+// Read the assignment from a file like the following one:
+// s SATISFIABLE/UNSATISFIABLE
+// v 1 -2 3 4
+// v 5 -6 -7 0
+// *********************************************************
+boost::tribool
+pedcnf_t::assignment_from_minisat_format(std::istream& in) {
+  int status= 0; // 0 = undecided, 1 = SAT, -1 = UNSAT
+  std::string line;
+  while (std::getline(in, line)) {
+	 boost::trim(line);
+	 if ((line.length()==0) || boost::starts_with(line, "c ")) {
+// The line is a comment, discard.
+	 } else if (boost::starts_with(line, "s ")) {
+		if (line == "s SATISFIABLE") {
+		  L_DEBUG("The instance is SATISFIABLE");
+		  status= 1;
+		} else if (line == "s UNSATISFIABLE") {
+		  L_DEBUG("The instance is UNSATISFIABLE");
+		  status= -1;
+		} else {
+		  L_FATAL("Read a wrong status line: >" << line << "<");
+		  MY_FAIL;
+		}
+	 } else if (boost::starts_with(line, "v ")) {
+		std::istringstream is(line);
+// Remove the initial "v"
+		char c;
+		is >> c;
+		lit_t value;
+		while ((is >> value) && (value != 0)) {
+		  MY_ASSERT( (size_t)abs(value) <= _vals.size() );
+		  _vals[(size_t)abs(value)-1]= (value>0);
+		}
+	 } else {
+		L_FATAL("Read an unparsable line: >" << line << "<");
+		MY_FAIL;
+	 }
+  }
+  if (status == 1) { // SAT
+#ifndef ONLY_INTERNAL_SAT_SOLVER
+	 MY_ASSERT_DBG( is_satisfying_assignment() );
+#endif // ONLY_INTERNAL_SAT_SOLVER
+	 return true;
+  } else if (status == -1) { // UNSAT
+	 return false;
+  } else { // undecided
+	 return boost::indeterminate;
+  }
+};
+
+#endif // USE_PLAIN_CNF_FORMAT
 
 std::ostream&
 operator<<(std::ostream& out, const pedcnf_t::clause_t& clause) {
   for (pedcnf_t::clause_t::const_iterator it= clause.begin();
 		 it != clause.end();
 		 ++it) {
-	 out << std::setw(10) << *it << " ";
+//	 out << std::setw(10) << *it << " ";
+	 out << *it << " ";
   }
-  out << "     0";
+  out << "0";
   return out;
 };
 
 void
 pedcnf_t::add_clause(const clause_t& clause) {
 #ifndef ONLY_INTERNAL_SAT_SOLVER
-  _clauses.insert(clause);
+  _clauses.push_back(clause);
 #endif
 #ifdef INTERNAL_SAT_SOLVER
   _solver.add_clause(clause);
@@ -374,7 +443,7 @@ pedcnf_t::add_clause(const clause_t& clause) {
 void
 pedcnf_t::add_xor_clause(const xor_clause_t& clause) {
 #ifndef ONLY_INTERNAL_SAT_SOLVER
-  _xor_clauses.insert(clause);
+  _xor_clauses.push_back(clause);
 #endif
 #ifdef INTERNAL_SAT_SOLVER
   _solver.add_xor_clause(clause);

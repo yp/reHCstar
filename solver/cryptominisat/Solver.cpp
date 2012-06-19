@@ -40,6 +40,10 @@ Modifications for CryptoMiniSat are under GPLv3 licence.
 #define UNWINDING_DEBUG
 #endif
 
+#ifndef LOG_STREAM
+#define LOG_STREAM std::clog
+#endif
+
 //#define DEBUG_UNCHECKEDENQUEUE_LEVEL0
 //#define VERBOSE_DEBUG_POLARITIES
 //#define DEBUG_DYNAMIC_RESTART
@@ -154,7 +158,7 @@ Var Solver::newVar(bool dvar)
 {
     Var v = nVars();
     if (v >= 1<<30) {
-        std::cout << "ERROR! Variable requested is far too large" << std::endl;
+        LOG_STREAM << "ERROR! Variable requested is far too large" << std::endl;
         exit(-1);
     }
 
@@ -212,7 +216,7 @@ XorClause* Solver::addXorClauseInt(T& ps, bool xorEqualFalse, const uint32_t gro
     assert(decisionLevel() == 0);
 
     if (ps.size() > (0x01UL << 18)) {
-        std::cout << "Too long clause!" << std::endl;
+        LOG_STREAM << "Too long clause!" << std::endl;
         exit(-1);
     }
     std::sort(ps.getData(), ps.getDataEnd());
@@ -246,7 +250,7 @@ XorClause* Solver::addXorClauseInt(T& ps, bool xorEqualFalse, const uint32_t gro
         }
         case 2: {
             #ifdef VERBOSE_DEBUG
-            cout << "--> xor is 2-long, replacing var " << ps[0].var()+1 << " with " << (!xorEqualFalse ? "-" : "") << ps[1].var()+1 << endl;
+            LOG_STREAM << "--> xor is 2-long, replacing var " << ps[0].var()+1 << " with " << (!xorEqualFalse ? "-" : "") << ps[1].var()+1 << endl;
             #endif
 
             ps[0] = ps[0].unsign();
@@ -284,7 +288,7 @@ bool Solver::addXorClause(T& ps, bool xorEqualFalse, const uint32_t group, const
 {
     assert(decisionLevel() == 0);
     if (ps.size() > (0x01UL << 18)) {
-        std::cout << "Too long clause!" << std::endl;
+        LOG_STREAM << "Too long clause!" << std::endl;
         exit(-1);
     }
 
@@ -384,7 +388,7 @@ template<class T> const bool Solver::addClauseHelper(T& ps, const uint32_t group
 {
     assert(decisionLevel() == 0);
     if (ps.size() > (0x01UL << 18)) {
-        std::cout << "Too long clause!" << std::endl;
+        LOG_STREAM << "Too long clause!" << std::endl;
         exit(-1);
     }
 
@@ -432,7 +436,7 @@ template<class T>
 bool Solver::addClause(T& ps, const uint32_t group, const char* group_name)
 {
     #ifdef VERBOSE_DEBUG
-    std::cout << "addClause() called with new clause: " << ps << std::endl;
+    LOG_STREAM << "addClause() called with new clause: " << ps << std::endl;
     #endif //VERBOSE_DEBUG
     if (!addClauseHelper(ps, group, group_name)) return false;
     Clause* c = addClauseInt(ps, group, false, 0, 0, true);
@@ -626,9 +630,9 @@ Also reverts all stuff in Gass-elimination
 void Solver::cancelUntil(int level)
 {
     #ifdef VERBOSE_DEBUG
-    cout << "Canceling until level " << level;
-    if (level > 0) cout << " sublevel: " << trail_lim[level];
-    cout << endl;
+    LOG_STREAM << "Canceling until level " << level;
+    if (level > 0) LOG_STREAM << " sublevel: " << trail_lim[level];
+    LOG_STREAM << endl;
     #endif
 
     if ((int)decisionLevel() > level) {
@@ -641,7 +645,7 @@ void Solver::cancelUntil(int level)
         for (int sublevel = trail.size()-1; sublevel >= (int)trail_lim[level]; sublevel--) {
             Var var = trail[sublevel].var();
             #ifdef VERBOSE_DEBUG
-            cout << "Canceling var " << var+1 << " sublevel: " << sublevel << endl;
+            LOG_STREAM << "Canceling var " << var+1 << " sublevel: " << sublevel << endl;
             #endif
             assigns[var] = l_Undef;
             #ifdef ANIMATE3D
@@ -651,7 +655,7 @@ void Solver::cancelUntil(int level)
             #ifdef ENABLE_UNWIND_GLUE
             if (unWindGlue[var] != NULL) {
                 #ifdef UNWINDING_DEBUG
-                std::cout << "unwind, var:" << var
+                LOG_STREAM << "unwind, var:" << var
                 << " sublevel:" << sublevel
                 << " coming from:" << (trail.size()-1)
                 << " going until:" << (int)trail_lim[level]
@@ -672,7 +676,7 @@ void Solver::cancelUntil(int level)
     }
 
     #ifdef VERBOSE_DEBUG
-    cout << "Canceling finished. (now at level: " << decisionLevel() << " sublevel: " << trail.size()-1 << ")" << endl;
+    LOG_STREAM << "Canceling finished. (now at level: " << decisionLevel() << " sublevel: " << trail.size()-1 << ")" << endl;
     #endif
 }
 
@@ -804,7 +808,7 @@ Uses the tallyVotes() functions to tally the votes
 void Solver::calculateDefaultPolarities()
 {
     #ifdef VERBOSE_DEBUG_POLARITIES
-    std::cout << "Default polarities: " << std::endl;
+    LOG_STREAM << "Default polarities: " << std::endl;
     #endif
 
     assert(decisionLevel() == 0);
@@ -825,12 +829,12 @@ void Solver::calculateDefaultPolarities()
             posPolars += (*it < 0.0);
             undecidedPolars += (*it == 0.0);
             #ifdef VERBOSE_DEBUG_POLARITIES
-            std::cout << !defaultPolarities[i] << ", ";
+            LOG_STREAM << !defaultPolarities[i] << ", ";
             #endif //VERBOSE_DEBUG_POLARITIES
         }
 
         if (conf.verbosity >= 2) {
-            std::cout << "c Calc default polars - "
+            LOG_STREAM << "c Calc default polars - "
             << " time: " << std::fixed << std::setw(6) << std::setprecision(2) << (cpuTime() - myTime) << " s"
             << " pos: " << std::setw(7) << posPolars
             << " undec: " << std::setw(7) << undecidedPolars
@@ -844,7 +848,7 @@ void Solver::calculateDefaultPolarities()
     }
 
     #ifdef VERBOSE_DEBUG_POLARITIES
-    std::cout << std::endl;
+    LOG_STREAM << std::endl;
     #endif //VERBOSE_DEBUG_POLARITIES
 }
 
@@ -887,13 +891,13 @@ void Solver::calcReachability()
     /*for (uint32_t i = 0; i < nVars()*2; i++) {
         vector<Lit>& myset = litReachable[i];
         for (uint32_t i2 = 0; i2 < myset.size(); i2++) {
-            std::cout << transOTFCache[myset[i2].toInt()].lits.size() << " , ";
+            LOG_STREAM << transOTFCache[myset[i2].toInt()].lits.size() << " , ";
         }
-        std::cout << std::endl;
+        LOG_STREAM << std::endl;
     }*/
 
     if (conf.verbosity >= 1) {
-        std::cout << "c calculated reachability. Time: " << (cpuTime() - myTime) << std::endl;
+        LOG_STREAM << "c calculated reachability. Time: " << (cpuTime() - myTime) << std::endl;
     }
 }
 
@@ -931,7 +935,7 @@ totally randomly
 Lit Solver::pickBranchLit()
 {
     #ifdef VERBOSE_DEBUG
-    cout << "decision level: " << decisionLevel() << " ";
+    LOG_STREAM << "decision level: " << decisionLevel() << " ";
     #endif
 
     Var next = var_Undef;
@@ -1013,14 +1017,14 @@ Lit Solver::pickBranchLit()
 
     if (next == var_Undef) {
         #ifdef VERBOSE_DEBUG
-        cout << "SAT!" << endl;
+        LOG_STREAM << "SAT!" << endl;
         #endif
         return lit_Undef;
     } else {
         Lit lit(next,sign);
         #ifdef VERBOSE_DEBUG
         assert(decision_var[lit.var()]);
-        cout << "decided on: " << lit.var()+1 << " to set:" << !lit.sign() << endl;
+        LOG_STREAM << "decided on: " << lit.var()+1 << " to set:" << !lit.sign() << endl;
         #endif
         return lit;
     }
@@ -1287,7 +1291,7 @@ void Solver::minimiseLeartFurther(vec<Lit>& cl, const uint32_t glue)
     cl.shrink_(i-j);
 
     #ifdef VERBOSE_DEBUG
-    std::cout << "c Removed further " << removedLits << " lits" << std::endl;
+    LOG_STREAM << "c Removed further " << removedLits << " lits" << std::endl;
     #endif
 }
 
@@ -1605,7 +1609,7 @@ PropBy Solver::propagate(const bool update)
     uint32_t num_props = 0;
 
     #ifdef VERBOSE_DEBUG
-    cout << "Propagation started" << endl;
+    LOG_STREAM << "Propagation started" << endl;
     #endif
 
     while (qhead < trail.size()) {
@@ -1614,8 +1618,8 @@ PropBy Solver::propagate(const bool update)
         num_props += ws.size()/2 + 2;
 
         #ifdef VERBOSE_DEBUG
-        cout << "Propagating lit " << p << endl;
-        cout << "ws origSize: "<< ws.size() << endl;
+        LOG_STREAM << "Propagating lit " << p << endl;
+        LOG_STREAM << "ws origSize: "<< ws.size() << endl;
         #endif
 
         vec<Watched>::iterator i = ws.getData();
@@ -1664,7 +1668,7 @@ PropBy Solver::propagate(const bool update)
     simpDB_props -= num_props;
 
     #ifdef VERBOSE_DEBUG
-    cout << "Propagation ended." << endl;
+    LOG_STREAM << "Propagation ended." << endl;
     #endif
 
     return confl;
@@ -1699,14 +1703,14 @@ PropBy Solver::propagateBin(vec<Lit>& uselessBin)
         bool& hasChildren = binPropData[p.var()].hasChildren;
         hasChildren = false;
 
-        //std::cout << "lev: " << lev << " ~p: "  << ~p << std::endl;
+        //LOG_STREAM << "lev: " << lev << " ~p: "  << ~p << std::endl;
         const vec<Watched> & ws = watches[p.toInt()];
         propagations += 2;
         for(vec<Watched>::const_iterator k = ws.getData(), end = ws.getDataEnd(); k != end; k++) {
             hasChildren = true;
             if (!k->isBinary()) continue;
 
-            //std::cout << (~p) << ", " << k->getOtherLit() << " learnt: " << k->getLearnt() << std::endl;
+            //LOG_STREAM << (~p) << ", " << k->getOtherLit() << " learnt: " << k->getLearnt() << std::endl;
             lbool val = value(k->getOtherLit());
             if (val.isUndef()) {
                 uncheckedEnqueueLight2(k->getOtherLit(), lev, lev1Ancestor, learntLeadHere || k->getLearnt());
@@ -1728,7 +1732,7 @@ PropBy Solver::propagateBin(vec<Lit>& uselessBin)
             }
         }
     }
-    //std::cout << " -----------" << std::endl;
+    //LOG_STREAM << " -----------" << std::endl;
 
     return PropBy();
 }
@@ -1892,9 +1896,9 @@ void Solver::reduceDB()
         std::sort(learnts.getData(), learnts.getDataEnd(), reduceDB_ltMiniSat());
 
     #ifdef VERBOSE_DEBUG
-    std::cout << "Cleaning clauses" << std::endl;
+    LOG_STREAM << "Cleaning clauses" << std::endl;
     for (uint32_t i = 0; i != learnts.size(); i++) {
-        std::cout << "activity:" << learnts[i]->getGlue()
+        LOG_STREAM << "activity:" << learnts[i]->getGlue()
         << " \toldActivity:" << learnts[i]->getMiniSatAct()
         << " \tsize:" << learnts[i]->size() << std::endl;
     }
@@ -1935,7 +1939,7 @@ void Solver::reduceDB()
     learnts.shrink_(i - j);
 
     if (conf.verbosity >= 3) {
-        std::cout << "c rem-learnts " << std::setw(6) << totalNumRemoved
+        LOG_STREAM << "c rem-learnts " << std::setw(6) << totalNumRemoved
         << "  avgGlue "
         << std::fixed << std::setw(5) << std::setprecision(2)  << ((double)totalGlueOfRemoved/(double)totalNumRemoved)
         << "  avgSize "
@@ -1987,9 +1991,9 @@ const bool Solver::simplify()
     speedup = std::min(3.5, speedup);
     speedup = std::max(0.2, speedup);
 
-    /*std::cout << "new:" << nbBin - lastNbBin + becameBinary << std::endl;
-    std::cout << "left:" << ((double)(nbBin - lastNbBin + becameBinary)/BINARY_TO_XOR_APPROX) * slowdown  << std::endl;
-    std::cout << "right:" << (double)order_heap.size() * PERCENTAGEPERFORMREPLACE * speedup << std::endl;*/
+    /*LOG_STREAM << "new:" << nbBin - lastNbBin + becameBinary << std::endl;
+    LOG_STREAM << "left:" << ((double)(nbBin - lastNbBin + becameBinary)/BINARY_TO_XOR_APPROX) * slowdown  << std::endl;
+    LOG_STREAM << "right:" << (double)order_heap.size() * PERCENTAGEPERFORMREPLACE * speedup << std::endl;*/
 
     if (conf.doFindEqLits && conf.doRegFindEqLits &&
         (((double)abs64((int64_t)numNewBin - (int64_t)lastNbBin)/BINARY_TO_XOR_APPROX) * slowdown) >
@@ -2068,14 +2072,14 @@ lbool Solver::search(const uint64_t nof_conflicts, const uint64_t nof_conflicts_
     testAllClauseAttach();
     findAllAttach();
     #ifdef VERBOSE_DEBUG
-    std::cout << "c started Solver::search()" << std::endl;
+    LOG_STREAM << "c started Solver::search()" << std::endl;
     //printAllClauses();
     #endif //VERBOSE_DEBUG
     for (;;) {
         assert(ok);
         PropBy confl = propagate<true>(update);
         #ifdef VERBOSE_DEBUG
-        std::cout << "c Solver::search() has finished propagation" << std::endl;
+        LOG_STREAM << "c Solver::search() has finished propagation" << std::endl;
         //printAllClauses();
         #endif //VERBOSE_DEBUG
 
@@ -2123,11 +2127,11 @@ llbool Solver::new_decision(const uint64_t nof_conflicts, const uint64_t nof_con
 
             #ifdef DEBUG_DYNAMIC_RESTART
             if (glueHistory.isvalid()) {
-                std::cout << "glueHistory.getavg():" << glueHistory.getavg() <<std::endl;
-                std::cout << "totalSumOfGlue:" << totalSumOfGlue << std::endl;
-                std::cout << "conflicts:" << conflicts<< std::endl;
-                std::cout << "compTotSumGlue:" << compTotSumGlue << std::endl;
-                std::cout << "conflicts-compTotSumGlue:" << conflicts-compTotSumGlue<< std::endl;
+                LOG_STREAM << "glueHistory.getavg():" << glueHistory.getavg() <<std::endl;
+                LOG_STREAM << "totalSumOfGlue:" << totalSumOfGlue << std::endl;
+                LOG_STREAM << "conflicts:" << conflicts<< std::endl;
+                LOG_STREAM << "compTotSumGlue:" << compTotSumGlue << std::endl;
+                LOG_STREAM << "conflicts-compTotSumGlue:" << conflicts-compTotSumGlue<< std::endl;
             }
             #endif
 
@@ -2203,10 +2207,10 @@ clause with that of the shorter one
 llbool Solver::handle_conflict(vec<Lit>& learnt_clause, PropBy confl, uint64_t& conflictC, const bool update)
 {
     #ifdef VERBOSE_DEBUG
-    cout << "Handling conflict: ";
+    LOG_STREAM << "Handling conflict: ";
     for (uint32_t i = 0; i < learnt_clause.size(); i++)
-        cout << learnt_clause[i].var()+1 << ",";
-    cout << endl;
+        LOG_STREAM << learnt_clause[i].var()+1 << ",";
+    LOG_STREAM << endl;
     #endif
 
     int backtrack_level;
@@ -2226,10 +2230,10 @@ llbool Solver::handle_conflict(vec<Lit>& learnt_clause, PropBy confl, uint64_t& 
     cancelUntil(backtrack_level);
 
     #ifdef VERBOSE_DEBUG
-    cout << "Learning:";
-    for (uint32_t i = 0; i < learnt_clause.size(); i++) printLit(learnt_clause[i]), cout << " ";
-    cout << endl;
-    cout << "reverting var " << learnt_clause[0].var()+1 << " to " << !learnt_clause[0].sign() << endl;
+    LOG_STREAM << "Learning:";
+    for (uint32_t i = 0; i < learnt_clause.size(); i++) printLit(learnt_clause[i]), LOG_STREAM << " ";
+    LOG_STREAM << endl;
+    LOG_STREAM << "reverting var " << learnt_clause[0].var()+1 << " to " << !learnt_clause[0].sign() << endl;
     #endif
 
     assert(value(learnt_clause[0]) == l_Undef);
@@ -2239,7 +2243,7 @@ llbool Solver::handle_conflict(vec<Lit>& learnt_clause, PropBy confl, uint64_t& 
         assert(backtrack_level == 0 && "Unit clause learnt, so must cancel until level 0, right?");
 
         #ifdef VERBOSE_DEBUG
-        cout << "Unit clause learnt." << endl;
+        LOG_STREAM << "Unit clause learnt." << endl;
         #endif
     //Normal learnt
     } else {
@@ -2272,7 +2276,7 @@ llbool Solver::handle_conflict(vec<Lit>& learnt_clause, PropBy confl, uint64_t& 
                 nbCompensateSubsumer++;
                 unWindGlue[learnt_clause[0].var()] = c;
                 #ifdef UNWINDING_DEBUG
-                std::cout << "unwind, var:" << learnt_clause[0].var() << std::endl;
+                LOG_STREAM << "unwind, var:" << learnt_clause[0].var() << std::endl;
                 c->plainPrint();
                 #endif //VERBOSE_DEBUG
             } else {
@@ -2317,11 +2321,11 @@ const bool Solver::chooseRestartType(const uint32_t& lastFullRestart)
             if (tmp == dynamic_restart) {
                 glueHistory.fastclear();
                 if (conf.verbosity >= 3)
-                    std::cout << "c Decided on dynamic restart strategy"
+                    LOG_STREAM << "c Decided on dynamic restart strategy"
                     << std::endl;
             } else  {
                 if (conf.verbosity >= 1)
-                    std::cout << "c Decided on static restart strategy"
+                    LOG_STREAM << "c Decided on static restart strategy"
                     << std::endl;
 
                 if (!matrixFinder->findMatrixes()) return false;
@@ -2364,7 +2368,7 @@ const lbool Solver::simplifyProblem(const uint32_t numConfls)
 
     #ifdef BURST_SEARCH
     if (conf.verbosity >= 3)
-        std::cout << "c " << std::setw(24) << " "
+        LOG_STREAM << "c " << std::setw(24) << " "
         << "Simplifying problem for " << std::setw(8) << numConfls << " confls"
         << std::endl;
     conf.random_var_freq = 1;
@@ -2418,7 +2422,7 @@ const lbool Solver::simplifyProblem(const uint32_t numConfls)
 end:
     #ifdef BURST_SEARCH
     if (conf.verbosity >= 3)
-        std::cout << "c Simplifying finished" << std::endl;
+        LOG_STREAM << "c Simplifying finished" << std::endl;
     #endif //#ifdef BURST_SEARCH
 
     savedState.restore();
@@ -2452,7 +2456,7 @@ const bool Solver::checkFullRestart(uint64_t& nof_conflicts, uint64_t& nof_confl
         lastFullRestart = starts;
 
         if (conf.verbosity >= 3)
-            std::cout << "c Fully restarting" << std::endl;
+            LOG_STREAM << "c Fully restarting" << std::endl;
         printRestartStat("F");
 
         /*if (findNormalXors && clauses.size() < MAX_CLAUSENUM_XORFIND) {
@@ -2583,7 +2587,7 @@ elimination, etc.) and output the solution.
 lbool Solver::solve(const vec<Lit>& assumps)
 {
     #ifdef VERBOSE_DEBUG
-    std::cout << "Solver::solve() called" << std::endl;
+    LOG_STREAM << "Solver::solve() called" << std::endl;
     #endif
     if (!ok) return l_False;
     assert(qhead == trail.size());
@@ -2648,11 +2652,11 @@ lbool Solver::solve(const vec<Lit>& assumps)
 
     #ifdef VERBOSE_DEBUG
     if (status == l_True)
-        std::cout << "Solution  is SAT" << std::endl;
+        LOG_STREAM << "Solution  is SAT" << std::endl;
     else if (status == l_False)
-        std::cout << "Solution is UNSAT" << std::endl;
+        LOG_STREAM << "Solution is UNSAT" << std::endl;
     else
-        std::cout << "Solutions is UNKNOWN" << std::endl;
+        LOG_STREAM << "Solutions is UNKNOWN" << std::endl;
     #endif //VERBOSE_DEBUG
 
     if (status == l_True) handleSATSolution();
@@ -2664,7 +2668,7 @@ lbool Solver::solve(const vec<Lit>& assumps)
     if (status == l_Undef) clauseCleaner->removeAndCleanAll(true);
 
     #ifdef VERBOSE_DEBUG
-    std::cout << "Solver::solve() finished" << std::endl;
+    LOG_STREAM << "Solver::solve() finished" << std::endl;
     #endif
     return status;
 }
@@ -2696,7 +2700,7 @@ void Solver::handleSATSolution()
 
     if (subsumer->getNumElimed() || xorSubsumer->getNumElimed()) {
         if (conf.verbosity >= 1) {
-            std::cout << "c Solution needs extension. Extending." << std::endl;
+            LOG_STREAM << "c Solution needs extension. Extending." << std::endl;
         }
         Solver s;
         s.conf = conf;
@@ -2721,7 +2725,7 @@ void Solver::handleSATSolution()
 
             if (value(var) != l_Undef) {
                 #ifdef VERBOSE_DEBUG
-                std::cout << "Setting var " << var + 1
+                LOG_STREAM << "Setting var " << var + 1
                 << " in extend-solver to " << value(var) << std::endl;
                 #endif
                 tmp.clear();
@@ -2736,7 +2740,7 @@ void Solver::handleSATSolution()
         lbool status = s.solve();
         release_assert(status == l_True && "c ERROR! Extension of model failed!");
 #ifdef VERBOSE_DEBUG
-        std::cout << "Solution extending finished. Enqueuing results" << std::endl;
+        LOG_STREAM << "Solution extending finished. Enqueuing results" << std::endl;
 #endif
         for (Var var = 0; var < nVars(); var++) {
             if (assigns[var] == l_Undef && s.model[var] != l_Undef) uncheckedEnqueue(Lit(var, s.model[var] == l_False));

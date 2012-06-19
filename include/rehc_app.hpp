@@ -38,6 +38,8 @@
 #include "ped2cnf-constraints.hpp"
 #include "pedcnf2hc.hpp"
 
+#include "assumptions.hpp"
+
 #include <iostream>
 #include <boost/program_options.hpp>
 
@@ -63,23 +65,35 @@ private:
   bool has_separated_recombinations;
   bool has_recombinations;
 
+  bool has_assumptions;
+  std::string assumption_file;
+
 public:
 
   void prepare_program_options(const boost::program_options::variables_map& vm) {
 // Analyze error-related program options
 	 has_errors= false;
 	 if (vm["global-error"].as<bool>()) {
-		const double err_rate= vm["global-error-rate"].as<double>();
-		L_INFO("Enabling *GLOBAL* error handling ("
-				 "error-rate=" << err_rate << ")");
-		err_constraints.add(new at_most_global_constraints_t(err_rate));
+// Use default 'global-error-rate' if 'global-error-number' nor 'global-error-rate'
+// have been specified
+		if (vm.count("global-error-number") && !vm["global-error-number"].defaulted()) {
+		  const unsigned int error_number= vm["global-error-number"].as<unsigned int>();
+		  L_INFO("Enabling *GLOBAL* error handling ("
+					"error-number=" << error_number << ")");
+		  err_constraints.add(new at_most_global_constraints_abs_t(error_number, "errors"));
+		} else {
+		  const double err_rate= vm["global-error-rate"].as<double>();
+		  L_INFO("Enabling *GLOBAL* error handling ("
+					"error-rate=" << err_rate << ")");
+		  err_constraints.add(new at_most_global_constraints_t(err_rate, "errors"));
+		}
 		has_errors= true;
 	 }
 	 if (vm["individual-error"].as<bool>()) {
 		const double err_rate= vm["individual-error-rate"].as<double>();
 		L_INFO("Enabling *INDIVIDUAL* error handling ("
 				 "error-rate=" << err_rate << ")");
-		err_constraints.add(new at_most_individual_constraints_t(err_rate));
+		err_constraints.add(new at_most_individual_constraints_t(err_rate, "errors"));
 		has_errors= true;
 	 }
 	 if (vm["uniform-error"].as<bool>()) {
@@ -88,29 +102,46 @@ public:
 		L_INFO("Enabling *WINDOWED* error handling ("
 				 "max-errors-in-windows=" << winerr << ", "
 				 "error-window-length=" << winlen << ")");
-		err_constraints.add(new at_most_windowed_constraints_t(winerr, winlen));
+		err_constraints.add(new at_most_windowed_constraints_t(winerr, winlen, "errors"));
 		has_errors= true;
 	 }
 	 if (!has_errors) {
 		L_INFO("*DISABLING* genotyping errors");
-		err_constraints.add(new all_false_constraints_t());
+		err_constraints.add(new all_false_constraints_t("errors"));
 	 }
 // Analyze recombination-related program options
 	 has_global_recombinations=
 		has_separated_recombinations=
 		has_recombinations= false;
 	 if (vm["global-recomb"].as<bool>()) {
-		const double recomb_rate= vm["global-recomb-rate"].as<double>();
-		L_INFO("Enabling *GLOBAL* recombination handling ("
-				 "recomb-rate=" << recomb_rate << ")");
-		global_recomb_constraints.add(new at_most_global_constraints_t(recomb_rate));
+// Use default 'global-recomb-rate' if 'global-recomb-number' nor 'global-recomb-rate'
+// have been specified
+		if (vm.count("global-recomb-number") && !vm["global-recomb-number"].defaulted()) {
+		  const unsigned int recomb_number= vm["global-recomb-number"].as<unsigned int>();
+		  if (vm.count("global-recomb-min-number") && !vm["global-recomb-min-number"].defaulted()) {
+			 const unsigned int recomb_min_number= vm["global-recomb-min-number"].as<unsigned int>();
+			 L_INFO("Enabling *GLOBAL* recombination handling ("
+					  "recomb-number=" << recomb_number << ", "
+					  "recomb-min-number=" << recomb_min_number << ")");
+			 global_recomb_constraints.add(new interval_global_constraints_abs_t(recomb_min_number, recomb_number, "recombinations"));
+		  } else {
+			 L_INFO("Enabling *GLOBAL* recombination handling ("
+					  "recomb-number=" << recomb_number << ")");
+			 global_recomb_constraints.add(new at_most_global_constraints_abs_t(recomb_number, "recombinations"));
+		  }
+		} else {
+		  const double recomb_rate= vm["global-recomb-rate"].as<double>();
+		  L_INFO("Enabling *GLOBAL* recombination handling ("
+					"recomb-rate=" << recomb_rate << ")");
+		  global_recomb_constraints.add(new at_most_global_constraints_t(recomb_rate, "recombinations"));
+		}
 		has_global_recombinations= true;
 	 }
 	 if (vm["individual-recomb"].as<bool>()) {
 		const double recomb_rate= vm["individual-recomb-rate"].as<double>();
 		L_INFO("Enabling *INDIVIDUAL* recombination handling ("
 				 "recomb-rate=" << recomb_rate << ")");
-		global_recomb_constraints.add(new at_most_individual_constraints_t(recomb_rate));
+		global_recomb_constraints.add(new at_most_individual_constraints_t(recomb_rate, "recombinations"));
 		has_global_recombinations= true;
 	 }
 	 if (vm["uniform-recomb"].as<bool>()) {
@@ -119,13 +150,21 @@ public:
 		L_INFO("Enabling *WINDOWED* recombination handling ("
 				 "max-recombs-in-windows=" << winrecomb << ", "
 				 "recomb-window-length=" << winlen << ")");
-		separated_recomb_constraints.add(new at_most_windowed_constraints_t(winrecomb, winlen));
+		separated_recomb_constraints.add(new at_most_windowed_constraints_t(winrecomb, winlen, "recombinations"));
 		has_separated_recombinations= true;
 	 }
 	 has_recombinations= has_global_recombinations || has_separated_recombinations;
 	 if (!has_recombinations) {
 		L_INFO("*DISABLING* recombinations");
-		global_recomb_constraints.add(new all_false_constraints_t());
+		global_recomb_constraints.add(new all_false_constraints_t("recombinations"));
+	 }
+
+	 if (vm.count("assumptions")>0 && !vm["assumptions"].defaulted()) {
+		has_assumptions= true;
+		assumption_file= vm["assumptions"].as<std::string>();
+	 } else {
+		has_assumptions= false;
+		assumption_file= ".";
 	 }
   };
 
@@ -167,6 +206,17 @@ public:
 	 separated_recombination_handler_t separated_recomb_handler(separated_recomb_constraints);
 	 separated_recomb_handler.handle_recombinations(cnf, mped.families().front().size(),
 																	mped.families().front().genotype_length());
+	 if (has_assumptions) {
+		std::ifstream assumptions(assumption_file.c_str());
+		if (assumptions) {
+		  add_assumptions(assumptions, mped.families().front(), cnf);
+		  assumptions.close();
+		} else {
+		  L_FATAL("Impossible to open assumption file '" << assumption_file << "'. Aborting...");
+		  MY_FAIL;
+		}
+	 }
+
 	 L_INFO("SAT instance successfully prepared.");
 	 L_INFO("The SAT instance is composed by " <<
 			  std::setw(8) << cnf.vars().size() << " variables and " <<
@@ -192,10 +242,10 @@ public:
 	 L_INFO("Haplotype configuration successfully saved.");
   };
 
-  bool read_SAT_results(pedcnf_t& cnf,
+  boost::tribool read_SAT_results(pedcnf_t& cnf,
 								std::istream& res_is) const {
 	 L_INFO("Reading SAT results...");
-	 const bool is_sat= cnf.assignment_from_minisat_format(res_is);
+	 const boost::tribool is_sat= cnf.assignment_from_minisat_format(res_is);
 	 L_INFO("SAT results successfully read.");
 	 return is_sat;
   };
@@ -225,19 +275,21 @@ public:
 
 
 
-  bool compute_HC_from_SAT_results(std::istream& ped_is,
-											  std::istream& res_is,
-											  pedigree_t& ped,
-											  pedcnf_t& cnf) const {
+  boost::tribool
+  compute_HC_from_SAT_results(std::istream& ped_is,
+										std::istream& res_is,
+										pedigree_t& ped,
+										pedcnf_t& cnf) const {
 	 prepare_pedigree_and_sat(ped_is, ped, cnf);
 	 return compute_HC_from_SAT_results(res_is, ped, cnf);
   };
 
-  bool compute_HC_from_SAT_results(std::istream& res_is,
-											  pedigree_t& ped,
-											  pedcnf_t& cnf) const {
+  boost::tribool
+  compute_HC_from_SAT_results(std::istream& res_is,
+										pedigree_t& ped,
+										pedcnf_t& cnf) const {
 // Open the result file and read the assignment
-	 const bool is_sat= read_SAT_results(cnf, res_is);
+	 const boost::tribool is_sat= read_SAT_results(cnf, res_is);
 	 if (is_sat) {
 		L_INFO("The pedigree can be realized by a (r,e)-haplotype "
 				 "configuration.");
@@ -245,10 +297,14 @@ public:
 		if (!ok) {
 		  MY_FAIL;
 		}
-	 } else {
+	 } else if (!is_sat) {
 		L_INFO("The pedigree CANNOT be realized by a (r,e)-haplotype "
 			  "configuration.");
 // Do nothing
+	 } else {
+		L_WARN("We do NOT know if the pedigree can be realized by a "
+				 "(r,e)-haplotype configuration. "
+				 "The SAT solver did not give a valid result.")
 	 }
 	 return is_sat;
   }
@@ -287,12 +343,13 @@ public:
 
 #ifndef ONLY_INTERNAL_SAT_SOLVER
 
-  bool compute_HC_from_SAT_results(std::istream& ped_is,
-											  std::istream& res_is,
-											  std::ostream& hap_os) const {
+  boost::tribool
+  compute_HC_from_SAT_results(std::istream& ped_is,
+										std::istream& res_is,
+										std::ostream& hap_os) const {
 	 pedigree_t ped;
 	 pedcnf_t cnf;
-	 const bool is_sat=
+	 const boost::tribool is_sat=
 		compute_HC_from_SAT_results(ped_is, res_is,
 											 ped, cnf);
 	 if (is_sat) {
@@ -302,11 +359,12 @@ public:
 	 return is_sat;
   }
 
-  bool compute_HC_from_SAT_results(pedigree_t& ped,
-											  pedcnf_t& cnf,
-											  std::istream& res_is,
-											  std::ostream& hap_os) const {
-	 const bool is_sat=
+  boost::tribool
+  compute_HC_from_SAT_results(pedigree_t& ped,
+										pedcnf_t& cnf,
+										std::istream& res_is,
+										std::ostream& hap_os) const {
+	 const boost::tribool is_sat=
 		compute_HC_from_SAT_results(res_is,
 											 ped, cnf);
 	 if (is_sat) {

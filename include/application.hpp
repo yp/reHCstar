@@ -160,7 +160,9 @@ public:
 		DEBUG("Parsing program parameters...");
 // Parse options
 		po::variables_map vm;
-		po::options_description desc("Help options");
+		po::options_description desc("Help Options",
+											  po::options_description::m_default_line_length,
+											  po::options_description::m_default_line_length-16);
 		desc.add_options()
 		  ("help,?", po::bool_switch(),
 			"Produce (this) help message.");
@@ -174,38 +176,38 @@ public:
 		po::notify(vm);
 		DEBUG("Program parameters successfully parsed.");
 
-// Check parameter values
-		DEBUG("Checking program parameters...");
-		bool po_check= true;
-		std::string po_failing_desc= "";
-		try {
-		  po_check= check_options(vm);
-		} catch (std::logic_error& e) {
-		  FATAL("EXCEPTION OCCURRED: " << e.what());
-		  po_failing_desc= e.what();
-		  po_check= false;
-		}
-		if (!po_check) {
-		  DEBUG("Check failed.");
-		  std::cout << _name << std::endl;
-		  std::cout << std::endl <<
-			 "*** Invalid parameters!" << std::endl;
-		  if (po_failing_desc != "") {
-			 std::cout << "Reason: " << po_failing_desc << std::endl;
-		  }
-		  std::cout << std::endl;
-		  std::cout << desc << std::endl;
-		  result= EXIT_FAILURE;
-		} else {
-// Execute
-		  DEBUG("Check successfully completed.");
-		  DEBUG("Beginning execution...");
+		if (vm["help"].as<bool>()) {
 // Generate the help message and exit
-		  if (vm["help"].as<bool>()) {
+		  std::cout << _name << std::endl;
+		  std::cout << desc << std::endl;
+		  result= EXIT_SUCCESS;
+		} else {
+// Check parameter values
+		  DEBUG("Checking program parameters...");
+		  bool po_check= true;
+		  std::string po_failing_desc= "";
+		  try {
+			 po_check= check_options(vm);
+		  } catch (std::logic_error& e) {
+			 FATAL("EXCEPTION OCCURRED: " << e.what());
+			 po_failing_desc= e.what();
+			 po_check= false;
+		  }
+		  if (!po_check) {
+			 DEBUG("Check failed.");
 			 std::cout << _name << std::endl;
+			 std::cout << std::endl <<
+				"*** Invalid parameters!" << std::endl;
+			 if (po_failing_desc != "") {
+				std::cout << "Reason: " << po_failing_desc << std::endl;
+			 }
+			 std::cout << std::endl;
 			 std::cout << desc << std::endl;
-			 result= EXIT_SUCCESS;
+			 result= EXIT_FAILURE;
 		  } else {
+// Execute
+			 DEBUG("Check successfully completed.");
+			 DEBUG("Beginning execution...");
 			 result= execution(argc, argv, vm);
 		  }
 		  DEBUG("Execution successfully completed.");

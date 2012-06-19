@@ -295,14 +295,14 @@ le_half_sorting_network(pedcnf_t& cnf,
 
 
 static void
-le_card_network(pedcnf_t& cnf,
-					 const std::vector<var_t>& in_vars,
-					 const size_t k) {
+le_card_network_int(pedcnf_t& cnf,
+						  const std::vector<var_t>& in_vars,
+						  const size_t k1, const size_t k2) {
   my_logger logger(get_my_logger("card_constraints"));
   DEBUG("Generating a cardinality network for encoding the cardinality constraint.");
-  const size_t p= pow2_of_ceiling_log2(k+1);
+  const size_t p= pow2_of_ceiling_log2(k2+1);
   DEBUG("Dividing " << in_vars.size() << " variables in blocks of size "
-		  << p << " since the upper bound is " << k << ".");
+		  << p << " since the upper bound is " << k2 << ".");
 // Ensure that the variables are multiples of p
   std::vector<var_t> all_vars(in_vars.begin(), in_vars.end());
   while (all_vars.size() % p != 0) {
@@ -321,7 +321,7 @@ le_card_network(pedcnf_t& cnf,
 	 input.insert(input.end(), next_in_var, next_in_var+p);
 	 std::vector<var_t> hsort_out;
 	 generate_hsort(cnf, input, hsort_out, logger);
-	 cnf.add_clause<1>((lit_t[]){ -hsort_out[k] });
+	 cnf.add_clause<1>((lit_t[]){ -hsort_out[k2] });
 	 // for (size_t limit= k; limit<p; ++limit) {
 	 // 	cnf.add_clause<1>((lit_t[]){ -hsort_out[limit] });
 	 // }
@@ -331,12 +331,24 @@ le_card_network(pedcnf_t& cnf,
 	 prev_ris.insert(prev_ris.end(), smerge_out.begin(), smerge_out.begin()+p);
 	 next_in_var += p;
 	 next_in_var_counter += p;
-	 cnf.add_clause<1>((lit_t[]){ -smerge_out[k] });
+	 cnf.add_clause<1>((lit_t[]){ -smerge_out[k2] });
 	 // for (size_t limit= k; limit<=p; ++limit) {
 	 // 	cnf.add_clause<1>((lit_t[]){ -smerge_out[limit] });
 	 // }
   }
+  if (k1 > 0) {
+	 DEBUG("Setting the lower bound >= " << k1);
+	 for (size_t i= 0; i<k1; ++i)
+		cnf.add_clause<1>((lit_t[]){ prev_ris[i] });
+  }
 };
+
+static void
+le_card_network(pedcnf_t& cnf,
+					 const std::vector<var_t>& in_vars,
+					 const size_t k) {
+  le_card_network_int(cnf, in_vars, 0, k);
+}
 
 static void
 le_card_network_tree_rec(pedcnf_t& cnf,
@@ -466,6 +478,25 @@ add_card_constraint_less_or_equal_than(pedcnf_t& cnf,
 
 //	Use Half Sorting Network
 //	 le_half_sorting_network(cnf, in_vars, k);
+  }
+};
+
+void
+add_card_constraint_between(pedcnf_t& cnf,
+									 const std::vector<var_t>& in_vars,
+									 const size_t k1, const size_t k2) {
+  my_logger logger(get_my_logger("card_constraints"));
+  if (k2==0) {
+	 eq_zero(cnf, in_vars);
+  } else if (k2 >= in_vars.size()) {
+	 INFO("The number of variables (" << in_vars.size() << ") "
+			"is not greater than the numeric upper bound (" << k2 << "). "
+			"Setting to " << in_vars.size() << ".");
+	 le_card_network_int(cnf, in_vars,
+								std::min(k1, in_vars.size()), in_vars.size());
+  } else {
+// Use Cardinality Networks
+	 le_card_network_int(cnf, in_vars, k1, k2);
   }
 };
 
