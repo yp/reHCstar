@@ -38,11 +38,12 @@
 std::istream&
 operator>>(std::istream& in, pedcnf_t::pedvar_t& var) {
   ped_var_kind var_kind= ped_var_kind::DUMMY;
-  size_t i1, i2;
+  size_t i1, i2, i3;
   in >> var_kind;
   in >> i1;
   in >> i2;
-  var= boost::make_tuple(var_kind, i1, i2);
+  in >> i3;
+  var= boost::make_tuple(var_kind, i1, i2, i3);
   return in;
 };
 
@@ -88,7 +89,7 @@ public:
 // Process line
 		  try {
 			 std::istringstream is(buff);
-			 pedcnf_t::pedvar_t v= boost::make_tuple(ped_var_kind::DUMMY, 0, 0);
+			 pedcnf_t::pedvar_t v= boost::make_tuple(ped_var_kind::DUMMY, 0, 0, 0);
 			 if (!(is >> v)) throw invalid_line_t("unrecognized variable");
 			 bool value;
 			 if (!(is >> value)) throw invalid_line_t("unrecognized boolean value");
@@ -142,6 +143,22 @@ public:
 							" Adding anyway...");
 				}
 				lit_t iv= cnf.get_rm(v.get<1>(), v.get<2>());
+				cnf.add_clause<1>( (lit_t[]){ (value? +1 : -1)  *  iv } );
+				++n_assumptions;
+			 } else if (v.get<0>() == ped_var_kind::PM) {
+				if (!cnf.has_pm(v.get<1>(), v.get<2>(), v.get<3>())) {
+				  L_WARN("Variable '" << v << "' does not exist in the SAT instance."
+							" Adding anyway...");
+				}
+				lit_t iv= cnf.get_pm(v.get<1>(), v.get<2>(), v.get<3>());
+				cnf.add_clause<1>( (lit_t[]){ (value? +1 : -1)  *  iv } );
+				++n_assumptions;
+			 } else if (v.get<0>() == ped_var_kind::MM) {
+				if (!cnf.has_mm(v.get<1>(), v.get<2>(), v.get<3>())) {
+				  L_WARN("Variable '" << v << "' does not exist in the SAT instance."
+							" Adding anyway...");
+				}
+				lit_t iv= cnf.get_mm(v.get<1>(), v.get<2>(), v.get<3>());
 				cnf.add_clause<1>( (lit_t[]){ (value? +1 : -1)  *  iv } );
 				++n_assumptions;
 			 } else if (v.get<0>() == ped_var_kind::E) {

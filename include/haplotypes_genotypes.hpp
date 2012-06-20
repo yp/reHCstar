@@ -69,9 +69,6 @@ private:
 public:
 
   static const single_multiallelic_genotype_t MISS;
-  static const single_multiallelic_genotype_t HOMO1;
-  static const single_multiallelic_genotype_t HOMO2;
-  static const single_multiallelic_genotype_t HETER12;
 
   single_multiallelic_genotype_t()
 		:_allele1(0), _allele2(0)
@@ -159,11 +156,6 @@ private:
 public:
 
   static const single_multiallelic_haplotype_t MISS;
-  static const single_multiallelic_haplotype_t ALLELE1;
-  static const single_multiallelic_haplotype_t ALLELE2;
-  static const single_multiallelic_haplotype_t ALLELE3;
-  static const single_multiallelic_haplotype_t ALLELE4;
-  static const single_multiallelic_haplotype_t ALLELE5;
 
   single_multiallelic_haplotype_t()
 		:_allele(0)
@@ -179,6 +171,11 @@ public:
 
   allele_t allele() const {
 	 return _allele;
+  };
+
+  static single_multiallelic_haplotype_t ALLELE(const allele_t allele) {
+	 MY_ASSERT_DBG(allele != single_multiallelic_haplotype_t::MISS.allele());
+	 return single_multiallelic_haplotype_t(allele);
   };
 
 };

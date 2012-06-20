@@ -78,14 +78,14 @@ void compute_reHC_from_SAT(basic_pedigree_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE
 			 DEBUG("Not-genotyped individual " << ind.progr_id() <<
 					 " at locus " << locus << " is imputed as homozygous.");
 			 if ( !pil ) {
-				ind.real_g(locus)= family_t::g::HOMO1;
+				ind.real_g(locus).set_alleles(1, 1);
 			 } else {
-				ind.real_g(locus)= family_t::g::HOMO2;
+				ind.real_g(locus).set_alleles(2, 2);
 			 }
 		  } else {
 			 DEBUG("Not-genotyped individual " << ind.progr_id() <<
 					 " at locus " << locus << " is imputed as heterozygous.");
-			 ind.real_g(locus)= family_t::g::HETER12;
+			 ind.real_g(locus).set_alleles(1, 2);
 		  }
 		  ++no_of_imputation;
 		} else {
@@ -95,17 +95,17 @@ void compute_reHC_from_SAT(basic_pedigree_t<T_GENOTYPE, T_HAPLOTYPE, T_PHENOTYPE
 // Impossible: we performed genotype imputation in the previous step
 		  MY_FAIL;
 		} else {
-		  ind.hp(locus)= (!pil) ? (family_t::h::ALLELE1) : (family_t::h::ALLELE2);
-		  ind.hm(locus)= (!mil) ? (family_t::h::ALLELE1) : (family_t::h::ALLELE2);
+		  ind.hp(locus)= (!pil) ? (family_t::h::ALLELE(1)) : (family_t::h::ALLELE(2));
+		  ind.hm(locus)= (!mil) ? (family_t::h::ALLELE(1)) : (family_t::h::ALLELE(2));
 		  typename family_t::g real_g= ind.real_g(locus);
 		  if ( pil == mil ) {
 			 if ( !pil ) {
-				real_g= family_t::g::HOMO1;
+				real_g.set_alleles(1, 1);
 			 } else {
-				real_g= family_t::g::HOMO2;
+				real_g.set_alleles(2, 2);
 			 }
 		  } else {
-			 real_g= family_t::g::HETER12;
+			 real_g.set_alleles(1, 2);
 		  }
 		  if (real_g != ind.real_g(locus)) {
 //   Not-genotyped loci cannot have errors

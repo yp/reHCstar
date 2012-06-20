@@ -56,11 +56,11 @@
 
 
 class ped_var_kind
-  :public enum_like_t<ped_var_kind, 8, 8>
+  :public enum_like_t<ped_var_kind, 10, 10>
 {
 private:
 
-  typedef enum_like_t<ped_var_kind, 8, 8> base;
+  typedef enum_like_t<ped_var_kind, 10, 10> base;
 
   ped_var_kind(const int val)
 		:base(val)
@@ -79,6 +79,8 @@ public:
   static const ped_var_kind RP; // Recombination events (from father)
   static const ped_var_kind RM; // Recombination events (from mother)
   static const ped_var_kind E; // Errors
+  static const ped_var_kind PM; // Paternal multi allele
+  static const ped_var_kind MM; // Maternal multi allele
   static const ped_var_kind DUMMY; // Dummy
 
   static const int int_values[];
@@ -96,11 +98,11 @@ class pedcnf_t
 // Types
 private:
 
-  typedef boost::tuple<size_t, size_t> index_var_t;
+  typedef boost::tuple<size_t, size_t, size_t> index_var_t;
 
 public:
 
-  typedef boost::tuple<ped_var_kind, size_t, size_t> pedvar_t;
+  typedef boost::tuple<ped_var_kind, size_t, size_t, size_t> pedvar_t;
   typedef std::map<index_var_t, lit_t> varmap_t;
   typedef std::vector<pedvar_t> varvec_t;
   typedef std::vector<bool> valvec_t;
@@ -126,6 +128,8 @@ private:
   varmap_t _rp; // Recombination events (from father)
   varmap_t _rm; // Recombination events (from mother)
   varmap_t _e; // Errors
+  varmap_t _pm; // Paternal allele
+  varmap_t _mm; // Maternal allele
   size_t _next_dummy;
 
   varvec_t _vars;
@@ -157,18 +161,39 @@ public:
 // Methods
 private:
 
+  lit_t get_var3(varmap_t& map,
+					  const ped_var_kind& var_kind,
+					  const size_t i1, const size_t i2, const size_t i3);
+
+  lit_t get_var3(const varmap_t& map,
+					  const size_t i1, const size_t i2, const size_t i3) const;
+
+  bool has_var3(const varmap_t& map,
+					 const size_t i1, const size_t i2, const size_t i3) const;
+
+  bool get_val3(const varmap_t& map,
+					 const size_t i1, const size_t i2, const size_t i3) const;
+
   lit_t get_var(varmap_t& map,
 					 const ped_var_kind& var_kind,
-					 const size_t i1, const size_t i2);
+					 const size_t i1, const size_t i2) {
+	 return get_var3(map, var_kind, i1, i2, 0);
+  };
 
   lit_t get_var(const varmap_t& map,
-					 const size_t i1, const size_t i2) const;
+					 const size_t i1, const size_t i2) const {
+	 return get_var3(map, i1, i2, 0);
+  };
 
   bool has_var(const varmap_t& map,
-					const size_t i1, const size_t i2) const;
+					const size_t i1, const size_t i2) const {
+	 return has_var3(map, i1, i2, 0);
+  };
 
   bool get_val(const varmap_t& map,
-					const size_t i1, const size_t i2) const;
+					const size_t i1, const size_t i2) const {
+	 return get_val3(map, i1, i2, 0);
+  };
 
 
 public:
@@ -195,6 +220,10 @@ public:
 
   lit_t get_rm(const size_t i, const size_t l);
 
+  lit_t get_pm(const size_t i, const size_t l, const size_t j);
+
+  lit_t get_mm(const size_t i, const size_t l, const size_t j);
+
   lit_t get_e(const size_t i, const size_t l);
 
   bool has_sp(const size_t i, const size_t l) const;
@@ -208,6 +237,10 @@ public:
   bool has_rp(const size_t i, const size_t l) const;
 
   bool has_rm(const size_t i, const size_t l) const;
+
+  bool has_pm(const size_t i, const size_t l, const size_t j) const;
+
+  bool has_mm(const size_t i, const size_t l, const size_t j) const;
 
   bool has_e(const size_t i, const size_t l) const;
 
@@ -224,6 +257,10 @@ public:
   lit_t get_rp(const size_t i, const size_t l) const;
 
   lit_t get_rm(const size_t i, const size_t l) const;
+
+  lit_t get_pm(const size_t i, const size_t l, const size_t j) const;
+
+  lit_t get_mm(const size_t i, const size_t l, const size_t j) const;
 
   lit_t get_e(const size_t i, const size_t l) const;
 
@@ -249,6 +286,14 @@ public:
 
   bool rm(const size_t i, const size_t l) const {
 	 return get_val(_rm, i, l);
+  };
+
+  bool pm(const size_t i, const size_t l, const size_t j) const {
+	 return get_val3(_pm, i, l, j);
+  };
+
+  bool mm(const size_t i, const size_t l, const size_t j) const {
+	 return get_val3(_mm, i, l, j);
   };
 
   bool e(const size_t i, const size_t l) const {

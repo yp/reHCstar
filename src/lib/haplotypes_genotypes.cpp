@@ -40,16 +40,6 @@
 const single_multiallelic_genotype_t
 single_multiallelic_genotype_t::MISS(0, 0);
 
-const single_multiallelic_genotype_t
-single_multiallelic_genotype_t::HOMO1(1, 1);
-
-const single_multiallelic_genotype_t
-single_multiallelic_genotype_t::HOMO2(2, 2);
-
-const single_multiallelic_genotype_t
-single_multiallelic_genotype_t::HETER12(1, 2);
-
-
 bool operator==(const single_multiallelic_genotype_t& g1,
 					 const single_multiallelic_genotype_t& g2) {
   return (g1.allele1()==g2.allele1()) &&
@@ -109,21 +99,6 @@ is_heterozygous(const single_multiallelic_genotype_t& g) {
 
 const single_multiallelic_haplotype_t
 single_multiallelic_haplotype_t::MISS(0);
-
-const single_multiallelic_haplotype_t
-single_multiallelic_haplotype_t::ALLELE1(1);
-
-const single_multiallelic_haplotype_t
-single_multiallelic_haplotype_t::ALLELE2(2);
-
-const single_multiallelic_haplotype_t
-single_multiallelic_haplotype_t::ALLELE3(3);
-
-const single_multiallelic_haplotype_t
-single_multiallelic_haplotype_t::ALLELE4(4);
-
-const single_multiallelic_haplotype_t
-single_multiallelic_haplotype_t::ALLELE5(5);
 
 
 bool operator==(const single_multiallelic_haplotype_t& h1,

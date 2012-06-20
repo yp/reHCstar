@@ -132,17 +132,21 @@ private:
 		lit_t e= cnf.get_e(i, l);
 		lit_t p= cnf.get_p(i, l);
 		lit_t m= cnf.get_m(i, l);
-		if (gen == g::HOMO1) {
+// Alleles are sorted ! (i.e. gen.allele1() <= gen.allele2())
+		if (gen.allele1() == 1 && gen.allele2() == 1) {
+// gen == HOMO1
 // -e p m,  e -p,  e -m
 		  cnf.add_clause<3>((lit_t[]){-e,  p,  m});
 		  cnf.add_clause<2>((lit_t[]){ e, -p});
 		  cnf.add_clause<2>((lit_t[]){ e,     -m});
-		} else if (gen == g::HOMO2) {
+		} else if (gen.allele1() == 2 && gen.allele2() == 2) {
+// gen == HOMO2
 // -e -p -m,  e p,  e m
 		  cnf.add_clause<3>((lit_t[]){-e, -p, -m});
 		  cnf.add_clause<2>((lit_t[]){ e,  p});
 		  cnf.add_clause<2>((lit_t[]){ e,      m});
-		} else if (gen == g::HETER12) {
+		} else if (gen.allele1() == 1 && gen.allele2() == 2) {
+// gen == HETERO12
 #ifdef AVOID_XOR_CLAUSES
 		  cnf.add_clause<3>((lit_t[]){ e,  p,  m});
 		  cnf.add_clause<3>((lit_t[]){ e, -p, -m});
