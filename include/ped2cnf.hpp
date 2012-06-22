@@ -120,15 +120,15 @@ private:
 	 }
   }
 
-  void add_individual_constraint(pedcnf_t& cnf,
-											const individual_t& ind,
-											const g& gen,
-											const size_t l,
-											const size_t i) {
+  void add_individual_constraint_bi(pedcnf_t& cnf,
+												const individual_t& ind,
+												const g& gen,
+												const size_t l,
+												const size_t i) {
 /************
  * Clauses for errors variables
  ************/
-	 if (gen != g::MISS) {
+	 if (is_genotyped(gen)) {
 		lit_t e= cnf.get_e(i, l);
 		lit_t p= cnf.get_p(i, l);
 		lit_t m= cnf.get_m(i, l);
@@ -191,13 +191,141 @@ private:
  ************/
   };
 
+/************
+ * MULTIALLELIC VERSION
+ ************/
+  void add_individual_constraint_multi(pedcnf_t& cnf,
+													const individual_t& ind,
+													const g& gen,
+													const size_t l,
+													const size_t i,
+													const size_t no_of_alleles) {
+/************
+ * Extract pm and mm variables
+ ************/
+	 lit_t* p= new lit_t[no_of_alleles];
+	 lit_t* m= new lit_t[no_of_alleles];
+	 for (size_t j= 0; j<no_of_alleles; ++j) {
+		p[j]= cnf.get_pm(i, l, j);
+		m[j]= cnf.get_mm(i, l, j);
+	 }
+/************
+ * Consistency of haplotypes
+ * (exactly only one TRUE among {p,m}_i,j[l])
+ ************/
+// at least one
+	 cnf.add_clause(p, no_of_alleles);
+	 cnf.add_clause(m, no_of_alleles);
+// at most one (quadratic version)
+	 for (size_t j1= 0; j1<no_of_alleles-1; ++j1) {
+		for (size_t j2= j1+1; j2<no_of_alleles; ++j2) {
+		  cnf.add_clause<2>((lit_t[]){ -p[j1], -p[j2]});
+		  cnf.add_clause<2>((lit_t[]){ -m[j1], -m[j2]});
+		}
+	 }
+/************
+ * Clauses for errors variables
+ ************/
+	 if (is_genotyped(gen)) {
+		const lit_t e= cnf.get_e(i, l);
+		const size_t a= ((size_t)gen.allele1())-1;
+		const size_t b= ((size_t)gen.allele2())-1;
+		if (is_homozygous(gen)) {
+		  cnf.add_clause<2>((lit_t[]){  e, p[a] });
+		  cnf.add_clause<2>((lit_t[]){  e, m[a] });
+		  cnf.add_clause<3>((lit_t[]){ -e, -p[a], -m[a] });
+		} else if (is_heterozygous(gen)) {
+		  cnf.add_clause<3>((lit_t[]){  e,  p[a],  m[a] });
+		  cnf.add_clause<3>((lit_t[]){  e, -p[a], -m[a] });
+		  cnf.add_clause<3>((lit_t[]){  e,  p[b],  m[b] });
+		  cnf.add_clause<3>((lit_t[]){  e, -p[b], -m[b] });
+
+		  cnf.add_clause<3>((lit_t[]){  e, -p[a], -p[b] });
+		  cnf.add_clause<3>((lit_t[]){  e, -m[a], -m[b] });
+
+		  cnf.add_clause<5>((lit_t[]){ -e, -p[a],  m[a],  p[b], -m[b] });
+		  cnf.add_clause<5>((lit_t[]){ -e,  p[a], -m[a], -p[b],  m[b] });
+		} else {
+		  MY_FAIL;
+		}
+	 }
+/************
+ * End clauses for errors variables
+ ************/
+/************
+ * Clauses for recombination variables
+ ************/
+// (only for loci after the first)
+	 if (l > 0) {
+// a recombination event occurs only on heterozygous loci (on parent), thus:
+//    ( p_{i,l} == m_{i,l} )  implies  not r_{i,l}
+		if (ind.has_father()) {
+		  lit_t* clause= new lit_t[1+(2*no_of_alleles)];
+		  clause[0]= -cnf.get_rp(i, l);
+		  for (size_t j= 0; j<no_of_alleles; ++j) {
+			 clause[1+(2*j)]= cnf.get_pm(ind.father().progr_id(), l, j);
+			 clause[2+(2*j)]= cnf.get_mm(ind.father().progr_id(), l, j);
+		  }
+		  for (size_t j= 0; j<no_of_alleles; ++j) {
+			 clause[1+(2*j)]= -clause[1+(2*j)];
+			 clause[2+(2*j)]= -clause[2+(2*j)];
+			 cnf.add_clause(clause, 1+(2*no_of_alleles));
+			 clause[1+(2*j)]= -clause[1+(2*j)];
+			 clause[2+(2*j)]= -clause[2+(2*j)];
+		  }
+		  delete [] clause;
+		}
+		if (ind.has_mother()) {
+		  lit_t* clause= new lit_t[1+(2*no_of_alleles)];
+		  clause[0]= -cnf.get_rm(i, l);
+		  for (size_t j= 0; j<no_of_alleles; ++j) {
+			 clause[1+(2*j)]= cnf.get_pm(ind.mother().progr_id(), l, j);
+			 clause[2+(2*j)]= cnf.get_mm(ind.mother().progr_id(), l, j);
+		  }
+		  for (size_t j= 0; j<no_of_alleles; ++j) {
+			 clause[1+(2*j)]= -clause[1+(2*j)];
+			 clause[2+(2*j)]= -clause[2+(2*j)];
+			 cnf.add_clause(clause, 1+(2*no_of_alleles));
+			 clause[1+(2*j)]= -clause[1+(2*j)];
+			 clause[2+(2*j)]= -clause[2+(2*j)];
+		  }
+		  delete [] clause;
+		}
+	 }
+/************
+ * End clauses for recombination variables
+ ************/
+	 delete [] p;
+	 delete [] m;
+  };
+
   void add_parental_constraint(pedcnf_t& cnf,
 										 const g& parent_g,
 										 const g& individual_g,
 										 const size_t locus,
 										 const size_t progr_id_parent,
 										 const size_t progr_id_ind,
-										 const bool is_mother) {
+										 const bool is_mother,
+										 const size_t no_of_alleles) {
+	 if (no_of_alleles<=2) {
+		add_parental_constraint_bi(cnf, parent_g, individual_g,
+											locus, progr_id_parent, progr_id_ind,
+											is_mother);
+	 } else {
+		add_parental_constraint_multi(cnf, parent_g, individual_g,
+												locus, progr_id_parent, progr_id_ind,
+												is_mother, no_of_alleles);
+	 }
+  };
+
+// maximum 2 alleles !!
+  void add_parental_constraint_bi(pedcnf_t& cnf,
+													  const g& parent_g,
+													  const g& individual_g,
+													  const size_t locus,
+													  const size_t progr_id_parent,
+													  const size_t progr_id_ind,
+													  const bool is_mother) {
 /************
  * Clauses for Mendelian consistency (s-variables)
  ************/
@@ -239,9 +367,63 @@ private:
  ************/
   };
 
+// minimum 3 alleles !!
+  void add_parental_constraint_multi(pedcnf_t& cnf,
+												 const g& parent_g,
+												 const g& individual_g,
+												 const size_t locus,
+												 const size_t progr_id_parent,
+												 const size_t progr_id_ind,
+												 const bool is_mother,
+												 const size_t no_of_alleles) {
+/************
+ * Clauses for Mendelian consistency (s-variables)
+ ************/
+	 lit_t s= (!is_mother) ?
+		cnf.get_sp(progr_id_ind, locus) : cnf.get_sm(progr_id_ind, locus);
+	 for (size_t j= 0; j<no_of_alleles; ++j) {
+		lit_t p= cnf.get_pm(progr_id_parent, locus, j);
+		lit_t m= cnf.get_mm(progr_id_parent, locus, j);
+		lit_t c= (!is_mother) ?
+		  cnf.get_pm(progr_id_ind, locus, j) : cnf.get_mm(progr_id_ind, locus, j);
+		cnf.add_clause<3>((lit_t[]){ s,  p, -c});
+		cnf.add_clause<3>((lit_t[]){ s, -p,  c});
+		cnf.add_clause<3>((lit_t[]){-s,  m, -c});
+		cnf.add_clause<3>((lit_t[]){-s, -m,  c});
+		cnf.add_clause<3>((lit_t[]){-p, -m,  c});
+		cnf.add_clause<3>((lit_t[]){ p,  m, -c});
+	 }
+/************
+ * End clauses for Mendelian consistency (s-variables)
+ ************/
+/************
+ * Clauses for Recombination events (r-variables)
+ ************/
+	 if (locus>0) {
+		lit_t prevs= (!is_mother) ?
+		  cnf.get_sp(progr_id_ind, locus-1) : cnf.get_sm(progr_id_ind, locus-1);
+		lit_t r= (!is_mother) ?
+		  cnf.get_rp(progr_id_ind, locus) : cnf.get_rm(progr_id_ind, locus);
+// s == prevs + r
+#ifdef AVOID_XOR_CLAUSES
+		  cnf.add_clause<3>((lit_t[]){-s,  r,  prevs});
+		  cnf.add_clause<3>((lit_t[]){-s, -r, -prevs});
+		  cnf.add_clause<3>((lit_t[]){ s,  r, -prevs});
+		  cnf.add_clause<3>((lit_t[]){ s, -r,  prevs});
+#else
+		  cnf.add_xor_clause<3>((lit_t[]){-s, r, prevs});
+#endif
+	 }
+/************
+ * End clauses for Recombination events (r-variables)
+ ************/
+  };
+
 public:
 
   void convert(const pedigree_t& ped, pedcnf_t& cnf) {
+// Compute the number of alleles of each locus
+	 const size_t* const max_alleles= ped.no_of_alleles();
 	 BOOST_FOREACH( const individual_t& ind,
 						 ped.individuals() ) {
 		L_TRACE("Considering individual " << ind.progr_id());
@@ -249,7 +431,11 @@ public:
 		for (size_t l= 0; l < ped.genotype_length(); ++l) {
 		  L_TRACE("  locus = " << l <<
 					 ", g_i = " << ind.obs_g(l));
-		  add_individual_constraint(cnf, ind, ind.obs_g(l), l, ind.progr_id());
+		  if (max_alleles[l] <= 2) {
+			 add_individual_constraint_bi(cnf, ind, ind.obs_g(l), l, ind.progr_id());
+		  } else {
+			 add_individual_constraint_multi(cnf, ind, ind.obs_g(l), l, ind.progr_id(), max_alleles[l]);
+		  }
 		}
 		if (ind.has_father()) {
 		  L_TRACE(" --> father " << ind.father().progr_id());
@@ -262,7 +448,7 @@ public:
 											 parent.obs_g(l), ind.obs_g(l),
 											 l,
 											 parent.progr_id(), ind.progr_id(),
-											 false);
+											 false, max_alleles[l]);
 		  }
 		}
 		if (ind.has_mother()) {
@@ -276,10 +462,11 @@ public:
 											 parent.obs_g(l), ind.obs_g(l),
 											 l,
 											 parent.progr_id(), ind.progr_id(),
-											 true);
+											 true, max_alleles[l]);
 		  }
 		}
 	 }
+	 delete [] max_alleles;
   };
 };
 
