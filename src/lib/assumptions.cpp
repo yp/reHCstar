@@ -89,8 +89,17 @@ public:
 // Process line
 		  try {
 			 std::istringstream is(buff);
-			 pedcnf_t::pedvar_t v= boost::make_tuple(ped_var_kind::DUMMY, 0, 0, 0);
-			 if (!(is >> v)) throw invalid_line_t("unrecognized variable");
+			 ped_var_kind vk= ped_var_kind::DUMMY;
+			 if (!(is >> vk)) throw invalid_line_t("unrecognized variable kind");
+			 size_t ii, ij, ik;
+			 if (!(is >> ii)) throw invalid_line_t("unrecognized variable first index");
+			 if (!(is >> ij)) throw invalid_line_t("unrecognized variable second index");
+			 if (vk==ped_var_kind::PM || vk==ped_var_kind::MM) {
+				if (!(is >> ik)) throw invalid_line_t("unrecognized variable third index");
+			 } else {
+				ik= 0;
+			 }
+			 pedcnf_t::pedvar_t v= boost::make_tuple(vk, ii, ij, ik);
 			 bool value;
 			 if (!(is >> value)) throw invalid_line_t("unrecognized boolean value");
 			 L_DEBUG("Read assumption '" << buff << "' ==> ("
@@ -179,7 +188,8 @@ public:
 				MY_FAIL;
 			 };
 		  } catch (invalid_line_t& e) {
-			 L_WARN("!! Discarded invalid assumption >" << buff << "<. Reason: " << e.msg << ".");
+			 L_FATAL("!! Discarded invalid assumption >" << buff << "<. Reason: " << e.msg << ".");
+			 MY_FAIL;
 		  }
 		}
 	 }
