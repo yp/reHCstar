@@ -202,6 +202,26 @@ class Solution:
                 self.genotype_length= len(self.genotypes[ indiv_id ])
                 self.individuals.append(indiv)
 
+        to_add = []
+        for indiv in self.pedigree.values():
+            if indiv.has_father() and indiv.father not in self.pedigree:
+                father = Individual(indiv.father)
+                father.parse_list([ indiv.family, indiv.father, "0", "0", "1", indiv.phenotype ])
+                to_add.append((indiv.father, father))
+                self.genotypes[ indiv.father ] = [ MISSING_G ] * len(self.genotypes[ indiv.id ])
+                self.individuals.append(father)
+            if indiv.has_mother() and indiv.mother not in self.pedigree:
+                mother = Individual(indiv.mother)
+                mother.parse_list([ indiv.family, indiv.mother, "0", "0", "1", indiv.phenotype ])
+                to_add.append((indiv.mother, mother))
+                self.genotypes[ indiv.mother ] = [ MISSING_G ] * len(self.genotypes[ indiv.id ])
+                self.individuals.append(mother)
+
+
+        self.pedigree.update(to_add)
+        del to_add
+
+
         # Initialize other information
         haplotypes= {}
         gps=        {}

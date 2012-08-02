@@ -406,7 +406,7 @@ pedcnf_t::assignment_from_minisat_format(std::istream& in) {
   std::string line;
   while (std::getline(in, line)) {
 	 boost::trim(line);
-	 if ((line.length()==0) || boost::starts_with(line, "c ")) {
+	 if ((line.length()==0) || boost::starts_with(line, "c")) {
 // The line is a comment, discard.
 	 } else if (boost::starts_with(line, "s ")) {
 		if (line == "s SATISFIABLE") {
