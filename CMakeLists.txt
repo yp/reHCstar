@@ -52,7 +52,7 @@ link_directories(${Log4Cxx_LIBRARY_DIRS})
 
 set (CMAKE_CXX_FLAGS "-std=c++0x -Wall ${CMAKE_CXX_FLAGS}")
 set (CMAKE_CXX_FLAGS_DEBUG "-O0 ${CMAKE_CXX_FLAGS_DEBUG}")
-set (CMAKE_CXX_FLAGS_RELEASE "-mtune=native -fomit-frame-pointer ${CMAKE_CXX_FLAGS_RELEASE}")
+set (CMAKE_CXX_FLAGS_RELEASE "-march=native -fomit-frame-pointer ${CMAKE_CXX_FLAGS_RELEASE}")
 
 include(ExtractSourceVersionFromGit)
 set (APPLICATION_VERSION_STRING "${APPLICATION_SOURCE_VERSION}") # See the version from the 'git' repositories
