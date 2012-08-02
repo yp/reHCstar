@@ -52,7 +52,7 @@
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/ptr_container/ptr_list.hpp>
-
+#include <boost/version.hpp>
 
 #include "assertion.hpp"
 
@@ -322,7 +322,11 @@ public:
 		throw std::logic_error(std::string("Impossible to open a temporary file with hint '")
 									  + file_template + "' for writing.");
 	 }
+#if (BOOST_VERSION >= 104400)
+	 boost::iostreams::file_descriptor_sink sink(fd, boost::iostreams::close_handle);
+#else
 	 boost::iostreams::file_descriptor_sink sink(fd);
+#endif
 	 if (!sink.is_open()) {
 		L_ERROR("Impossible to open file '" << real_name << "' for writing.");
 		throw std::logic_error(std::string("Impossible to open file '")
@@ -350,7 +354,11 @@ public:
 		L_ERROR("Impossible to open a stream associated to the given C-file.");
 		throw std::logic_error(std::string("Impossible to open a stream associated to the given C-file."));
 	 }
+#if (BOOST_VERSION >= 104400)
+	 boost::iostreams::file_descriptor_sink sink(fd, boost::iostreams::close_handle);
+#else
 	 boost::iostreams::file_descriptor_sink sink(fd);
+#endif
 	 if (!sink.is_open()) {
 		L_ERROR("Impossible to open the given C-file.");
 		throw std::logic_error(std::string("Impossible to open the given C-file."));
