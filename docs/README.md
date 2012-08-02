@@ -24,7 +24,14 @@ is then solved by a SAT solver.
 A haplotype configuration is finally recovered from the satisfying
 assignment.
 
-The algorithm is described in the following paper:  
+The algorithm is described in the following papers:  
+Yuri Pirola, Gianluca Della Vedova, Stefano Biffani, Alessandra Stella,
+and Paola Bonizzoni.
+_A fast and practical approach to genotype phasing and imputation on a
+pedigree with erroneous and incomplete information_.
+IEEE/ACM Transactions on Computational Biology and Bioinformatics (In
+press).
+[Link](http://dx.doi.org/10.1109/TCBB.2012.100)  
 Yuri Pirola, Gianluca Della Vedova, Stefano Biffani, Alessandra Stella,
 and Paola Bonizzoni.
 _A fast and practical approach to genotype phasing and imputation on a
