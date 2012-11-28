@@ -167,6 +167,10 @@ class Individual:
     def has_mother(self):
         return (int(self.mother)!=0)
 
+def parse_genotype(genstr):
+    genv = genstr.split()
+    assert len(genv)%2==0
+    return [ " ".join(sorted((genv[2*i], genv[2*i+1]))) for i in range(int(len(genv)/2)) ]
 
 class Solution:
     '''A class representing both the input and the output.'''
@@ -193,12 +197,12 @@ class Solution:
             for row in ped_file:
                 if row.startswith('#'):
                     continue
-                split_row= row.strip().split("\t", 6)
+                split_row= row.strip().split(None, 6)
                 indiv_id= split_row[1]
                 indiv= Individual(indiv_id)
                 indiv.parse_list(split_row[0:6])
                 self.pedigree[ indiv_id ]= indiv
-                self.genotypes[ indiv_id ]= [ " ".join(sorted(g.split(" ", 1))) for g in split_row[6].split("\t") ]
+                self.genotypes[ indiv_id ]= parse_genotype(split_row[6])
                 self.genotype_length= len(self.genotypes[ indiv_id ])
                 self.individuals.append(indiv)
 
