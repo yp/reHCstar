@@ -12,9 +12,9 @@ file (GLOB_RECURSE project_SRCS
 set (project_BIN ${PROJECT_NAME})
 
 set (project_LIBS
+  ${project_base_LIB}
   ${Boost_LIBRARIES}
   ${Log4Cxx_LIBRARIES}
-  ${project_base_LIB}
   ${sat_LIBS}
 )
 
