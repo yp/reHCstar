@@ -29,8 +29,8 @@ Yuri Pirola, Gianluca Della Vedova, Stefano Biffani, Alessandra Stella,
 and Paola Bonizzoni.
 _A fast and practical approach to genotype phasing and imputation on a
 pedigree with erroneous and incomplete information_.
-IEEE/ACM Transactions on Computational Biology and Bioinformatics (In
-press).
+IEEE/ACM Transactions on Computational Biology and Bioinformatics
+(2012).
 [Link](http://dx.doi.org/10.1109/TCBB.2012.100)  
 Yuri Pirola, Gianluca Della Vedova, Stefano Biffani, Alessandra Stella,
 and Paola Bonizzoni.
