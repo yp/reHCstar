@@ -9,7 +9,7 @@ by [Yuri Pirola](http://bimib.disco.unimib.it/index.php/Pirola_Yuri)
 
 
 Started: September 27, 2010  
-Current release: **1.3.2** (August 2, 2012)
+Current release: **1.3.3** (January 15, 2013)
 
 
 ------------------------------------------------------------------------
@@ -29,8 +29,8 @@ Yuri Pirola, Gianluca Della Vedova, Stefano Biffani, Alessandra Stella,
 and Paola Bonizzoni.
 _A fast and practical approach to genotype phasing and imputation on a
 pedigree with erroneous and incomplete information_.
-IEEE/ACM Transactions on Computational Biology and Bioinformatics (In
-press).
+IEEE/ACM Transactions on Computational Biology and Bioinformatics
+(2012).
 [Link](http://dx.doi.org/10.1109/TCBB.2012.100)  
 Yuri Pirola, Gianluca Della Vedova, Stefano Biffani, Alessandra Stella,
 and Paola Bonizzoni.
