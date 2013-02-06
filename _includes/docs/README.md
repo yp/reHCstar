@@ -3,13 +3,14 @@
 ==========
 
 A SAT-based program to compute a haplotype configuration on pedigrees
-with recombinations, genotyping errors, and missing genotypes.
+with recombinations, genotyping errors, and missing genotypes over
+_biallelic_ and _multi-allelic_ loci.
 
 by [Yuri Pirola](http://bimib.disco.unimib.it/index.php/Pirola_Yuri)
 
 
 Started: September 27, 2010  
-Current release: **1.3.4** (January 24, 2013)
+Current release: **2.0.0** (February 6, 2013)
 
 
 ------------------------------------------------------------------------
@@ -208,6 +209,8 @@ The following options are used to specify the input/output files:
    (genotyping error), `<individual id>` is the numerical identifier of
    the individual (1-based), `<locus>` is the genotype locus, and
    `<value>` is the boolean value (0/1) that the variable must have.
+   Please note that biallelic and multi-allelic loci are treated
+   differently, thus they have different set of variables.
 
 
 For the `--create-read` mode, the command-line that has to be used to
@@ -526,6 +529,9 @@ Missing genotypes are encoded by the pair `0 0` (i.e. by two fields
 containing the missing allele `0`).
 The pairs composed by a valid allele (`1` or `2`) and a missing allele
 (`0`) _are not valid_.
+Since reHC-* 2.0.0, there could also be **multi-allelic** loci. Alleles
+are encoded by a number greater than `0` (which is always considered the
+missing allele code).
 
 Rows starting with the character `#` are considered as comments and
 ignored.
@@ -535,7 +541,7 @@ The order of the two alleles on each locus is meaningless (i.e., the
 pair `2 1` is considered the same as the pair `1 2`).
 
 A simple single-family pedigree composed by 5 individuals genotyped over
-5 loci is as follows.
+5 biallelic loci is as follows.
 
     0 1 0 0 1 phenotype 1 1 2 2 2 2 2 2 1 1
     0 2 0 0 2 phenotype 2 2 1 1 1 1 1 1 1 1
