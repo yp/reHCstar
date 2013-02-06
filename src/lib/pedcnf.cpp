@@ -45,35 +45,37 @@ const ped_var_kind ped_var_kind::M(3);
 const ped_var_kind ped_var_kind::RP(4);
 const ped_var_kind ped_var_kind::RM(5);
 const ped_var_kind ped_var_kind::E(6);
-const ped_var_kind ped_var_kind::DUMMY(7);
-const int ped_var_kind::int_values[]={0, 1, 2, 3, 4, 5, 6, 7};
-const std::string ped_var_kind::str_values[]={"sp", "sm", "p", "m", "rp", "rm", "e", "dummy"};
-const ped_var_kind ped_var_kind::enum_values[]={SP, SM, P, M, RP, RM, E, DUMMY};
+const ped_var_kind ped_var_kind::PM(7);
+const ped_var_kind ped_var_kind::MM(8);
+const ped_var_kind ped_var_kind::DUMMY(9);
+const int ped_var_kind::int_values[]={0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+const std::string ped_var_kind::str_values[]={"sp", "sm", "p", "m", "rp", "rm", "e", "pm", "mm", "dummy"};
+const ped_var_kind ped_var_kind::enum_values[]={SP, SM, P, M, RP, RM, E, PM, MM, DUMMY};
 
 std::ostream&
 operator<<(std::ostream& out, const pedcnf_t::pedvar_t& var) {
-  out << var.get<0>() << "_" << var.get<1>() << "_" << var.get<2>();
+  out << var.get<0>() << "_" << var.get<1>() << "_" << var.get<2>() << "_" << var.get<3>();
   return out;
 }
 
 
 lit_t
 pedcnf_t::generate_dummy() {
-  _vars.push_back(boost::make_tuple(ped_var_kind::DUMMY, _next_dummy, 0));
+  _vars.push_back(boost::make_tuple(ped_var_kind::DUMMY, _next_dummy, 0, 0));
   _vals.push_back(false);
   ++_next_dummy;
   return _vars.size();
 };
 
 inline lit_t
-pedcnf_t::get_var(varmap_t& map,
-						const ped_var_kind& var_kind,
-						const size_t i1, const size_t i2) {
-  varmap_t::iterator it= map.find(boost::make_tuple(i1, i2));
+pedcnf_t::get_var3(varmap_t& map,
+						 const ped_var_kind& var_kind,
+						 const size_t i1, const size_t i2, const size_t i3) {
+  varmap_t::iterator it= map.find(boost::make_tuple(i1, i2, i3));
   if (it == map.end()) {
-	 _vars.push_back(boost::make_tuple(var_kind, i1, i2));
+	 _vars.push_back(boost::make_tuple(var_kind, i1, i2, i3));
 	 _vals.push_back(false);
-	 std::pair< varmap_t::iterator, bool> ret= map.insert(std::make_pair(boost::make_tuple(i1, i2), _vars.size()));
+	 std::pair< varmap_t::iterator, bool> ret= map.insert(std::make_pair(boost::make_tuple(i1, i2, i3), _vars.size()));
 	 MY_ASSERT_DBG(ret.second);
 	 it= ret.first;
   }
@@ -81,9 +83,9 @@ pedcnf_t::get_var(varmap_t& map,
 };
 
 inline lit_t
-pedcnf_t::get_var(const varmap_t& map,
-						const size_t i1, const size_t i2) const {
-  varmap_t::const_iterator it= map.find(boost::make_tuple(i1, i2));
+pedcnf_t::get_var3(const varmap_t& map,
+						 const size_t i1, const size_t i2, const size_t i3) const {
+  varmap_t::const_iterator it= map.find(boost::make_tuple(i1, i2, i3));
   if (it == map.end()) {
 	 return -1;
   } else {
@@ -92,9 +94,9 @@ pedcnf_t::get_var(const varmap_t& map,
 };
 
 inline bool
-pedcnf_t::has_var(const varmap_t& map,
-						const size_t i1, const size_t i2) const {
-  return get_var(map, i1, i2) != -1;
+pedcnf_t::has_var3(const varmap_t& map,
+						 const size_t i1, const size_t i2, const size_t i3) const {
+  return get_var3(map, i1, i2, i3) != -1;
 };
 
 bool
@@ -118,6 +120,16 @@ pedcnf_t::has_m(const size_t i, const size_t l) const {
 };
 
 bool
+pedcnf_t::has_pm(const size_t i, const size_t l, const size_t j) const {
+  return has_var3(_pm, i, l, j);
+}
+
+bool
+pedcnf_t::has_mm(const size_t i, const size_t l, const size_t j) const {
+  return has_var3(_mm, i, l, j);
+};
+
+bool
 pedcnf_t::has_rp(const size_t i, const size_t l) const {
   return has_var(_rp, i, l);
 };
@@ -134,9 +146,9 @@ pedcnf_t::has_e(const size_t i, const size_t l) const {
 
 
 bool
-pedcnf_t::get_val(const varmap_t& map,
-						const size_t i1, const size_t i2) const {
-  lit_t var= get_var(map, i1, i2);
+pedcnf_t::get_val3(const varmap_t& map,
+						 const size_t i1, const size_t i2, const size_t i3) const {
+  lit_t var= get_var3(map, i1, i2, i3);
   MY_ASSERT_DBG( (0 < var) && ((size_t)var <= _vals.size()) );
   return _vals[var-1];
 };
@@ -159,6 +171,16 @@ pedcnf_t::get_p(const size_t i, const size_t l) {
 lit_t
 pedcnf_t::get_m(const size_t i, const size_t l) {
   return get_var(_m, ped_var_kind::M, i, l);
+};
+
+lit_t
+pedcnf_t::get_pm(const size_t i, const size_t l, const size_t j) {
+  return get_var3(_pm, ped_var_kind::PM, i, l, j);
+};
+
+lit_t
+pedcnf_t::get_mm(const size_t i, const size_t l, const size_t j) {
+  return get_var3(_mm, ped_var_kind::MM, i, l, j);
 };
 
 lit_t
@@ -194,6 +216,16 @@ pedcnf_t::get_p(const size_t i, const size_t l) const {
 lit_t
 pedcnf_t::get_m(const size_t i, const size_t l) const {
   return get_var(_m, i, l);
+};
+
+lit_t
+pedcnf_t::get_pm(const size_t i, const size_t l, const size_t j) const {
+  return get_var3(_pm, i, l, j);
+};
+
+lit_t
+pedcnf_t::get_mm(const size_t i, const size_t l, const size_t j) const {
+  return get_var3(_mm, i, l, j);
 };
 
 lit_t

@@ -488,6 +488,21 @@ public:
 	 return _len;
   }
 
+  const size_t* const no_of_alleles() const {
+	 size_t* max_alleles= new size_t[genotype_length()];
+	 for (size_t l= 0; l < genotype_length(); ++l) {
+		max_alleles[l]= 0;
+	 }
+	 BOOST_FOREACH( const individual_t& ind,
+						 individuals() ) {
+		for (size_t l= 0; l < genotype_length(); ++l) {
+// Remember that allele1() <= allele2()
+		  max_alleles[l]= std::max(max_alleles[l], (size_t)ind.obs_g(l).allele2());
+		}
+	 }
+	 return max_alleles;
+  };
+
   bool is_completely_haplotyped() const {
 	 DEBUG("Checking if the haplotype configuration is complete...");
 	 BOOST_FOREACH( const individual_t& ind,
@@ -646,14 +661,14 @@ public:
 		size_t typed, homoz;
 		if (of_obs_g) {
 		  typed= std::count_if(ind.obs_g().begin(), ind.obs_g().end(),
-									  is_genotyped<typename gen_t::base>);
+									  is_genotyped);
 		  homoz= std::count_if(ind.obs_g().begin(), ind.obs_g().end(),
-									  is_homozygous<typename gen_t::base>);
+									  is_homozygous);
 		} else {
 		  typed= std::count_if(ind.real_g().begin(), ind.real_g().end(),
-									  is_genotyped<typename gen_t::base>);
+									  is_genotyped);
 		  homoz= std::count_if(ind.real_g().begin(), ind.real_g().end(),
-									  is_homozygous<typename gen_t::base>);
+									  is_homozygous);
 		}
 		acc_g_miss(genotype_length() - typed);
 		acc_hom(homoz);

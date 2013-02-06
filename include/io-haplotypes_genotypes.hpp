@@ -67,54 +67,29 @@ public:
   }
 };
 
-template <
-  int T_ALLELE1= 1, int T_ALLELE2= 2, int T_ALLELEMISS= 0,
-  int T_HOMO1= 0, int T_HOMO2= 1, int T_HETER= 2, int T_MISS= 5>
-class biallelic_genotype_reader_t
-  :public basic_genotype_reader_t< single_biallelic_genotype_t< T_HOMO1,
-                                                                T_HOMO2,
-                                                                T_HETER,
-                                                                T_MISS>
-                                   >
+class multiallelic_genotype_reader_t
+  :public basic_genotype_reader_t< single_multiallelic_genotype_t >
 {
 protected:
-  typedef single_biallelic_genotype_t< T_HOMO1,
-                                       T_HOMO2,
-                                       T_HETER,
-                                       T_MISS> g_t;
+  typedef single_multiallelic_genotype_t g_t;
 
   virtual bool
   decode_next(std::istream& genotype_stream,
-              std::vector<g_t>& v) {
-    bool ris= true;
-    int a1, a2;
-    genotype_stream >> a1 >> a2;
-    if (genotype_stream) {
-      L_TRACE("Read alleles " << a1 << " and " << a2 << ".");
-      MY_ASSERT((a1 == T_ALLELE1) || (a1 == T_ALLELE2) || (a1 == T_ALLELEMISS));
-      MY_ASSERT((a2 == T_ALLELE1) || (a2 == T_ALLELE2) || (a2 == T_ALLELEMISS));
-      if (a1 == a2) {
-        if (a1 == T_ALLELE1) {
-          v.push_back(g_t::HOMO1);
-        } else if (a2 == T_ALLELE2) {
-          v.push_back(g_t::HOMO2);
-        } else {
-          v.push_back(g_t::MISS);
-        }
-      } else {
-        MY_ASSERT((a1 != T_ALLELEMISS) && (a2 != T_ALLELEMISS));
-        v.push_back(g_t::HETER);
-      }
-    } else {
-      if (!genotype_stream.eof()) {
-        L_WARN("Error while decoding the genotype.");
-      }
-      ris= false;
-    }
-    return ris;
+				  std::vector<g_t>& v) {
+	 bool ris= true;
+	 g_t g;
+	 genotype_stream >> g;
+	 if (genotype_stream) {
+		v.push_back(g);
+	 } else {
+		if (!genotype_stream.eof()) {
+		  L_WARN("Error while decoding the genotype.");
+		}
+		ris= false;
+	 }
+	 return ris;
   }
 };
-
 
 
 
@@ -166,36 +141,16 @@ public:
 };
 
 
-template <
-  int T_ALLELE1= 1, int T_ALLELE2= 2, int T_ALLELEMISS= 0,
-  int T_HOMO1= 0, int T_HOMO2= 1, int T_HETER= 2, int T_MISS= 5>
-class biallelic_genotype_writer_t
-  :public basic_vector_writer_t< single_biallelic_genotype_t< T_HOMO1,
-																				  T_HOMO2,
-																				  T_HETER,
-																				  T_MISS>
-                                   >
+class multiallelic_genotype_writer_t
+  :public basic_vector_writer_t< single_multiallelic_genotype_t >
 {
 protected:
-  typedef single_biallelic_genotype_t< T_HOMO1,
-                                       T_HOMO2,
-                                       T_HETER,
-                                       T_MISS> g_t;
+  typedef single_multiallelic_genotype_t g_t;
 
   virtual void encode_next(std::ostream& genotype_stream,
-                           const g_t& g,
-                           const std::string& sep= " ") const {
-    if ( g == g_t::HOMO1 ) {
-      genotype_stream << T_ALLELE1 << sep << T_ALLELE1;
-    } else if ( g == g_t::HOMO2 ) {
-      genotype_stream << T_ALLELE2 << sep << T_ALLELE2;
-    } else if ( g == g_t::HETER ) {
-      genotype_stream << T_ALLELE1 << sep << T_ALLELE2;
-    } else if ( g == g_t::MISS  ) {
-      genotype_stream << T_ALLELEMISS << sep << T_ALLELEMISS;
-    } else {
-      MY_FAIL;
-    }
+									const g_t& g,
+									const std::string& sep= " ") const {
+	 genotype_stream << g.allele1() << sep << g.allele2();
   };
 
 };
@@ -203,32 +158,16 @@ protected:
 
 
 
-template <
-  int T_ALLELE1= 1, int T_ALLELE2= 2, int T_ALLELEMISS= 0
->
-class biallelic_haplotype_writer_t
-  :public basic_vector_writer_t< single_biallelic_haplotype_t< T_ALLELE1,
-																					T_ALLELE2,
-																					T_ALLELEMISS >
-											>
+class multiallelic_haplotype_writer_t
+  :public basic_vector_writer_t< single_multiallelic_haplotype_t >
 {
 protected:
-  typedef single_biallelic_haplotype_t< T_ALLELE1,
-													 T_ALLELE2,
-													 T_ALLELEMISS > h_t;
+  typedef single_multiallelic_haplotype_t h_t;
 
   virtual void encode_next(std::ostream& haplotype_stream,
 									const h_t& h,
 									const std::string& sep= " ") const {
-	 if        ( h == h_t::ALLELE1 ) {
-		haplotype_stream << T_ALLELE1;
-	 } else if ( h == h_t::ALLELE2 ) {
-		haplotype_stream << T_ALLELE2;
-	 } else if ( h == h_t::MISS ) {
-		haplotype_stream << T_ALLELEMISS;
-	 } else {
-		MY_FAIL;
-	 }
+	 haplotype_stream << h.allele();
   };
 
 };
@@ -303,32 +242,17 @@ public:
   }
 };
 
-template <
-  int T_ALLELE1= 1, int T_ALLELE2= 2, int T_ALLELEMISS= 0
->
-class biallelic_haplotype_pair_writer_t
-  :public basic_double_vector_writer_t< single_biallelic_haplotype_t< T_ALLELE1,
-																							 T_ALLELE2,
-																							 T_ALLELEMISS >
-													 >
+
+class multiallelic_haplotype_pair_writer_t
+  :public basic_double_vector_writer_t< single_multiallelic_haplotype_t >
 {
 protected:
-  typedef single_biallelic_haplotype_t< T_ALLELE1,
-													 T_ALLELE2,
-													 T_ALLELEMISS > h_t;
+  typedef single_multiallelic_haplotype_t h_t;
 
   virtual void encode_next(std::ostream& haplotype_stream,
 									const h_t& h,
 									const std::string& sep= " ") const {
-	 if        ( h == h_t::ALLELE1 ) {
-		haplotype_stream << T_ALLELE1;
-	 } else if ( h == h_t::ALLELE2 ) {
-		haplotype_stream << T_ALLELE2;
-	 } else if ( h == h_t::MISS ) {
-		haplotype_stream << T_ALLELEMISS;
-	 } else {
-		MY_FAIL;
-	 }
+	 haplotype_stream << h.allele();
   };
 
   virtual void encode_next(std::ostream& haplotype_stream,
@@ -341,5 +265,7 @@ protected:
   };
 
 };
+
+
 
 #endif // __IO_HAPLOTYPES_GENOTYPES_HPP__
