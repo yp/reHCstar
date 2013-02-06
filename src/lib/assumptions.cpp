@@ -38,11 +38,12 @@
 std::istream&
 operator>>(std::istream& in, pedcnf_t::pedvar_t& var) {
   ped_var_kind var_kind= ped_var_kind::DUMMY;
-  size_t i1, i2;
+  size_t i1, i2, i3;
   in >> var_kind;
   in >> i1;
   in >> i2;
-  var= boost::make_tuple(var_kind, i1, i2);
+  in >> i3;
+  var= boost::make_tuple(var_kind, i1, i2, i3);
   return in;
 };
 
@@ -88,8 +89,17 @@ public:
 // Process line
 		  try {
 			 std::istringstream is(buff);
-			 pedcnf_t::pedvar_t v= boost::make_tuple(ped_var_kind::DUMMY, 0, 0);
-			 if (!(is >> v)) throw invalid_line_t("unrecognized variable");
+			 ped_var_kind vk= ped_var_kind::DUMMY;
+			 if (!(is >> vk)) throw invalid_line_t("unrecognized variable kind");
+			 size_t ii, ij, ik;
+			 if (!(is >> ii)) throw invalid_line_t("unrecognized variable first index");
+			 if (!(is >> ij)) throw invalid_line_t("unrecognized variable second index");
+			 if (vk==ped_var_kind::PM || vk==ped_var_kind::MM) {
+				if (!(is >> ik)) throw invalid_line_t("unrecognized variable third index");
+			 } else {
+				ik= 0;
+			 }
+			 pedcnf_t::pedvar_t v= boost::make_tuple(vk, ii, ij, ik);
 			 bool value;
 			 if (!(is >> value)) throw invalid_line_t("unrecognized boolean value");
 			 L_DEBUG("Read assumption '" << buff << "' ==> ("
@@ -144,6 +154,22 @@ public:
 				lit_t iv= cnf.get_rm(v.get<1>(), v.get<2>());
 				cnf.add_clause<1>( (lit_t[]){ (value? +1 : -1)  *  iv } );
 				++n_assumptions;
+			 } else if (v.get<0>() == ped_var_kind::PM) {
+				if (!cnf.has_pm(v.get<1>(), v.get<2>(), v.get<3>())) {
+				  L_WARN("Variable '" << v << "' does not exist in the SAT instance."
+							" Adding anyway...");
+				}
+				lit_t iv= cnf.get_pm(v.get<1>(), v.get<2>(), v.get<3>());
+				cnf.add_clause<1>( (lit_t[]){ (value? +1 : -1)  *  iv } );
+				++n_assumptions;
+			 } else if (v.get<0>() == ped_var_kind::MM) {
+				if (!cnf.has_mm(v.get<1>(), v.get<2>(), v.get<3>())) {
+				  L_WARN("Variable '" << v << "' does not exist in the SAT instance."
+							" Adding anyway...");
+				}
+				lit_t iv= cnf.get_mm(v.get<1>(), v.get<2>(), v.get<3>());
+				cnf.add_clause<1>( (lit_t[]){ (value? +1 : -1)  *  iv } );
+				++n_assumptions;
 			 } else if (v.get<0>() == ped_var_kind::E) {
 				if (!cnf.has_e(v.get<1>(), v.get<2>())) {
 				  L_WARN("Variable '" << v << "' does not exist in the SAT instance."
@@ -162,7 +188,8 @@ public:
 				MY_FAIL;
 			 };
 		  } catch (invalid_line_t& e) {
-			 L_WARN("!! Discarded invalid assumption >" << buff << "<. Reason: " << e.msg << ".");
+			 L_FATAL("!! Discarded invalid assumption >" << buff << "<. Reason: " << e.msg << ".");
+			 MY_FAIL;
 		  }
 		}
 	 }

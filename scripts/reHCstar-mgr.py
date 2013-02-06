@@ -36,7 +36,6 @@
 #
 ##########
 
-import array
 import logging
 import math
 import optparse
@@ -48,9 +47,14 @@ import sys
 import time
 import resource
 
-gen2code= { '0 0': 0, '1 1': 1, '2 2': 2, '1 2': 3, '2 1': 3}
-code2gen= { 0: '0 0', 1: '1 1', 2: '2 2', 3: '1 2' }
+MISSING_G = '0 0'
 source_vector_enc= { 0 : ".",   1 : "*" }
+
+def is_genotyped(g):
+    return g != MISSING_G
+
+def is_same_genotype(g, a1, a2):
+    return (g == "{} {}".format(a1, a2)) if (a1 <= a2) else (g == "{} {}".format(a2, a1))
 
 rehcstar_license_msgs= [
     "reHCstar-mgr -- reHC-* manager",
@@ -166,8 +170,7 @@ class Individual:
 def parse_genotype(genstr):
     genv = genstr.split()
     assert len(genv)%2==0
-    return array.array('b', [ gen2code[" ".join(sorted((genv[2*i], genv[2*i+1])))]
-                              for i in range(int(len(genv)/2)) ])
+    return [ " ".join(sorted((genv[2*i], genv[2*i+1]))) for i in range(int(len(genv)/2)) ]
 
 class Solution:
     '''A class representing both the input and the output.'''
@@ -243,8 +246,7 @@ class Solution:
             for ind in self.individuals:
                 genotype_file.write(str(ind))
                 genotype_file.write("\t")
-                genotype_file.write("\t".join([ code2gen[x]
-                                                for x in self.genotypes[ind.id][start:stop] ] ))
+                genotype_file.write("\t".join(self.genotypes[ind.id][start:stop]))
                 genotype_file.write("\n")
 
 
@@ -277,19 +279,16 @@ class Solution:
                 haplotypes_file.write("### ERRORS (number={})\n".format(len(self.errors)))
                 for error in self.errors:
                     haplotypes_file.write("## ERR {}\n".format(" ".join([str(x) for x in error])))
-                haplotypes_file.write("### GENOTYPE'S CODES\n")
-                for code in code2gen:
-                    haplotypes_file.write("## CODE: {} --> GENOTYPE: {}\n".format(code, code2gen[code]))
                 # Haplotypes and grand-parental sources
                 for ind in self.individuals:
                     ind_id= "{:10s}".format(ind.id)
                     haplotypes_file.write("## INDIVIDUAL IND[" + ind_id + "] ")
                     haplotypes_file.write( str(ind) )
                     haplotypes_file.write("\n## GENOTYPE   IND[" + ind_id + "] ")
-                    haplotypes_file.write("".join( [ str(x)
+                    haplotypes_file.write(" ".join( [ x.replace(" ", "")
                                                      for x in self.genotypes[ind.id][:stop] ] ) )
                     haplotypes_file.write("\n## MASK_ERR   IND[" + ind_id + "] ")
-                    haplotypes_file.write("".join( [ "X" if g!=0 and gen2code['{} {}'.format(a1, a2)] != g
+                    haplotypes_file.write("".join( [ "X" if is_genotyped(g) and not is_same_genotype(g, a1, a2)
                                                      else " "
                                                      for g, a1, a2 in zip(self.genotypes[ind.id][:stop],
                                                                           *self.haplotypes[ind.id]) ] ) )
@@ -370,7 +369,7 @@ class Solution:
             lh= len(h1)
             self.errors.extend([ (ind.id, locus)
                                  for locus, g, a1, a2 in zip(range(lh), gv, h1, h2)
-                                 if g!=0 and gen2code['{} {}'.format(a1, a2)] != g ])
+                                 if is_genotyped(g) and not is_same_genotype(g, a1, a2) ])
 
     def analyze_optimality(self):
         valid_chunk_info= [ chunk for chunk, info in self.chunk_info.items() if info["chunk included in solution"] ]
@@ -1113,11 +1112,28 @@ for start in range(0, complete_sol.genotype_length, options.length):
             complete_sol.write_haplotypes(incremental_haplotypes_filename, good_stop, verbose3)
         assumptions= []
         if start + options.length < complete_sol.genotype_length:
+            assumption_locus_alleles = set()
             for ind in complete_sol.individuals:
-                assumptions.append(" ".join( [ "p", ind.id, "0",
-                                               str(complete_sol.haplotypes[ind.id][0][good_stop-1]-1) ] ))
-                assumptions.append(" ".join( [ "m", ind.id, "0",
-                                               str(complete_sol.haplotypes[ind.id][1][good_stop-1]-1) ] ))
+                curr_g = complete_sol.genotypes[ind.id][good_stop-1]
+                if is_genotyped(curr_g):
+                    assumption_locus_alleles.update(set(curr_g.split(' ')))
+            assumption_locus_n_alleles = len(assumption_locus_alleles)
+
+            for ind in complete_sol.individuals:
+                if assumption_locus_n_alleles<=2:
+                    assumptions.append(" ".join( [ "p", ind.id, "0",
+                                                   str(complete_sol.haplotypes[ind.id][0][good_stop-1]-1) ] ))
+                    assumptions.append(" ".join( [ "m", ind.id, "0",
+                                                   str(complete_sol.haplotypes[ind.id][1][good_stop-1]-1) ] ))
+                else:
+                    pat_allele = complete_sol.haplotypes[ind.id][0][good_stop-1]-1
+                    mat_allele = complete_sol.haplotypes[ind.id][1][good_stop-1]-1
+                    for a in range(assumption_locus_n_alleles):
+                        print(a==complete_sol.haplotypes[ind.id][0][good_stop-1]-1)
+                        assumptions.append(" ".join( [ "pm", ind.id, "0", str(a),
+                                                       "1" if (a == pat_allele) else "0" ] ))
+                        assumptions.append(" ".join( [ "mm", ind.id, "0", str(a),
+                                                       "1" if (a == mat_allele) else "0" ] ))
                 if ind.has_father():
                     assumptions.append(" ".join( [ "sp", ind.id, "0",
                                                    str(complete_sol.gps[ind.id][0][good_stop-1]) ] ))

@@ -46,6 +46,7 @@
 #include "assertion.hpp"
 #include "utility.hpp"
 
+
 /**
  *
  *
@@ -56,126 +57,86 @@
  *
  **/
 
-template <int T_HOMO1= 0, int T_HOMO2= 1, int T_HETER= 2, int T_MISS= 5>
-class single_biallelic_genotype_t
-  :public enum_like_t<single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>, 4, 3> {
+typedef unsigned int allele_t;
+
+
+class single_multiallelic_genotype_t {
+
 private:
-
-  BOOST_STATIC_ASSERT( (0 <= T_HOMO1) && (T_HOMO1 < 10));
-  BOOST_STATIC_ASSERT( (0 <= T_HOMO2) && (T_HOMO2 < 10));
-  BOOST_STATIC_ASSERT( (0 <= T_HETER) && (T_HETER < 10));
-  BOOST_STATIC_ASSERT( (0 <= T_MISS) && (T_MISS < 10));
-  BOOST_STATIC_ASSERT( (T_HOMO1 != T_HOMO2) && (T_HOMO1 != T_HETER) &&
-							  (T_HOMO1 != T_MISS) && (T_HOMO2 != T_HETER) &&
-							  (T_HOMO2 != T_MISS) && (T_HETER != T_MISS) );
-
-  typedef enum_like_t<single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>, 4, 3> base;
-
-  enum _values {
-	 _HOMO1,
-	 _HOMO2,
-	 _HETER,
-	 _MISS
-  };
-
-  single_biallelic_genotype_t(const int g)
-		: base(g)
-  {
-  }
+  allele_t _allele1;
+  allele_t _allele2;
 
 public:
 
-  single_biallelic_genotype_t()
-		: base(_MISS)
-  {}
+  static const single_multiallelic_genotype_t MISS;
 
-  static const single_biallelic_genotype_t HOMO1;
-  static const single_biallelic_genotype_t HOMO2;
-  static const single_biallelic_genotype_t HETER;
-  static const single_biallelic_genotype_t MISS;
+  single_multiallelic_genotype_t()
+		:_allele1(0), _allele2(0)
+  {};
 
-  static const int int_values[];
-  static const std::string str_values[];
-  static const single_biallelic_genotype_t enum_values[];
+  explicit single_multiallelic_genotype_t(const allele_t allele1,
+														const allele_t allele2)
+		:_allele1(std::min(allele1, allele2)),
+		 _allele2(std::max(allele1, allele2))
+  {};
+
+  single_multiallelic_genotype_t(const single_multiallelic_genotype_t& g)
+		:_allele1(g._allele1), _allele2(g._allele2)
+  {};
+
+  allele_t allele1() const {
+	 return _allele1;
+  };
+
+  allele_t allele2() const {
+	 return _allele2;
+  };
+
+  void set_alleles(const allele_t allele1,
+						 const allele_t allele2) {
+	 if (((allele1 == 0)&&(allele2 != 0))||
+		  ((allele1 != 0)&&(allele2 == 0))) {
+		MY_FAIL;
+	 }
+	 _allele1= std::min(allele1, allele2);
+	 _allele2= std::max(allele1, allele2);
+  };
+
 };
 
+bool
+operator==(const single_multiallelic_genotype_t& g1,
+			  const single_multiallelic_genotype_t& g2);
 
-typedef single_biallelic_genotype_t<> std_single_biallelic_genotype_t;
+bool
+operator!=(const single_multiallelic_genotype_t& g1,
+			  const single_multiallelic_genotype_t& g2);
 
-template <int T_HOMO1, int T_HOMO2, int T_HETER, int T_MISS>
-const single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>
-single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>::HOMO1(_HOMO1);
+bool
+operator<=(const single_multiallelic_genotype_t& g1,
+			  const single_multiallelic_genotype_t& g2);
 
-template <int T_HOMO1, int T_HOMO2, int T_HETER, int T_MISS>
-const single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>
-single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>::HOMO2(_HOMO2);
+bool
+operator<(const single_multiallelic_genotype_t& g1,
+			 const single_multiallelic_genotype_t& g2);
 
-template <int T_HOMO1, int T_HOMO2, int T_HETER, int T_MISS>
-const single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>
-single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>::HETER(_HETER);
+std::ostream&
+operator<<(std::ostream& out,
+			  const single_multiallelic_genotype_t& g);
 
-template <int T_HOMO1, int T_HOMO2, int T_HETER, int T_MISS>
-const single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>
-single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>::MISS(_MISS);
+std::istream&
+operator>>(std::istream& in,
+			  single_multiallelic_genotype_t& g);
 
-template <int T_HOMO1, int T_HOMO2, int T_HETER, int T_MISS>
-const int single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>::int_values[]= {T_HOMO1, T_HOMO2, T_HETER, T_MISS};
+bool
+is_genotyped(const single_multiallelic_genotype_t& g);
 
-template <int T_HOMO1, int T_HOMO2, int T_HETER, int T_MISS>
-const std::string single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>::str_values[]= {
-  std::string(1, '0'+T_HOMO1),
-  std::string(1, '0'+T_HOMO2),
-  std::string(1, '0'+T_HETER),
-  std::string(1, '0'+T_MISS)
-};
+bool
+is_homozygous(const single_multiallelic_genotype_t& g);
 
-template <int T_HOMO1, int T_HOMO2, int T_HETER, int T_MISS>
-const single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>
-single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>::enum_values[]= {
-  single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>::HOMO1,
-  single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>::HOMO2,
-  single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>::HETER,
-  single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>::MISS
-};
+bool
+is_heterozygous(const single_multiallelic_genotype_t& g);
 
-
-template <int T_HOMO1, int T_HOMO2, int T_HETER, int T_MISS>
-bool is_genotyped(const single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>& g) {
-  return g != single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>::MISS;
-}
-
-template <typename S_GEN_T>
-bool is_genotyped(const S_GEN_T& g) {
-  return g != S_GEN_T::MISS;
-};
-
-template <int T_HOMO1, int T_HOMO2, int T_HETER, int T_MISS>
-bool is_homozigous(const single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>& g) {
-  return
-	 is_genotyped(g) &&
-	 (g != single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>::HETER);
-}
-
-template <typename S_GEN_T>
-bool is_homozygous(const S_GEN_T& g) {
-  return
-	 is_genotyped(g) &&
-	 (g != S_GEN_T::HETER);
-};
-
-template <int T_HOMO1, int T_HOMO2, int T_HETER, int T_MISS>
-bool is_heterozygous(const single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>& g) {
-  return
-	 is_genotyped(g) &&
-	 (g == single_biallelic_genotype_t<T_HOMO1, T_HOMO2, T_HETER, T_MISS>::HETER);
-}
-
-template <typename S_GEN_T>
-bool is_heterozygous(const S_GEN_T& g) {
-  return
-	 is_genotyped(g) &&
-	 (g == S_GEN_T::HETER);
-};
 
 /**
  *
@@ -188,127 +149,78 @@ bool is_heterozygous(const S_GEN_T& g) {
  **/
 
 
-template <int T_ALLELE1= 1, int T_ALLELE2= 2, int T_MISS= 0>
-class single_biallelic_haplotype_t
-  :public enum_like_t<single_biallelic_haplotype_t<T_ALLELE1, T_ALLELE2, T_MISS>, 3, 2> {
+
+class single_multiallelic_haplotype_t {
 private:
-
-  BOOST_STATIC_ASSERT( (0 <= T_ALLELE1) && (T_ALLELE1 < 10));
-  BOOST_STATIC_ASSERT( (0 <= T_ALLELE2) && (T_ALLELE2 < 10));
-  BOOST_STATIC_ASSERT( (0 <= T_MISS) && (T_MISS < 10));
-  BOOST_STATIC_ASSERT( (T_ALLELE1 != T_ALLELE2) && (T_ALLELE1 != T_MISS) && (T_ALLELE2 != T_MISS) );
-
-  typedef enum_like_t<single_biallelic_haplotype_t<T_ALLELE1, T_ALLELE2, T_MISS>, 3, 2> base;
-
-  enum _values {
-	 _ALLELE1,
-	 _ALLELE2,
-	 _MISS
-  };
-
-  single_biallelic_haplotype_t(const int h)
-		: base(h)
-  {
-  }
-
+  allele_t _allele;
 public:
 
-  single_biallelic_haplotype_t()
-		: base(_MISS)
-  {}
+  static const single_multiallelic_haplotype_t MISS;
 
-  static const single_biallelic_haplotype_t ALLELE1;
-  static const single_biallelic_haplotype_t ALLELE2;
-  static const single_biallelic_haplotype_t MISS;
+  single_multiallelic_haplotype_t()
+		:_allele(0)
+  {};
 
-  static const int int_values[];
-  static const std::string str_values[];
-  static const single_biallelic_haplotype_t enum_values[];
+  explicit single_multiallelic_haplotype_t(const allele_t allele)
+		:_allele(allele)
+  {};
+
+  single_multiallelic_haplotype_t(const single_multiallelic_haplotype_t& h)
+		:_allele(h._allele)
+  {};
+
+  allele_t allele() const {
+	 return _allele;
+  };
+
+  static single_multiallelic_haplotype_t ALLELE(const allele_t allele) {
+	 MY_ASSERT_DBG(allele != single_multiallelic_haplotype_t::MISS.allele());
+	 return single_multiallelic_haplotype_t(allele);
+  };
 
 };
 
-template <typename h_t, typename g_t>
-const h_t& homozygous_to_haplotype(const g_t& g) {
-  MY_ASSERT_DBG( (g == g_t::HOMO1) || (g == g_t::HOMO2) );
-  if        ( g == g_t::HOMO1 ) {
-	 return h_t::ALLELE1;
-  } else if ( g == g_t::HOMO2 ) {
-	 return h_t::ALLELE2;
-  } else {
-	 MY_FAIL;
-	 return h_t::MISS;
-  }
-};
-
-
-template <typename h_t, typename g_t>
 bool
-haplotype_genotype_consistent(const h_t& h1, const h_t& h2,
-										const g_t& g) {
-  if ((h1 == h_t::MISS) && (h2 == h_t::MISS))
-	 return true;
-  if (! is_genotyped(g))
-	 return true;
-  if ((h1 == h_t::MISS) && (h2 != h_t::MISS))
-	 return haplotype_genotype_consistent(h2, h1, g);
+operator==(const single_multiallelic_haplotype_t& h1,
+			  const single_multiallelic_haplotype_t& h2);
 
-  MY_ASSERT( h1 != h_t::MISS );
-  MY_ASSERT( is_genotyped(g) );
-
-  if (is_homozigous(g)) {
-	 return
-		((h2 == h_t::MISS) || (h1 == h2)) &&
-		(h1 == homozygous_to_haplotype<h_t, g_t>(g));
-  } else {
-	 return (h2 == h_t::MISS) || (h1 != h2);
-  }
-};
-
-template <typename h_t, typename g_t>
 bool
-strict_haplotype_genotype_consistent(const h_t& h1, const h_t& h2,
-												 const g_t& g) {
-  if ((h1 == h_t::MISS) || (h2 == h_t::MISS))
-	 return false;
-  else
-	 return haplotype_genotype_consistent(h1, h2, g);
-}
+operator!=(const single_multiallelic_haplotype_t& h1,
+			  const single_multiallelic_haplotype_t& h2);
 
-typedef single_biallelic_haplotype_t<> std_single_biallelic_haplotype_t;
+bool
+operator<=(const single_multiallelic_haplotype_t& h1,
+			  const single_multiallelic_haplotype_t& h2);
 
-template <int T_ALLELE1, int T_ALLELE2, int T_MISS>
-const single_biallelic_haplotype_t<T_ALLELE1, T_ALLELE2, T_MISS>
-single_biallelic_haplotype_t<T_ALLELE1, T_ALLELE2, T_MISS>::ALLELE1(_ALLELE1);
+bool
+operator<(const single_multiallelic_haplotype_t& h1,
+			 const single_multiallelic_haplotype_t& h2);
 
-template <int T_ALLELE1, int T_ALLELE2, int T_MISS>
-const single_biallelic_haplotype_t<T_ALLELE1, T_ALLELE2, T_MISS>
-single_biallelic_haplotype_t<T_ALLELE1, T_ALLELE2, T_MISS>::ALLELE2(_ALLELE2);
+std::ostream&
+operator<<(std::ostream& out,
+			  const single_multiallelic_haplotype_t& h);
 
-template <int T_ALLELE1, int T_ALLELE2, int T_MISS>
-const single_biallelic_haplotype_t<T_ALLELE1, T_ALLELE2, T_MISS>
-single_biallelic_haplotype_t<T_ALLELE1, T_ALLELE2, T_MISS>::MISS(_MISS);
+std::istream&
+operator>>(std::istream& in,
+			  single_multiallelic_haplotype_t& h);
 
-template <int T_ALLELE1, int T_ALLELE2, int T_MISS>
-const int single_biallelic_haplotype_t<T_ALLELE1, T_ALLELE2, T_MISS>::int_values[]= {
-  T_ALLELE1,
-  T_ALLELE2,
-  T_MISS
-};
+bool
+is_missing(const single_multiallelic_haplotype_t& h);
 
-template <int T_ALLELE1, int T_ALLELE2, int T_MISS>
-const std::string single_biallelic_haplotype_t<T_ALLELE1, T_ALLELE2, T_MISS>::str_values[]= {
-  std::string(1, '0'+T_ALLELE1),
-  std::string(1, '0'+T_ALLELE2),
-  std::string(1, '0'+T_MISS),
-};
 
-template <int T_ALLELE1, int T_ALLELE2, int T_MISS>
-const single_biallelic_haplotype_t<T_ALLELE1, T_ALLELE2, T_MISS>
-single_biallelic_haplotype_t<T_ALLELE1, T_ALLELE2, T_MISS>::enum_values[]= {
-  single_biallelic_haplotype_t<T_ALLELE1, T_ALLELE2, T_MISS>::ALLELE1,
-  single_biallelic_haplotype_t<T_ALLELE1, T_ALLELE2, T_MISS>::ALLELE2,
-  single_biallelic_haplotype_t<T_ALLELE1, T_ALLELE2, T_MISS>::MISS
-};
+const single_multiallelic_haplotype_t
+homozygous_to_haplotype(const single_multiallelic_genotype_t& g);
+
+bool
+haplotype_genotype_consistent(const single_multiallelic_haplotype_t& h1,
+										const single_multiallelic_haplotype_t& h2,
+										const single_multiallelic_genotype_t& g);
+
+bool
+strict_haplotype_genotype_consistent(const single_multiallelic_haplotype_t& h1,
+												 const single_multiallelic_haplotype_t& h2,
+												 const single_multiallelic_genotype_t& g);
+
 
 
 /**
@@ -431,8 +343,8 @@ public:
 	 const typename v_t::base* v1it= begin();
 	 const typename v_t::base* v2it= v.begin();
 	 for (; v1it != end(); ++v1it, ++v2it) {
-		if ( (*v1it != v_t::base::MISS) &&
-			  (*v2it != v_t::base::MISS) &&
+		if ( (is_genotyped(*v1it)) &&
+			  (is_genotyped(*v2it)) &&
 			  (*v1it != *v2it) ) {
 		  return false;
 		}
@@ -513,8 +425,9 @@ strict_multilocus_mendelian_consistent(const h_t& hpf,
   return std::min(recomb1, recomb2);
 }
 
-typedef generic_fixlen_vector_t<std_single_biallelic_genotype_t> genotype_t;
-typedef generic_fixlen_vector_t<std_single_biallelic_haplotype_t> haplotype_t;
+
+typedef generic_fixlen_vector_t<single_multiallelic_genotype_t> genotype_t;
+typedef generic_fixlen_vector_t<single_multiallelic_haplotype_t> haplotype_t;
 
 template <class _base_t,
 			 class _reader,
