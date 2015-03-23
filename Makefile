@@ -1,7 +1,7 @@
 ##############################################################
 #               CMake Project Wrapper Makefile               #
 ############################################################## 
-DEFAULT_STATUS := Debug
+DEFAULT_STATUS := Release
 
 ifndef STATUS
 STATUS:=__undefined__status__
