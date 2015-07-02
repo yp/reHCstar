@@ -46,9 +46,6 @@ set (Boost_ADDITIONAL_VERSIONS "1.42" "1.42.0")
 find_package (Boost COMPONENTS "filesystem" "system" "date_time" "program_options" "iostreams" REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS})
-find_package (Log4Cxx REQUIRED)
-include_directories(${Log4Cxx_INCLUDE_DIRS})
-link_directories(${Log4Cxx_LIBRARY_DIRS})
 
 set (CMAKE_CXX_FLAGS "-std=c++0x -Wall ${CMAKE_CXX_FLAGS}")
 set (CMAKE_CXX_FLAGS_DEBUG "-O0 ${CMAKE_CXX_FLAGS_DEBUG}")
@@ -110,8 +107,3 @@ add_subdirectory(src)
 if (EXISTS "${MAINFOLDER}/include/${PROJECT_NAME}" AND IS_DIRECTORY "${MAINFOLDER}/include/${PROJECT_NAME}")
     install(DIRECTORY "${MAINFOLDER}/include/${PROJECT_NAME}" DESTINATION "include")
 endif (EXISTS "${MAINFOLDER}/include/${PROJECT_NAME}" AND IS_DIRECTORY "${MAINFOLDER}/include/${PROJECT_NAME}")
-
-#
-# Add Documentation Targets
-#
-include (DocumentationTargets)

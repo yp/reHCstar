@@ -10,4 +10,8 @@ reHC-* incorporates the following SAT solvers:
 - [MiniSat](http://www.minisat.se/MiniSat.html) version 2.2.0 by Niklas
   Een and Niklas Sorensson, which is distributed under the MIT license.
 
+For extracting source version information from git repository tags,
+reHC-* uses [autorevision](https://github.com/Autorevision/autorevision)
+by dak180 and others, which is distributed under the MIT license.
+
 reHC-* was previously known as ZRHC-*.

@@ -1,0 +1,14 @@
+include AUTHORS
+include COPYING
+include README
+include VERSION
+include logging.conf
+include CMakeLists.txt
+include CMakeOptions.txt
+include Makefile
+recursive-include docs *
+recursive-include include *
+recursive-include solver *
+recursive-include src *
+recursive-include thirdparty *
+recursive-include tools *

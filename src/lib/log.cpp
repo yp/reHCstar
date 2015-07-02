@@ -29,8 +29,12 @@
 
 #include <boost/filesystem.hpp>
 #include <log4cxx/propertyconfigurator.h>
-#include <log4cxx/basicconfigurator.h>
 #include <log4cxx/helpers/exception.h>
+#include <log4cxx/logstring.h>
+#include <log4cxx/patternlayout.h>
+#include <log4cxx/consoleappender.h>
+#include <log4cxx/logmanager.h>
+#include <log4cxx/logger.h>
 
 #include "configuration.h"
 
@@ -60,8 +64,14 @@ int initialize_logger() {
 		}
 	 }
 	 if (!configured) {
-		BasicConfigurator::configure();
-		configured= true;
+           LogManager::getLoggerRepository()->setConfigured(true);
+           LoggerPtr root = Logger::getRootLogger();
+           static const LogString TTCC_CONVERSION_PATTERN(LOG4CXX_STR("%5p [%15r] (%30.30F:%-4L) - %m%n"));
+           LayoutPtr layout(new PatternLayout(TTCC_CONVERSION_PATTERN));
+           AppenderPtr appender(new ConsoleAppender(layout, LOG4CXX_STR("System.err")));
+           root->addAppender(appender);
+           root->setLevel(Level::getInfo());
+           configured= true;
 	 }
 	 if (!configured) {
 		result = EXIT_FAILURE;

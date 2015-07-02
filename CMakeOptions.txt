@@ -5,7 +5,7 @@
 
 
 ## Uncomment to disable xor-clauses
-# add_definitions("-DAVOID_XOR_CLAUSES")
+add_definitions("-DAVOID_XOR_CLAUSES")
 
 option(INTEGRATE_SAT_SOLVER
   "Integrate a SAT solver into ZRHCstar."
@@ -14,7 +14,7 @@ option(INTEGRATE_SAT_SOLVER
 
 option(DISABLE_EXTERNAL_SAT_SOLVERS
   "Disable the ability to use an external SAT solver (saves memory)."
-  ON
+  OFF
 )
 
 if (INTEGRATE_SAT_SOLVER)

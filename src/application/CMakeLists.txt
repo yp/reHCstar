@@ -14,7 +14,7 @@ set (project_BIN ${PROJECT_NAME})
 set (project_LIBS
   ${project_base_LIB}
   ${Boost_LIBRARIES}
-  ${Log4Cxx_LIBRARIES}
+  log4cxx
   ${sat_LIBS}
 )
 
