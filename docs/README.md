@@ -20,8 +20,8 @@ Current release: **development version**
 ## Introduction ##
 
 This program is based on a reduction of the _Haplotype Configuration
-with Recombinations and Errors_ problem to _Boolean Satisfiability_, which
-is then solved by a SAT solver.
+with Recombinations and Errors_ problem to _Boolean Satisfiability_,
+which is then solved by a SAT solver.
 A haplotype configuration is finally recovered from the satisfying
 assignment.
 
@@ -76,6 +76,7 @@ Or, if you have a GitHub account, you can fork the project from the
 
 ### Dependencies ###
 
+- Python (>= 2.7)
 - CMake (>= 2.8)
 - GNU make
 - Boost FileSystem, System, DateTime, ProgramOptions, IOStreams, and
@@ -84,6 +85,17 @@ Or, if you have a GitHub account, you can fork the project from the
 
 
 ### Compilation ###
+
+The easiest way to compile and install the program is to use the
+following command:
+
+    $ python setup.py install
+
+This command compiles and installs reHCstar as a Python package, putting
+the two main programs, `reHCstar` and `reHCstar-mgr` (see later), in the
+PATH.
+
+#### Advanced compilation ####
 
 The program can be compiled by issuing the command at the command
 prompt:
@@ -346,14 +358,14 @@ Please notice that the optimality of the solution (in term of number of
 recombinations) is guaranteed if the genotypes are _not_ split into
 smaller blocks.
 
-These functionalities are provided by the program `reHCstar-mgr.py`
+These functionalities are provided by the program `reHCstar-mgr`
 written in [Python](http://www.python.org) version 3 and later.
 
-`reHCstar-mgr.py` requires two parameters, `-p` and `-r`, that specify,
+`reHCstar-mgr` requires two parameters, `-p` and `-r`, that specify,
 respectively, the file containing the input genotyped pedigree and the
 file on which the computed haplotype configuration will be saved.
 
-By default, `reHCstar-mgr.py` invokes the `reHCstar` executable in the
+By default, `reHCstar-mgr` invokes the `reHCstar` executable in the
 current directory using the internal SAT solver mode (option
 `--solve-internal` described above).
 To change the default, the complete command line must be provided as
@@ -397,7 +409,7 @@ For example, the default value of the `--cmd-time` option is:
 
 
 The following sections present the other main features of
-`reHCstar-mgr.py` while the full list of its options is available in the
+`reHCstar-mgr` while the full list of its options is available in the
 integrated help (option `-h`).
 
 
@@ -433,7 +445,7 @@ genotypes is relevant, since when the overlapping locus has many missing
 genotypes, the solution of the current block could impute the genotypes
 in a way that is locally optimal, but globally sub-optimal.
 
-Please notice that `reHCstar-mgr.py` finds a solution that requires the
+Please notice that `reHCstar-mgr` finds a solution that requires the
 minimum number of recombinations only if the genotypes are *not* divided
 into blocks.
 
@@ -449,12 +461,12 @@ and a haplotype configuration with `YY` recombinations certainly exists.
 The default value of both of them is `-1` which means that no bound is
 known/provided.
 Moreover it is possible to specify a file containing an initial
-haplotype configuration that `reHCstar-mgr.py` tries to improve (in
+haplotype configuration that `reHCstar-mgr` tries to improve (in
 terms of number of recombinations).
 In this case, the initial haplotype configuration is read and the number
 of recombinations that it induces is used as initial upper bound.
 If not better solution is found (for example, due to time limits), then
-`reHCstar-mgr.py` outputs the initial haplotype configuration.
+`reHCstar-mgr` outputs the initial haplotype configuration.
 The file containing the initial haplotype configuration is specified as
 argument of the `--initial-haplotype-configuration` program option.
 Please notice that options `--initial-haplotype-configuration` and
@@ -475,14 +487,14 @@ where `XX` is the time limit expressed in seconds.
 
 ### Running Time Management ###
 
-`reHCstar-mgr.py` provides basic tools for limiting its total running
+`reHCstar-mgr` provides basic tools for limiting its total running
 time (CPU time).
 In particular, option `--time-limit=SS` specifies the maximum running
 time of the program (`SS` seconds).
 For the proper functioning of this feature, the option `--cmd-time` must
 be valid.
 If the program execution exceeds the given time limit, then
-`reHCstar-mgr.py` tries to save the solution computed so far in a file
+`reHCstar-mgr` tries to save the solution computed so far in a file
 whose name is the name specified by the option `--results` concatenated
 with the (fixed) extension `.part`.
 The saved solution could be _partial_ (if the original instance has been

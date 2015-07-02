@@ -46,6 +46,7 @@ import subprocess
 import sys
 import time
 import resource
+import pkg_resources
 
 MISSING_G = '0 0'
 source_vector_enc= { 0 : ".",   1 : "*" }
@@ -448,7 +449,7 @@ def parse_command_line():
                                     "is invoked.")
     cmd_group.add_option("--cmd",
                          action="store", dest="cmd", type="string",
-                         default="./reHCstar -4 -p \"{pedigree}\" -h \"{haplotypes}\" -a \"{assumptions}\"",
+                         default=pkg_resources.resource_filename('rehcstar', '../bin/reHCstar')+" -4 -p \"{pedigree}\" -h \"{haplotypes}\" -a \"{assumptions}\"",
                          help="the command-line used to invoke the 'reHCstar' program  "
                          "(default: %default)",
                          metavar="CMD-LINE")
@@ -520,6 +521,8 @@ def parse_command_line():
     parser.add_option_group(oth_group)
 
     (options, args) = parser.parse_args()
+
+    options.cmdline = " ".join(sys.argv)
 
     return options
 
@@ -956,199 +959,203 @@ def exec_reHCstar(filenames, solution, chunk, bounds, upper_limit_recombinations
 
 
 
+def main(options):
+    log_level= logging.DEBUG if options.verbose>0 else logging.INFO
+    verbose=  options.verbose>0
+    verbose1= options.verbose>0
+    verbose2= options.verbose>1
+    verbose3= options.verbose>2
 
-options = parse_command_line()
+    logging.basicConfig(level=log_level,
+                        format='%(levelname)5.5s [%(relativeCreated)15d] (%(filename)30s:%(lineno)-4d) - %(message)s',
+                        stream=sys.stderr)
 
-log_level= logging.DEBUG if options.verbose>0 else logging.INFO
-verbose=  options.verbose>0
-verbose1= options.verbose>0
-verbose2= options.verbose>1
-verbose3= options.verbose>2
+    for lic_lin in rehcstar_license_msgs:
+        logging.info(lic_lin)
+    logging.info("Started at %s", time.asctime())
 
-logging.basicConfig(level=log_level,
-                    format='%(levelname)5.5s [%(relativeCreated)15d] (%(filename)30s:%(lineno)-4d) - %(message)s',
-                    stream=sys.stderr)
+    # Check program options
+    check_program_options(options)
 
-for lic_lin in rehcstar_license_msgs:
-    logging.info(lic_lin)
-logging.info("Started at %s", time.asctime())
+    cmd= {}
+    cmd['cmd']= options.cmd
+    cmd['rec']= options.cmdrec
+    cmd['time']= options.cmdtime
 
-# Check program options
-check_program_options(options)
+    bootstrap= {
+        'enabled': options.bootstrap,
+        'time-limit': options.bootstrap_time_limit
+       }
 
-cmd= {}
-cmd['cmd']= options.cmd
-cmd['rec']= options.cmdrec
-cmd['time']= options.cmdtime
+    logging.info("CONFIGURATION:")
+    logging.info("Input pedigree:       '%s'", options.pedigree)
+    logging.info("Resulting haplotypes: '%s'", options.haplotypes)
+    logging.info("Max. block length:     %4d", options.length)
+    logging.info("Lookahead length:      %4d", options.lookahead)
+    logging.info("Recombination bounds: (%4d, %4d]", options.recomb_lb, options.recomb_ub)
+    time_limit= TimeLimit(options.time_limit)
+    logging.info("Time limit (secs):     %s",
+                 "{:4d}".format(time_limit.limit)
+                 if time_limit.limit is not None
+                 else "unlimited")
 
-bootstrap= {
-    'enabled': options.bootstrap,
-    'time-limit': options.bootstrap_time_limit
-}
+    upper_limit_recombinations = options.ulrecomb if options.ulrecomb >= 0 else None
 
-logging.info("CONFIGURATION:")
-logging.info("Input pedigree:       '%s'", options.pedigree)
-logging.info("Resulting haplotypes: '%s'", options.haplotypes)
-logging.info("Max. block length:     %4d", options.length)
-logging.info("Lookahead length:      %4d", options.lookahead)
-logging.info("Recombination bounds: (%4d, %4d]", options.recomb_lb, options.recomb_ub)
-time_limit= TimeLimit(options.time_limit)
-logging.info("Time limit (secs):     %s",
-             "{:4d}".format(time_limit.limit)
-             if time_limit.limit is not None
-             else "unlimited")
+    # Read the original pedigree
+    complete_sol= Solution()
+    complete_sol.read_genotyped_pedigree(options.pedigree)
 
-upper_limit_recombinations = options.ulrecomb if options.ulrecomb >= 0 else None
+    if options.init_hc is not None and complete_sol.genotype_length > options.length:
+        logging.fatal("Option '--initial-haplotype-configuration' is not "
+                      "compatible with automatic genotype block partitioning. "
+                      "Specify a block length greater than the genotype length. "
+                      "(Given block length: %d, read genotype length %d).  "
+                      "Aborting...", options.length, complete_sol.genotype_length)
+        sys.exit(2)
 
-# Read the original pedigree
-complete_sol= Solution()
-complete_sol.read_genotyped_pedigree(options.pedigree)
+    if len(complete_sol.individuals) == 0 or complete_sol.genotype_length == 0:
+        logging.warn("The input genotyped pedigree is empty (individuals=%d, genotype length=%d). "
+                     "A haplotype configuration cannot be computed. Exiting...",
+                     len(complete_sol.individuals), complete_sol.genotype_length)
+        sys.exit(1)
 
-if options.init_hc is not None and complete_sol.genotype_length > options.length:
-    logging.fatal("Option '--initial-haplotype-configuration' is not "
-                  "compatible with automatic genotype block partitioning. "
-                  "Specify a block length greater than the genotype length. "
-                  "(Given block length: %d, read genotype length %d).  "
-                  "Aborting...", options.length, complete_sol.genotype_length)
-    sys.exit(2)
+    logging.info("Starting the computation of the haplotype configuration...")
+    assumptions= []
+    suffix="{}-{}-pid{}".format(os.path.basename(options.pedigree),
+                                os.path.basename(options.haplotypes),
+                                os.getpid())
 
-if len(complete_sol.individuals) == 0 or complete_sol.genotype_length == 0:
-    logging.warn("The input genotyped pedigree is empty (individuals=%d, genotype length=%d). "
-                 "A haplotype configuration cannot be computed. Exiting...",
-                 len(complete_sol.individuals), complete_sol.genotype_length)
-    sys.exit(1)
+    initial_haplotypes= None
+    bounds=[options.recomb_lb, options.recomb_ub]
+    if options.init_hc is not None:
+        initial_haplotypes= read_haplotypes(options.init_hc)
+        # Read the haplotype configuration and compute the real upper-bound
+        bounds[1]= process_partial_hc(initial_haplotypes, complete_sol, None)
 
-logging.info("Starting the computation of the haplotype configuration...")
-assumptions= []
-suffix="{}-{}-pid{}".format(os.path.basename(options.pedigree),
-                            os.path.basename(options.haplotypes),
-                            os.getpid())
+    assert bounds[0] < bounds[1] or (bounds[0] == bounds[1] and bounds[0] == -1)
 
-initial_haplotypes= None
-bounds=[options.recomb_lb, options.recomb_ub]
-if options.init_hc is not None:
-    initial_haplotypes= read_haplotypes(options.init_hc)
-    # Read the haplotype configuration and compute the real upper-bound
-    bounds[1]= process_partial_hc(initial_haplotypes, complete_sol, None)
+    complete_sol.notes.extend([
+            "COMMAND LINE: {}".format(options.cmdline if options.cmdline else ""),
+            "START TIME: {}".format(time.asctime()),
+            "INPUT PEDIGREE: '{}'".format(options.pedigree),
+            "OUTPUT HAPLOTYPES: '{}'".format(options.haplotypes),
+            "MAX BLOCK LENGTH: '{}'".format(options.length),
+            "LOOKAHEAD LENGTH: '{}'".format(options.lookahead),
+            "INITIAL RECOMBINATION BOUNDS: '({}, {}]'".format(*bounds),
+            "INITIAL HAPLOTYPE CONFIGURATION: '{}'".format(options.init_hc),
+            "BOOTSTRAP ENABLED: '{}'".format(options.bootstrap),
+            "BOOTSTRAP TIME LIMIT: '{}s'".format(options.bootstrap_time_limit),
+            "TIME LIMIT: '{}'".format("{}s".format(time_limit.limit)
+                                      if time_limit.limit is not None
+                                      else "unlimited") ])
 
-assert bounds[0] < bounds[1] or (bounds[0] == bounds[1] and bounds[0] == -1)
+    partial_solution_found= initial_haplotypes is not None
+    for start in range(0, complete_sol.genotype_length, options.length):
+        good_stop= min( complete_sol.genotype_length, start + options.length + 1 )
+        stop=      min( complete_sol.genotype_length, good_stop + options.lookahead )
 
-complete_sol.notes.extend([
-        "COMMAND LINE: {}".format(" ".join(sys.argv)),
-        "START TIME: {}".format(time.asctime()),
-        "INPUT PEDIGREE: '{}'".format(options.pedigree),
-        "OUTPUT HAPLOTYPES: '{}'".format(options.haplotypes),
-        "MAX BLOCK LENGTH: '{}'".format(options.length),
-        "LOOKAHEAD LENGTH: '{}'".format(options.lookahead),
-        "INITIAL RECOMBINATION BOUNDS: '({}, {}]'".format(*bounds),
-        "INITIAL HAPLOTYPE CONFIGURATION: '{}'".format(options.init_hc),
-        "BOOTSTRAP ENABLED: '{}'".format(options.bootstrap),
-        "BOOTSTRAP TIME LIMIT: '{}s'".format(options.bootstrap_time_limit),
-        "TIME LIMIT: '{}'".format("{}s".format(time_limit.limit)
-                                  if time_limit.limit is not None
-                                  else "unlimited") ])
-
-partial_solution_found= initial_haplotypes is not None
-for start in range(0, complete_sol.genotype_length, options.length):
-    good_stop= min( complete_sol.genotype_length, start + options.length + 1 )
-    stop=      min( complete_sol.genotype_length, good_stop + options.lookahead )
-
-    logging.info("Considering pedigree chunk between the markers [%d-%d)...", start, stop)
-    filenames= {}
-    # Write genotype block if necessary
-    if (start != 0) or (stop!=complete_sol.genotype_length):
-        filenames['genotypes']= "tmp-pedigree-{}-{}-{}".format(start, stop, suffix)
-        complete_sol.write_genotype_block(filenames['genotypes'], start, stop)
-    else:
-        filenames['genotypes']= options.pedigree
-
-    # Write assumptions
-    filenames['assumptions']= "tmp-assumptions-{}-{}-{}".format(start, stop, suffix)
-    with open(filenames['assumptions'], 'w') as assumptions_file:
-        assumptions_file.write("\n".join(assumptions))
-        assumptions_file.write("\n")
-
-    # Execute reHCstar
-    chunk= (start, good_stop, stop)
-    filenames['haplotypes']= "tmp-haplotypes-{}-{}-{}".format(start, stop, suffix)
-    (rehcstar_success, out_of_time)= exec_reHCstar(filenames, complete_sol,
-                                                   chunk, bounds,
-                                                   upper_limit_recombinations,
-                                                   cmd, time_limit,
-                                                   initial_haplotypes, bootstrap)
-    if rehcstar_success:
-        logging.info("reHCstar has successfully computed %s solution on the chunk [%d-%d).",
-                     "an optimal" if complete_sol.chunk_info[chunk]["optimum found"] else "a suboptimal",
-                     start, stop)
-        logging.info("The haplotype configuration has %d recombinations and %d errors so far.",
-                     len(complete_sol.recombs), len(complete_sol.errors))
-        partial_solution_found= True
-
-    if out_of_time:
-        logging.fatal("Time-limit exceeded. Finalizing...")
-        if partial_solution_found:
-            partial_sol_filename= options.haplotypes + ".part"
-            assert len(complete_sol.chunk_info) > 0
-            complete_sol.analyze_optimality()
-            logging.info("Saving the partial haplotype configuration to file '%s'", partial_sol_filename)
-            complete_sol.notes.append("END TIME: {}".format(time.asctime()))
-            complete_sol.write_haplotypes(partial_sol_filename, verbose=verbose1)
+        logging.info("Considering pedigree chunk between the markers [%d-%d)...", start, stop)
+        filenames= {}
+        # Write genotype block if necessary
+        if (start != 0) or (stop!=complete_sol.genotype_length):
+            filenames['genotypes']= "tmp-pedigree-{}-{}-{}".format(start, stop, suffix)
+            complete_sol.write_genotype_block(filenames['genotypes'], start, stop)
         else:
-            logging.warn("No partial solution found.")
-        logging.fatal("reHCstar manager - aborted at %s", time.asctime())
-        sys.exit(1)
+            filenames['genotypes']= options.pedigree
 
-    elif not rehcstar_success:
-        # No solution of reHCstar
-        logging.fatal("reHCstar did NOT computed a solution on the chunk [%d-%d]. Aborting...", start, stop-1)
-        logging.fatal("reHCstar manager - aborted at %s", time.asctime())
-        sys.exit(1)
-    else:
-        # Prepare for next chunk
-        if verbose2:
-            incremental_haplotypes_filename= "tmp-incremental-{}-{}-{}".format(start,
-                                                                               stop,
-                                                                               suffix)
-            complete_sol.write_haplotypes(incremental_haplotypes_filename, good_stop, verbose3)
-        assumptions= []
-        if start + options.length < complete_sol.genotype_length:
-            assumption_locus_alleles = set()
-            for ind in complete_sol.individuals:
-                curr_g = complete_sol.genotypes[ind.id][good_stop-1]
-                if is_genotyped(curr_g):
-                    assumption_locus_alleles.update(set(curr_g.split(' ')))
-            assumption_locus_n_alleles = len(assumption_locus_alleles)
+        # Write assumptions
+        filenames['assumptions']= "tmp-assumptions-{}-{}-{}".format(start, stop, suffix)
+        with open(filenames['assumptions'], 'w') as assumptions_file:
+            assumptions_file.write("\n".join(assumptions))
+            assumptions_file.write("\n")
 
-            for ind in complete_sol.individuals:
-                if assumption_locus_n_alleles<=2:
-                    assumptions.append(" ".join( [ "p", ind.id, "0",
-                                                   str(complete_sol.haplotypes[ind.id][0][good_stop-1]-1) ] ))
-                    assumptions.append(" ".join( [ "m", ind.id, "0",
-                                                   str(complete_sol.haplotypes[ind.id][1][good_stop-1]-1) ] ))
-                else:
-                    pat_allele = complete_sol.haplotypes[ind.id][0][good_stop-1]-1
-                    mat_allele = complete_sol.haplotypes[ind.id][1][good_stop-1]-1
-                    for a in range(assumption_locus_n_alleles):
-                        print(a==complete_sol.haplotypes[ind.id][0][good_stop-1]-1)
-                        assumptions.append(" ".join( [ "pm", ind.id, "0", str(a),
-                                                       "1" if (a == pat_allele) else "0" ] ))
-                        assumptions.append(" ".join( [ "mm", ind.id, "0", str(a),
-                                                       "1" if (a == mat_allele) else "0" ] ))
-                if ind.has_father():
-                    assumptions.append(" ".join( [ "sp", ind.id, "0",
-                                                   str(complete_sol.gps[ind.id][0][good_stop-1]) ] ))
-                if ind.has_mother():
-                    assumptions.append(" ".join( [ "sm", ind.id, "0",
-                                                   str(complete_sol.gps[ind.id][1][good_stop-1]) ] ))
+        # Execute reHCstar
+        chunk= (start, good_stop, stop)
+        filenames['haplotypes']= "tmp-haplotypes-{}-{}-{}".format(start, stop, suffix)
+        (rehcstar_success, out_of_time)= exec_reHCstar(filenames, complete_sol,
+                                                       chunk, bounds,
+                                                       upper_limit_recombinations,
+                                                       cmd, time_limit,
+                                                       initial_haplotypes, bootstrap)
+        if rehcstar_success:
+            logging.info("reHCstar has successfully computed %s solution on the chunk [%d-%d).",
+                         "an optimal" if complete_sol.chunk_info[chunk]["optimum found"] else "a suboptimal",
+                         start, stop)
+            logging.info("The haplotype configuration has %d recombinations and %d errors so far.",
+                         len(complete_sol.recombs), len(complete_sol.errors))
+            partial_solution_found= True
+
+        if out_of_time:
+            logging.fatal("Time-limit exceeded. Finalizing...")
+            if partial_solution_found:
+                partial_sol_filename= options.haplotypes + ".part"
+                assert len(complete_sol.chunk_info) > 0
+                complete_sol.analyze_optimality()
+                logging.info("Saving the partial haplotype configuration to file '%s'", partial_sol_filename)
+                complete_sol.notes.append("END TIME: {}".format(time.asctime()))
+                complete_sol.write_haplotypes(partial_sol_filename, verbose=verbose1)
+            else:
+                logging.warn("No partial solution found.")
+            logging.fatal("reHCstar manager - aborted at %s", time.asctime())
+            sys.exit(1)
+
+        elif not rehcstar_success:
+            # No solution of reHCstar
+            logging.fatal("reHCstar did NOT computed a solution on the chunk [%d-%d]. Aborting...", start, stop-1)
+            logging.fatal("reHCstar manager - aborted at %s", time.asctime())
+            sys.exit(1)
+        else:
+            # Prepare for next chunk
+            if verbose2:
+                incremental_haplotypes_filename= "tmp-incremental-{}-{}-{}".format(start,
+                                                                                   stop,
+                                                                                   suffix)
+                complete_sol.write_haplotypes(incremental_haplotypes_filename, good_stop, verbose3)
+            assumptions= []
+            if start + options.length < complete_sol.genotype_length:
+                assumption_locus_alleles = set()
+                for ind in complete_sol.individuals:
+                    curr_g = complete_sol.genotypes[ind.id][good_stop-1]
+                    if is_genotyped(curr_g):
+                        assumption_locus_alleles.update(set(curr_g.split(' ')))
+                assumption_locus_n_alleles = len(assumption_locus_alleles)
+
+                for ind in complete_sol.individuals:
+                    if assumption_locus_n_alleles<=2:
+                        assumptions.append(" ".join( [ "p", ind.id, "0",
+                                                       str(complete_sol.haplotypes[ind.id][0][good_stop-1]-1) ] ))
+                        assumptions.append(" ".join( [ "m", ind.id, "0",
+                                                       str(complete_sol.haplotypes[ind.id][1][good_stop-1]-1) ] ))
+                    else:
+                        pat_allele = complete_sol.haplotypes[ind.id][0][good_stop-1]-1
+                        mat_allele = complete_sol.haplotypes[ind.id][1][good_stop-1]-1
+                        for a in range(assumption_locus_n_alleles):
+                            print(a==complete_sol.haplotypes[ind.id][0][good_stop-1]-1)
+                            assumptions.append(" ".join( [ "pm", ind.id, "0", str(a),
+                                                           "1" if (a == pat_allele) else "0" ] ))
+                            assumptions.append(" ".join( [ "mm", ind.id, "0", str(a),
+                                                           "1" if (a == mat_allele) else "0" ] ))
+                    if ind.has_father():
+                        assumptions.append(" ".join( [ "sp", ind.id, "0",
+                                                       str(complete_sol.gps[ind.id][0][good_stop-1]) ] ))
+                    if ind.has_mother():
+                        assumptions.append(" ".join( [ "sm", ind.id, "0",
+                                                       str(complete_sol.gps[ind.id][1][good_stop-1]) ] ))
 
 
-logging.info("Found a complete haplotype configuration with %d recombinations and %d errors.",
-             len(complete_sol.recombs), len(complete_sol.errors))
-complete_sol.analyze_optimality()
+    logging.info("Found a complete haplotype configuration with %d recombinations and %d errors.",
+                 len(complete_sol.recombs), len(complete_sol.errors))
+    complete_sol.analyze_optimality()
 
-logging.info("Writing the haplotype configuration to '%s'...", options.haplotypes)
-complete_sol.notes.append("END TIME: {}".format(time.asctime()))
-complete_sol.write_haplotypes(options.haplotypes, verbose=verbose1)
+    logging.info("Writing the haplotype configuration to '%s'...", options.haplotypes)
+    complete_sol.notes.append("END TIME: {}".format(time.asctime()))
+    complete_sol.write_haplotypes(options.haplotypes, verbose=verbose1)
 
-logging.info("reHCstar manager - completed at %s", time.asctime())
+    logging.info("reHCstar manager - completed at %s", time.asctime())
 
+def maincmd():
+    options = parse_command_line()
+    main(options)
+
+if __name__ == "__main__":
+    maincmd()
