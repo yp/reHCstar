@@ -58,8 +58,7 @@ setup(
     packages=['rehcstar'],
     entry_points = {
         'console_scripts': [
-            'reHCstar-mgr = rehcstar.reHCstar_mgr:maincmd',
-            'reHCstar = rehcstar.reHCstar:main'
+            'reHCstar-mgr = rehcstar.reHCstar_mgr:maincmd'
         ]
     },
     data_files=[ (datadir, [f for f in glob.glob(os.path.join(here, datadir, '*'))])

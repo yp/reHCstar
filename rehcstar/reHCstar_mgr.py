@@ -46,7 +46,6 @@ import subprocess
 import sys
 import time
 import resource
-import pkg_resources
 
 MISSING_G = '0 0'
 source_vector_enc= { 0 : ".",   1 : "*" }
@@ -449,7 +448,7 @@ def parse_command_line():
                                     "is invoked.")
     cmd_group.add_option("--cmd",
                          action="store", dest="cmd", type="string",
-                         default=pkg_resources.resource_filename('rehcstar', '../bin/reHCstar')+" -4 -p \"{pedigree}\" -h \"{haplotypes}\" -a \"{assumptions}\"",
+                         default="reHCstar -4 -p \"{pedigree}\" -h \"{haplotypes}\" -a \"{assumptions}\"",
                          help="the command-line used to invoke the 'reHCstar' program  "
                          "(default: %default)",
                          metavar="CMD-LINE")
