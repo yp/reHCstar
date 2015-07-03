@@ -10,7 +10,7 @@ by [Yuri Pirola](http://algolab.eu/pirola)
 
 
 Started: September 27, 2010  
-Current release: **2.1.1** (July 3, 2015)
+Current release: **2.1.2** (July 3, 2015)
 
 
 ------------------------------------------------------------------------
