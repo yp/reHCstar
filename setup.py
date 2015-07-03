@@ -10,8 +10,6 @@ from setuptools import setup
 # To use a consistent encoding
 import codecs
 import os
-import re
-import io
 import glob
 import subprocess
 
@@ -33,8 +31,8 @@ subprocess.call(["make"])
 setup(
     name='reHCstar',
     version= VERSION,
-    description='A SAT-based program to compute a haplotype configuration on pedigrees with recombinations, genotyping errors, and missing genotypes over biallelic and multi-allelic loci.A haplotype-based approach for predicting gene alleles using SNP genotypes.',
-    long_description=codecs.open(os.path.join(here, 'README'), encoding='utf-8').read(),
+    description='A SAT-based program to compute a haplotype configuration on pedigrees with recombinations, genotyping errors, and missing genotypes over biallelic and multi-allelic loci.',
+    long_description=codecs.open(os.path.join(here, 'README.rst'), encoding='utf-8').read(),
 
     url='http://rehcstar.algolab.eu/',
 
