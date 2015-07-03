@@ -62,6 +62,6 @@ setup(
             'reHCstar = rehcstar.reHCstar:main'
         ]
     },
-    data_files=[ (datadir, [f for f in glob.glob(os.path.join(datadir, '*'))])
+    data_files=[ (datadir, [f for f in glob.glob(os.path.join(here, datadir, '*'))])
                  for datadir in ('bin', 'docs') ]
 )
