@@ -6,7 +6,7 @@ A SAT-based program to compute a haplotype configuration on pedigrees
 with recombinations, genotyping errors, and missing genotypes over
 _biallelic_ and _multi-allelic_ loci.
 
-by [Yuri Pirola](http://bimib.disco.unimib.it/index.php/Pirola_Yuri)
+by [Yuri Pirola](http://algolab.eu/pirola)
 
 
 Started: September 27, 2010  
@@ -45,14 +45,45 @@ in Bio and Medical Sciences, ICCABS 2012.
 ## Download and Installation ##
 
 reHC-* is currently distributed only on source form.
-It has been developed on Ubuntu Linux machines (v. 10.04 and
-10.10) and has been tested on both 32 and 64 bit.
+It has been developed on Ubuntu Linux machines (10.04 and later) and has
+been tested on both 32 and 64 bit.
 The program should work on (or should be easily ported to) on MacOS X
 but has not been tested and it is not supported on this operating
 system.
 
+### Dependencies ###
 
-### Download ###
+- Python (>= 2.7)
+- CMake (>= 2.8)
+- GNU make
+- Boost FileSystem, System, DateTime, ProgramOptions, IOStreams, and
+  other include-only libraries (tested with 1.42)
+- Apache Log4cxx (tested with 0.10.0)
+
+
+### Automatic Download and Installation ###
+
+The easiest way for having reHC-* correctly installed on your machine is
+through [PyPI](https://pypi.python.org/pypi) with the command:
+
+    $ pip install reHCstar
+
+(Please be patient, because it can take some time to build the package
+and you do not see any progress message in the meanwhile.)
+
+If `pip` is not available on your system (and you cannot install it
+following [these instructions](https://pip.pypa.io/en/latest/installing.html),
+you can manually download the reHC-* package from
+https://github.com/yp/reHCstar/tarball/master, unpack it in a directory
+of your choice, and then build it with the command:
+
+    $ python setup.py install
+
+Alternatively, you can proceed with the manual download, compilation,
+and installation as detailed below.
+
+
+### Manual Download ###
 
 reHC-* is developed on the `yp/reHCstar` Git repository hosted by
 GitHub.
@@ -74,28 +105,7 @@ Or, if you have a GitHub account, you can fork the project from the
 [repository web page](https://github.com/yp/reHCstar).
 
 
-### Dependencies ###
-
-- Python (>= 2.7)
-- CMake (>= 2.8)
-- GNU make
-- Boost FileSystem, System, DateTime, ProgramOptions, IOStreams, and
-  other include-only libraries (tested with 1.42)
-- Apache Log4cxx (tested with 0.10.0)
-
-
-### Compilation ###
-
-The easiest way to compile and install the program is to use the
-following command:
-
-    $ python setup.py install
-
-This command compiles and installs reHCstar as a Python package, putting
-the two main programs, `reHCstar` and `reHCstar-mgr` (see later), in the
-PATH.
-
-#### Advanced compilation ####
+### Manual Compilation ###
 
 The program can be compiled by issuing the command at the command
 prompt:
@@ -541,7 +551,7 @@ Missing genotypes are encoded by the pair `0 0` (i.e. by two fields
 containing the missing allele `0`).
 The pairs composed by a valid allele (`1` or `2`) and a missing allele
 (`0`) _are not valid_.
-Since reHC-* 1.4.0, there could also be **multi-allelic** loci. Alleles
+Since reHC-* 2.0.0, there could also be **multi-allelic** loci. Alleles
 are encoded by a number greater than `0` (which is always considered the
 missing allele code).
 
@@ -620,6 +630,10 @@ reHC-* incorporates the following SAT solvers:
 - [MiniSat](http://www.minisat.se/MiniSat.html) version 2.2.0 by Niklas
   Een and Niklas Sorensson, which is distributed under the MIT license.
 
+For extracting source version information from git repository tags,
+reHC-* uses [autorevision](https://github.com/Autorevision/autorevision)
+by dak180 and others, which is distributed under the MIT license.
+
 We would like to thank Gianluca Della Vedova for useful discussions.
 
 
@@ -628,6 +642,6 @@ We would like to thank Gianluca Della Vedova for useful discussions.
 
 Please contact *Yuri Pirola* for additional information.  
 E-mail:   <yuri.pirola@gmail.com>  
-Web page: <http://bimib.disco.unimib.it/index.php/Pirola_Yuri>
+Web page: <http://algolab.eu/pirola>
 
 

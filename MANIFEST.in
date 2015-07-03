@@ -1,8 +1,7 @@
 include AUTHORS
 include COPYING
-include README
+include README.rst
 include VERSION
-include logging.conf
 include CMakeLists.txt
 include CMakeOptions.txt
 include Makefile
