@@ -136,24 +136,24 @@ private:
 		if (gen.allele1() == 1 && gen.allele2() == 1) {
 // gen == HOMO1
 // -e p m,  e -p,  e -m
-		  cnf.add_clause<3>((lit_t[]){-e,  p,  m});
-		  cnf.add_clause<2>((lit_t[]){ e, -p});
-		  cnf.add_clause<2>((lit_t[]){ e,     -m});
+		  cnf.add_clause(pedcnf_t::clause_t{-e,  p,  m});
+		  cnf.add_clause(pedcnf_t::clause_t{ e, -p});
+		  cnf.add_clause(pedcnf_t::clause_t{ e,     -m});
 		} else if (gen.allele1() == 2 && gen.allele2() == 2) {
 // gen == HOMO2
 // -e -p -m,  e p,  e m
-		  cnf.add_clause<3>((lit_t[]){-e, -p, -m});
-		  cnf.add_clause<2>((lit_t[]){ e,  p});
-		  cnf.add_clause<2>((lit_t[]){ e,      m});
+		  cnf.add_clause(pedcnf_t::clause_t{-e, -p, -m});
+		  cnf.add_clause(pedcnf_t::clause_t{ e,  p});
+		  cnf.add_clause(pedcnf_t::clause_t{ e,      m});
 		} else if (gen.allele1() == 1 && gen.allele2() == 2) {
 // gen == HETERO12
 #ifdef AVOID_XOR_CLAUSES
-		  cnf.add_clause<3>((lit_t[]){ e,  p,  m});
-		  cnf.add_clause<3>((lit_t[]){ e, -p, -m});
-		  cnf.add_clause<3>((lit_t[]){-e,  p, -m});
-		  cnf.add_clause<3>((lit_t[]){-e, -p,  m});
+		  cnf.add_clause(pedcnf_t::clause_t{ e,  p,  m});
+		  cnf.add_clause(pedcnf_t::clause_t{ e, -p, -m});
+		  cnf.add_clause(pedcnf_t::clause_t{-e,  p, -m});
+		  cnf.add_clause(pedcnf_t::clause_t{-e, -p,  m});
 #else
-		  cnf.add_xor_clause<3>((lit_t[]){e, p, m});
+		  cnf.add_xor_clause(pedcnf_t::xor_clause_t{e, p, m});
 #endif
 		} else if (gen == g::MISS) {
 // Do nothing
@@ -175,15 +175,15 @@ private:
 		  lit_t p= cnf.get_p(ind.father().progr_id(), l);
 		  lit_t m= cnf.get_m(ind.father().progr_id(), l);
 		  lit_t rp= cnf.get_rp(i, l);
-		  cnf.add_clause<3>((lit_t[]){-rp,  p,  m});
-		  cnf.add_clause<3>((lit_t[]){-rp, -p, -m});
+		  cnf.add_clause(pedcnf_t::clause_t{-rp,  p,  m});
+		  cnf.add_clause(pedcnf_t::clause_t{-rp, -p, -m});
 		}
 		if (ind.has_mother()) {
 		  lit_t p= cnf.get_p(ind.mother().progr_id(), l);
 		  lit_t m= cnf.get_m(ind.mother().progr_id(), l);
 		  lit_t rm= cnf.get_rm(i, l);
-		  cnf.add_clause<3>((lit_t[]){-rm,  p,  m});
-		  cnf.add_clause<3>((lit_t[]){-rm, -p, -m});
+		  cnf.add_clause(pedcnf_t::clause_t{-rm,  p,  m});
+		  cnf.add_clause(pedcnf_t::clause_t{-rm, -p, -m});
 		}
 	 }
 /************
@@ -219,8 +219,8 @@ private:
 // at most one (quadratic version)
 	 for (size_t j1= 0; j1<no_of_alleles-1; ++j1) {
 		for (size_t j2= j1+1; j2<no_of_alleles; ++j2) {
-		  cnf.add_clause<2>((lit_t[]){ -p[j1], -p[j2]});
-		  cnf.add_clause<2>((lit_t[]){ -m[j1], -m[j2]});
+		  cnf.add_clause(pedcnf_t::clause_t{ -p[j1], -p[j2]});
+		  cnf.add_clause(pedcnf_t::clause_t{ -m[j1], -m[j2]});
 		}
 	 }
 /************
@@ -231,20 +231,20 @@ private:
 		const size_t a= ((size_t)gen.allele1())-1;
 		const size_t b= ((size_t)gen.allele2())-1;
 		if (is_homozygous(gen)) {
-		  cnf.add_clause<2>((lit_t[]){  e, p[a] });
-		  cnf.add_clause<2>((lit_t[]){  e, m[a] });
-		  cnf.add_clause<3>((lit_t[]){ -e, -p[a], -m[a] });
+		  cnf.add_clause(pedcnf_t::clause_t{  e, p[a] });
+		  cnf.add_clause(pedcnf_t::clause_t{  e, m[a] });
+		  cnf.add_clause(pedcnf_t::clause_t{ -e, -p[a], -m[a] });
 		} else if (is_heterozygous(gen)) {
-		  cnf.add_clause<3>((lit_t[]){  e,  p[a],  m[a] });
-		  cnf.add_clause<3>((lit_t[]){  e, -p[a], -m[a] });
-		  cnf.add_clause<3>((lit_t[]){  e,  p[b],  m[b] });
-		  cnf.add_clause<3>((lit_t[]){  e, -p[b], -m[b] });
+		  cnf.add_clause(pedcnf_t::clause_t{  e,  p[a],  m[a] });
+		  cnf.add_clause(pedcnf_t::clause_t{  e, -p[a], -m[a] });
+		  cnf.add_clause(pedcnf_t::clause_t{  e,  p[b],  m[b] });
+		  cnf.add_clause(pedcnf_t::clause_t{  e, -p[b], -m[b] });
 
-		  cnf.add_clause<3>((lit_t[]){  e, -p[a], -p[b] });
-		  cnf.add_clause<3>((lit_t[]){  e, -m[a], -m[b] });
+		  cnf.add_clause(pedcnf_t::clause_t{  e, -p[a], -p[b] });
+		  cnf.add_clause(pedcnf_t::clause_t{  e, -m[a], -m[b] });
 
-		  cnf.add_clause<5>((lit_t[]){ -e, -p[a],  m[a],  p[b], -m[b] });
-		  cnf.add_clause<5>((lit_t[]){ -e,  p[a], -m[a], -p[b],  m[b] });
+		  cnf.add_clause(pedcnf_t::clause_t{ -e, -p[a],  m[a],  p[b], -m[b] });
+		  cnf.add_clause(pedcnf_t::clause_t{ -e,  p[a], -m[a], -p[b],  m[b] });
 		} else {
 		  MY_FAIL;
 		}
@@ -335,12 +335,12 @@ private:
 	 lit_t m= cnf.get_m(progr_id_parent, locus);
 	 lit_t c= (!is_mother) ?
 		cnf.get_p(progr_id_ind, locus) : cnf.get_m(progr_id_ind, locus);
-	 cnf.add_clause<3>((lit_t[]){ s,  p, -c});
-	 cnf.add_clause<3>((lit_t[]){ s, -p,  c});
-	 cnf.add_clause<3>((lit_t[]){-s,  m, -c});
-	 cnf.add_clause<3>((lit_t[]){-s, -m,  c});
-	 cnf.add_clause<3>((lit_t[]){-p, -m,  c});
-	 cnf.add_clause<3>((lit_t[]){ p,  m, -c});
+	 cnf.add_clause(pedcnf_t::clause_t{ s,  p, -c});
+	 cnf.add_clause(pedcnf_t::clause_t{ s, -p,  c});
+	 cnf.add_clause(pedcnf_t::clause_t{-s,  m, -c});
+	 cnf.add_clause(pedcnf_t::clause_t{-s, -m,  c});
+	 cnf.add_clause(pedcnf_t::clause_t{-p, -m,  c});
+	 cnf.add_clause(pedcnf_t::clause_t{ p,  m, -c});
 /************
  * End clauses for Mendelian consistency (s-variables)
  ************/
@@ -354,12 +354,12 @@ private:
 		  cnf.get_rp(progr_id_ind, locus) : cnf.get_rm(progr_id_ind, locus);
 // s == prevs + r
 #ifdef AVOID_XOR_CLAUSES
-		  cnf.add_clause<3>((lit_t[]){-s,  r,  prevs});
-		  cnf.add_clause<3>((lit_t[]){-s, -r, -prevs});
-		  cnf.add_clause<3>((lit_t[]){ s,  r, -prevs});
-		  cnf.add_clause<3>((lit_t[]){ s, -r,  prevs});
+		  cnf.add_clause(pedcnf_t::clause_t{-s,  r,  prevs});
+		  cnf.add_clause(pedcnf_t::clause_t{-s, -r, -prevs});
+		  cnf.add_clause(pedcnf_t::clause_t{ s,  r, -prevs});
+		  cnf.add_clause(pedcnf_t::clause_t{ s, -r,  prevs});
 #else
-		  cnf.add_xor_clause<3>((lit_t[]){-s, r, prevs});
+		  cnf.add_xor_clause(pedcnf_t::xor_clause_t{-s, r, prevs});
 #endif
 	 }
 /************
@@ -386,12 +386,12 @@ private:
 		lit_t m= cnf.get_mm(progr_id_parent, locus, j);
 		lit_t c= (!is_mother) ?
 		  cnf.get_pm(progr_id_ind, locus, j) : cnf.get_mm(progr_id_ind, locus, j);
-		cnf.add_clause<3>((lit_t[]){ s,  p, -c});
-		cnf.add_clause<3>((lit_t[]){ s, -p,  c});
-		cnf.add_clause<3>((lit_t[]){-s,  m, -c});
-		cnf.add_clause<3>((lit_t[]){-s, -m,  c});
-		cnf.add_clause<3>((lit_t[]){-p, -m,  c});
-		cnf.add_clause<3>((lit_t[]){ p,  m, -c});
+		cnf.add_clause(pedcnf_t::clause_t{ s,  p, -c});
+		cnf.add_clause(pedcnf_t::clause_t{ s, -p,  c});
+		cnf.add_clause(pedcnf_t::clause_t{-s,  m, -c});
+		cnf.add_clause(pedcnf_t::clause_t{-s, -m,  c});
+		cnf.add_clause(pedcnf_t::clause_t{-p, -m,  c});
+		cnf.add_clause(pedcnf_t::clause_t{ p,  m, -c});
 	 }
 /************
  * End clauses for Mendelian consistency (s-variables)
@@ -406,12 +406,12 @@ private:
 		  cnf.get_rp(progr_id_ind, locus) : cnf.get_rm(progr_id_ind, locus);
 // s == prevs + r
 #ifdef AVOID_XOR_CLAUSES
-		  cnf.add_clause<3>((lit_t[]){-s,  r,  prevs});
-		  cnf.add_clause<3>((lit_t[]){-s, -r, -prevs});
-		  cnf.add_clause<3>((lit_t[]){ s,  r, -prevs});
-		  cnf.add_clause<3>((lit_t[]){ s, -r,  prevs});
+		  cnf.add_clause(pedcnf_t::clause_t{-s,  r,  prevs});
+		  cnf.add_clause(pedcnf_t::clause_t{-s, -r, -prevs});
+		  cnf.add_clause(pedcnf_t::clause_t{ s,  r, -prevs});
+		  cnf.add_clause(pedcnf_t::clause_t{ s, -r,  prevs});
 #else
-		  cnf.add_xor_clause<3>((lit_t[]){-s, r, prevs});
+		  cnf.add_xor_clause(pedcnf_t::xor_clause_t{-s, r, prevs});
 #endif
 	 }
 /************

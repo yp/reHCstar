@@ -112,7 +112,7 @@ public:
 							" Adding anyway...");
 				}
 				lit_t iv= cnf.get_sp(v.get<1>(), v.get<2>());
-				cnf.add_clause<1>( (lit_t[]){ (value? +1 : -1)  *  iv } );
+				cnf.add_clause(pedcnf_t::clause_t{ (value? +1 : -1)  *  iv } );
 				++n_assumptions;
 			 } else if (v.get<0>() == ped_var_kind::SM) {
 				if (!cnf.has_sm(v.get<1>(), v.get<2>())) {
@@ -120,7 +120,7 @@ public:
 							" Adding anyway...");
 				}
 				lit_t iv= cnf.get_sm(v.get<1>(), v.get<2>());
-				cnf.add_clause<1>( (lit_t[]){ (value? +1 : -1)  *  iv } );
+				cnf.add_clause(pedcnf_t::clause_t{ (value? +1 : -1)  *  iv } );
 				++n_assumptions;
 			 } else if (v.get<0>() == ped_var_kind::P) {
 				if (!cnf.has_p(v.get<1>(), v.get<2>())) {
@@ -128,7 +128,7 @@ public:
 							" Adding anyway...");
 				}
 				lit_t iv= cnf.get_p(v.get<1>(), v.get<2>());
-				cnf.add_clause<1>( (lit_t[]){ (value? +1 : -1)  *  iv } );
+				cnf.add_clause(pedcnf_t::clause_t{ (value? +1 : -1)  *  iv } );
 				++n_assumptions;
 			 } else if (v.get<0>() == ped_var_kind::M) {
 				if (!cnf.has_m(v.get<1>(), v.get<2>())) {
@@ -136,7 +136,7 @@ public:
 							" Adding anyway...");
 				}
 				lit_t iv= cnf.get_m(v.get<1>(), v.get<2>());
-				cnf.add_clause<1>( (lit_t[]){ (value? +1 : -1)  *  iv } );
+				cnf.add_clause(pedcnf_t::clause_t{ (value? +1 : -1)  *  iv } );
 				++n_assumptions;
 			 } else if (v.get<0>() == ped_var_kind::RP) {
 				if (!cnf.has_rp(v.get<1>(), v.get<2>())) {
@@ -144,7 +144,7 @@ public:
 							" Adding anyway...");
 				}
 				lit_t iv= cnf.get_rp(v.get<1>(), v.get<2>());
-				cnf.add_clause<1>( (lit_t[]){ (value? +1 : -1)  *  iv } );
+				cnf.add_clause(pedcnf_t::clause_t{ (value? +1 : -1)  *  iv } );
 				++n_assumptions;
 			 } else if (v.get<0>() == ped_var_kind::RM) {
 				if (!cnf.has_rm(v.get<1>(), v.get<2>())) {
@@ -152,7 +152,7 @@ public:
 							" Adding anyway...");
 				}
 				lit_t iv= cnf.get_rm(v.get<1>(), v.get<2>());
-				cnf.add_clause<1>( (lit_t[]){ (value? +1 : -1)  *  iv } );
+				cnf.add_clause(pedcnf_t::clause_t{ (value? +1 : -1)  *  iv } );
 				++n_assumptions;
 			 } else if (v.get<0>() == ped_var_kind::PM) {
 				if (!cnf.has_pm(v.get<1>(), v.get<2>(), v.get<3>())) {
@@ -160,7 +160,7 @@ public:
 							" Adding anyway...");
 				}
 				lit_t iv= cnf.get_pm(v.get<1>(), v.get<2>(), v.get<3>());
-				cnf.add_clause<1>( (lit_t[]){ (value? +1 : -1)  *  iv } );
+				cnf.add_clause(pedcnf_t::clause_t{ (value? +1 : -1)  *  iv } );
 				++n_assumptions;
 			 } else if (v.get<0>() == ped_var_kind::MM) {
 				if (!cnf.has_mm(v.get<1>(), v.get<2>(), v.get<3>())) {
@@ -168,7 +168,7 @@ public:
 							" Adding anyway...");
 				}
 				lit_t iv= cnf.get_mm(v.get<1>(), v.get<2>(), v.get<3>());
-				cnf.add_clause<1>( (lit_t[]){ (value? +1 : -1)  *  iv } );
+				cnf.add_clause(pedcnf_t::clause_t{ (value? +1 : -1)  *  iv } );
 				++n_assumptions;
 			 } else if (v.get<0>() == ped_var_kind::E) {
 				if (!cnf.has_e(v.get<1>(), v.get<2>())) {
@@ -176,7 +176,7 @@ public:
 							" Adding anyway...");
 				}
 				lit_t iv= cnf.get_e(v.get<1>(), v.get<2>());
-				cnf.add_clause<1>( (lit_t[]){ (value? +1 : -1)  *  iv } );
+				cnf.add_clause(pedcnf_t::clause_t{ (value? +1 : -1)  *  iv } );
 				++n_assumptions;
 			 } else if (v.get<0>() == ped_var_kind::DUMMY) {
 				L_FATAL("Error while processing assumption '" << buff << "' ==> ("

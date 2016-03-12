@@ -336,21 +336,9 @@ public:
   void add_xor_clause(const xor_clause_t& clause);
 #endif
 
-  template <int LEN>
-  void add_clause(const lit_t* const clause) {
-	 add_clause(clause_t(clause, clause+LEN));
-  };
-
   void add_clause(const lit_t* const clause, const size_t LEN) {
 	 add_clause(clause_t(clause, clause+LEN));
   };
-
-#ifndef AVOID_XOR_CLAUSES
-  template <int LEN>
-  void add_xor_clause(const lit_t* const clause) {
-	 add_xor_clause(xor_clause_t(clause, clause+LEN));
-  };
-#endif
 
 #ifndef ONLY_INTERNAL_SAT_SOLVER
   bool is_satisfying_assignment() const;

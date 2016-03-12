@@ -40,7 +40,7 @@
 #include <boost/cstdint.hpp>
 
 typedef boost::int_fast32_t lit_t;
-typedef boost::uint_fast32_t var_t;
+typedef boost::int_fast32_t var_t;
 
 
 // Check that the 'right' preprocessor symbols have been defined:

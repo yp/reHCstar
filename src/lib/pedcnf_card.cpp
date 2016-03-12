@@ -44,9 +44,9 @@ add_half_adder(pedcnf_t& cnf,
 					var_t& s, var_t& cout) {
   s= cnf.generate_dummy();
   cout= cnf.generate_dummy();
-  cnf.add_clause<3>((lit_t[]){ x, -y,  s});
-  cnf.add_clause<3>((lit_t[]){-x,  y,  s});
-  cnf.add_clause<3>((lit_t[]){-x, -y,  cout});
+  cnf.add_clause(pedcnf_t::clause_t{ x, -y,  s});
+  cnf.add_clause(pedcnf_t::clause_t{-x,  y,  s});
+  cnf.add_clause(pedcnf_t::clause_t{-x, -y,  cout});
 };
 
 inline static void
@@ -55,13 +55,13 @@ add_full_adder(pedcnf_t& cnf,
 					var_t& s, var_t& cout) {
   s= cnf.generate_dummy();
   cout= cnf.generate_dummy();
-  cnf.add_clause<4>((lit_t[]){ x,  y, -cin,  s});
-  cnf.add_clause<4>((lit_t[]){ x, -y,  cin,  s});
-  cnf.add_clause<4>((lit_t[]){-x,  y,  cin,  s});
-  cnf.add_clause<4>((lit_t[]){-x, -y, -cin,  s});
-  cnf.add_clause<3>((lit_t[]){-x, -y,   cout});
-  cnf.add_clause<3>((lit_t[]){-x, -cin, cout});
-  cnf.add_clause<3>((lit_t[]){-y, -cin, cout});
+  cnf.add_clause(pedcnf_t::clause_t{ x,  y, -cin,  s});
+  cnf.add_clause(pedcnf_t::clause_t{ x, -y,  cin,  s});
+  cnf.add_clause(pedcnf_t::clause_t{-x,  y,  cin,  s});
+  cnf.add_clause(pedcnf_t::clause_t{-x, -y, -cin,  s});
+  cnf.add_clause(pedcnf_t::clause_t{-x, -y,   cout});
+  cnf.add_clause(pedcnf_t::clause_t{-x, -cin, cout});
+  cnf.add_clause(pedcnf_t::clause_t{-y, -cin, cout});
 };
 
 
@@ -76,7 +76,7 @@ generate_counter(pedcnf_t& cnf,
   if (len == 1) {
 	 d.push_back(x[first]);
   } else if (len == 2) {
-	 size_t d1, d2;
+	 var_t d1, d2;
 	 add_half_adder(cnf, x[first], x[first+1], d1, d2);
 	 d.push_back(d1);
 	 d.push_back(d2);
@@ -89,8 +89,8 @@ generate_counter(pedcnf_t& cnf,
 	 } else {
 	 }
 	 size_t i= 0;
-	 size_t carry= x[n-1];
-	 size_t s= 0;
+	 var_t carry= x[n-1];
+	 var_t s= 0;
 	 while (i < d2.size()) {
 		add_full_adder(cnf, d1[i], d2[i], carry, s, carry);
 		d.push_back(s);
@@ -165,9 +165,9 @@ generate_hmerge(pedcnf_t& cnf,
 	 const lit_t c2= cnf.generate_dummy();
 	 vars.push_back(c1);
 	 vars.push_back(c2);
-	 cnf.add_clause<3>((lit_t[]){ -A[0], -B[0], c2 });
-	 cnf.add_clause<2>((lit_t[]){ -A[0], c1 });
-	 cnf.add_clause<2>((lit_t[]){ -B[0], c1 });
+	 cnf.add_clause(pedcnf_t::clause_t{ -A[0], -B[0], c2 });
+	 cnf.add_clause(pedcnf_t::clause_t{ -A[0], c1 });
+	 cnf.add_clause(pedcnf_t::clause_t{ -B[0], c1 });
   } else {
 	 std::vector<var_t> A_odd, A_even;
 	 divide_vector(A, A_odd, A_even);
@@ -181,9 +181,9 @@ generate_hmerge(pedcnf_t& cnf,
 		C.push_back(cnf.generate_dummy());
 	 }
 	 for (size_t i= 1; i<n; ++i) {
-		cnf.add_clause<3>((lit_t[]){ -V_odd[i], -V_even[i-1], C[2*i-1] });
-		cnf.add_clause<2>((lit_t[]){ -V_odd[i], C[2*i-2] });
-		cnf.add_clause<2>((lit_t[]){ -V_even[i-1], C[2*i-2] });
+		cnf.add_clause(pedcnf_t::clause_t{ -V_odd[i], -V_even[i-1], C[2*i-1] });
+		cnf.add_clause(pedcnf_t::clause_t{ -V_odd[i], C[2*i-2] });
+		cnf.add_clause(pedcnf_t::clause_t{ -V_even[i-1], C[2*i-2] });
 	 }
 	 vars.push_back(V_odd[0]);
 	 vars.insert(vars.end(), C.begin(), C.end());
@@ -234,9 +234,9 @@ generate_smerge(pedcnf_t& cnf,
 	 const lit_t c2= cnf.generate_dummy();
 	 vars.push_back(c1);
 	 vars.push_back(c2);
-	 cnf.add_clause<3>((lit_t[]){ -A[0], -B[0], c2 });
-	 cnf.add_clause<2>((lit_t[]){ -A[0], c1 });
-	 cnf.add_clause<2>((lit_t[]){ -B[0], c1 });
+	 cnf.add_clause(pedcnf_t::clause_t{ -A[0], -B[0], c2 });
+	 cnf.add_clause(pedcnf_t::clause_t{ -A[0], c1 });
+	 cnf.add_clause(pedcnf_t::clause_t{ -B[0], c1 });
   } else {
 	 std::vector<var_t> A_odd, A_even;
 	 divide_vector(A, A_odd, A_even);
@@ -250,9 +250,9 @@ generate_smerge(pedcnf_t& cnf,
 		C.push_back(cnf.generate_dummy());
 	 }
 	 for (size_t i= 1; i<=(n>>1); ++i) {
-		cnf.add_clause<3>((lit_t[]){ -V_odd[i], -V_even[i-1], C[2*i-1] });
-		cnf.add_clause<2>((lit_t[]){ -V_odd[i], C[2*i-2] });
-		cnf.add_clause<2>((lit_t[]){ -V_even[i-1], C[2*i-2] });
+		cnf.add_clause(pedcnf_t::clause_t{ -V_odd[i], -V_even[i-1], C[2*i-1] });
+		cnf.add_clause(pedcnf_t::clause_t{ -V_odd[i], C[2*i-2] });
+		cnf.add_clause(pedcnf_t::clause_t{ -V_even[i-1], C[2*i-2] });
 	 }
 	 vars.push_back(V_odd[0]);
 	 vars.insert(vars.end(), C.begin(), C.end());
@@ -286,11 +286,11 @@ le_half_sorting_network(pedcnf_t& cnf,
   while (n != pow2_of_floor_log2(n)) {
 	 const lit_t dummy= cnf.generate_dummy();
 	 all_vars.push_back(dummy);
-	 cnf.add_clause<1>((lit_t[]){ -dummy });
+	 cnf.add_clause(pedcnf_t::clause_t{ -dummy });
 	 n= all_vars.size();
   }
   generate_hsort(cnf, all_vars, out_vars, logger);
-  cnf.add_clause<1>((lit_t[]){ -out_vars[k] });
+  cnf.add_clause(pedcnf_t::clause_t{ -out_vars[k] });
 };
 
 
@@ -308,7 +308,7 @@ le_card_network_int(pedcnf_t& cnf,
   while (all_vars.size() % p != 0) {
 	 const lit_t dummy= cnf.generate_dummy();
 	 all_vars.push_back(dummy);
-	 cnf.add_clause<1>((lit_t[]){ -dummy });
+	 cnf.add_clause(pedcnf_t::clause_t{ -dummy });
   }
   std::vector<var_t> prev_ris;
   size_t next_in_var_counter= p;
@@ -321,9 +321,9 @@ le_card_network_int(pedcnf_t& cnf,
 	 input.insert(input.end(), next_in_var, next_in_var+p);
 	 std::vector<var_t> hsort_out;
 	 generate_hsort(cnf, input, hsort_out, logger);
-	 cnf.add_clause<1>((lit_t[]){ -hsort_out[k2] });
+	 cnf.add_clause(pedcnf_t::clause_t{ -hsort_out[k2] });
 	 // for (size_t limit= k; limit<p; ++limit) {
-	 // 	cnf.add_clause<1>((lit_t[]){ -hsort_out[limit] });
+	 // 	cnf.add_clause(pedcnf_t::clause_t{ -hsort_out[limit] });
 	 // }
 	 std::vector<var_t> smerge_out;
 	 generate_smerge(cnf, prev_ris, hsort_out, smerge_out, logger);
@@ -331,15 +331,15 @@ le_card_network_int(pedcnf_t& cnf,
 	 prev_ris.insert(prev_ris.end(), smerge_out.begin(), smerge_out.begin()+p);
 	 next_in_var += p;
 	 next_in_var_counter += p;
-	 cnf.add_clause<1>((lit_t[]){ -smerge_out[k2] });
+	 cnf.add_clause(pedcnf_t::clause_t{ -smerge_out[k2] });
 	 // for (size_t limit= k; limit<=p; ++limit) {
-	 // 	cnf.add_clause<1>((lit_t[]){ -smerge_out[limit] });
+	 // 	cnf.add_clause(pedcnf_t::clause_t{ -smerge_out[limit] });
 	 // }
   }
   if (k1 > 0) {
 	 DEBUG("Setting the lower bound >= " << k1);
 	 for (size_t i= 0; i<k1; ++i)
-		cnf.add_clause<1>((lit_t[]){ prev_ris[i] });
+		cnf.add_clause(pedcnf_t::clause_t{ prev_ris[i] });
   }
 };
 
@@ -370,7 +370,7 @@ le_card_network_tree_rec(pedcnf_t& cnf,
 	 generate_smerge(cnf, firsthalf_out, secondhalf_out, out_vars_int, logger);
   }
   for (size_t limit= k; limit<=p; ++limit) {
-	 cnf.add_clause<1>((lit_t[]){ -out_vars_int[limit] });
+	 cnf.add_clause(pedcnf_t::clause_t{ -out_vars_int[limit] });
   }
   out_vars.insert(out_vars.end(), out_vars_int.begin(), out_vars_int.end()-1);
 };
@@ -393,7 +393,7 @@ le_card_network_tree(pedcnf_t& cnf,
 	 all_hsort_out.insert(all_hsort_out.end(), hsort_out.begin(), hsort_out.end());
 	 next_in_var += p;
 	 for (size_t limit= k; limit<p; ++limit) {
-		cnf.add_clause<1>((lit_t[]){ -hsort_out[limit] });
+		cnf.add_clause(pedcnf_t::clause_t{ -hsort_out[limit] });
 	 }
   }
   if (in_vars.size() > p) {
@@ -420,7 +420,7 @@ le_card_network_new(pedcnf_t& cnf,
   while (all_vars.size() % p != 0) {
 	 const lit_t dummy= cnf.generate_dummy();
 	 all_vars.push_back(dummy);
-	 cnf.add_clause<1>((lit_t[]){ -dummy });
+	 cnf.add_clause(pedcnf_t::clause_t{ -dummy });
   }
 // The first 2^i * p <= n variables are arranged as a binary tree
   const size_t n= all_vars.size();
@@ -444,7 +444,7 @@ le_card_network_new(pedcnf_t& cnf,
 	 next_in_var += p;
 	 next_in_var_counter += p;
 	 for (size_t limit= k; limit<=p; ++limit) {
-		cnf.add_clause<1>((lit_t[]){ -smerge_out[limit] });
+		cnf.add_clause(pedcnf_t::clause_t{ -smerge_out[limit] });
 	 }
   }
 };
@@ -454,7 +454,7 @@ static void
 eq_zero(pedcnf_t& cnf,
 		  const std::vector<var_t>& in_vars) {
   BOOST_FOREACH(const lit_t& var, in_vars) {
-	 cnf.add_clause<1>((lit_t[]){ -var });
+	 cnf.add_clause(pedcnf_t::clause_t{ -var });
   }
 };
 
@@ -530,7 +530,7 @@ add_uniform_card_constraint_less_or_equal_than_int(pedcnf_t& cnf,
 	 generate_smerge(cnf, prev_input, cur_input, smerge_out, logger);
 	 next_hsort_out += p;
 	 prev_input= cur_input;
-	 cnf.add_clause<1>((lit_t[]){ -smerge_out[k] });
+	 cnf.add_clause(pedcnf_t::clause_t{ -smerge_out[k] });
   }
 
 };
@@ -554,7 +554,7 @@ add_uniform_card_constraint_less_or_equal_than(pedcnf_t& cnf,
 	 while (all_vars.size() % window_size != 0) {
 		var_t v= cnf.generate_dummy();
 		all_vars.push_back(v);
-		cnf.add_clause<1>((lit_t[]){ -v });
+		cnf.add_clause(pedcnf_t::clause_t{ -v });
 	 }
 	 add_uniform_card_constraint_less_or_equal_than_int(cnf, all_vars,
 																		 window_size, k);
