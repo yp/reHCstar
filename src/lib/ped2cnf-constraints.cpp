@@ -53,7 +53,7 @@ all_false_constraints_t::_handle_constraints(pedcnf_t& cnf,
   INFO("No " << _description << " are allowed.");
   BOOST_FOREACH(const individual_variables_t& ivar, variables) {
 	 BOOST_FOREACH(const var_t& var, ivar) {
-		cnf.add_clause<1>((lit_t[]){ -var });
+		cnf.add_clause(pedcnf_t::clause_t{ -var });
 	 }
   }
 };
