@@ -10,7 +10,7 @@ by [Yuri Pirola](http://algolab.eu/pirola)
 
 
 Started: September 27, 2010  
-Current release: **2.1.4** (March 12, 2016)
+Current release: **2.1.5** (March 21, 2016)
 
 
 ------------------------------------------------------------------------
@@ -66,7 +66,7 @@ system.
 The easiest way for having reHC-* correctly installed on your machine is
 through [PyPI](https://pypi.python.org/pypi) with the command:
 
-    $ pip install -vv reHCstar
+    $ pip install -v reHCstar
 
 (Please be patient, because it can take some time to build the package.)
 
