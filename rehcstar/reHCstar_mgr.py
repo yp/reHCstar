@@ -913,7 +913,7 @@ def exec_reHCstar(filenames, solution, chunk, bounds, upper_limit_recombinations
                              lb, ub)
                 while lb+1 < ub:
                     assert lb < ub
-                    mid= math.floor((lb+ub)/2)
+                    mid= int(math.floor((lb+ub)/2))
                     logging.info("Step 2. Bisecting interval (%d-%d]", lb, ub)
                     logging.info("Step 2. Trying with at most %d recombinations.", mid)
                     rehcstar_success= basic_exec_reHCstar(filenames, lb, mid, cmd, time_limit)
